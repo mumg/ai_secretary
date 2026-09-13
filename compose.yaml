@@ -1,0 +1,161 @@
+name: improver
+
+x-app-common: &app-common
+  image: improver-backend:local
+  build:
+    context: ./backend
+  environment:
+    DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://improver@db:5432/improver}
+    DATABASE_PASSWORD_FILE: ${DATABASE_PASSWORD_FILE:-/run/secrets/postgres_password}
+    DATA_DIR: ${DATA_DIR:-/data}
+    APP_MASTER_KEY_FILE: ${APP_MASTER_KEY_FILE:-/run/secrets/app_master_key}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  volumes:
+    - app_data:/data
+  secrets:
+    - postgres_password
+    - app_master_key
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  networks:
+    - app_net
+    - parser_net
+    - egress_net
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-improver}
+      POSTGRES_USER: ${POSTGRES_USER:-improver}
+      POSTGRES_PASSWORD_FILE: ${POSTGRES_PASSWORD_FILE:-/run/secrets/postgres_password}
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *app-common
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app-common
+    command: ["uvicorn", "improver.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      document-parser:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    <<: *app-common
+    command: ["python", "-m", "improver.worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      document-parser:
+        condition: service_healthy
+
+  document-parser:
+    build:
+      context: ./document-parser
+    environment:
+      MAX_BYTES: "26214400"
+      MAX_CHARACTERS: "100000"
+    networks:
+      - parser_net
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  cert-init:
+    build:
+      context: ./infra/certs
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+    volumes:
+      - tls_certs:/certs
+    restart: "no"
+
+  proxy:
+    image: caddy:2.10.2-alpine
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+      SERVER_CERT_FILE: ${SERVER_CERT_FILE:-/certs/server.crt}
+      SERVER_KEY_FILE: ${SERVER_KEY_FILE:-/certs/server.key}
+      CLIENT_CA_FILE: ${CLIENT_CA_FILE:-/certs/client-ca.crt}
+    ports:
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - tls_certs:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - app_net
+      - egress_net
+    depends_on:
+      cert-init:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  app_master_key:
+    file: ./secrets/app_master_key
+
+volumes:
+  postgres_data:
+  app_data:
+  tls_certs:
+  caddy_data:
+  caddy_config:
+
+networks:
+  app_net:
+    internal: true
+  parser_net:
+    internal: true
+  egress_net:

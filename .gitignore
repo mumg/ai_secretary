@@ -1,0 +1,47 @@
+.DS_Store
+.env
+.idea/
+.vscode/
+*.har
+*.pcap
+*.pcapng
+*.log
+*.dump
+*.sql
+*.sqlite*
+*.db
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Runtime data and secrets
+/data/
+secrets/*
+!secrets/.gitkeep
+!secrets/README.md
+config/config.yaml
+compose.letsencrypt.yaml
+
+# Private keys and certificates must never enter Git, regardless of location.
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+
+# Android
+android/.gradle/
+android/local.properties
+android/secretary.local.properties
+android/**/build/
+*.jks
+*.keystore
+google-services.json
+/android/.kotlin/

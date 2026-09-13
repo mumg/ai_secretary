@@ -1,0 +1,12 @@
+services:
+  cert-init:
+    environment:
+      PUBLIC_HOST: secretary.example.com
+
+  proxy:
+    environment:
+      PUBLIC_HOST: secretary.example.com
+      SERVER_CERT_FILE: /etc/letsencrypt/live/secretary.example.com/fullchain.pem
+      SERVER_KEY_FILE: /etc/letsencrypt/live/secretary.example.com/privkey.pem
+    volumes:
+      - ./secrets/letsencrypt:/etc/letsencrypt:ro

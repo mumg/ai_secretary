@@ -1,0 +1,1779 @@
+openapi: 3.1.0
+info:
+  title: MTS Link Web and Mobile Client API (observed)
+  version: 0.2.0
+  description: |
+    
+    This is not an official or exhaustive MTS Link contract. It describes only
+    the login, cabinet, meetings, recording and transcript interactions present
+    in that capture. Browser services, static assets, Sentry, Mixpanel,
+    CarrotQuest and CORS preflight requests are intentionally excluded.
+
+    Some RPC endpoints return a JSON document with `text/plain` media type.
+    Their schemas below describe the JSON value carried in that response body.
+
+    Observed browser flow:
+
+    1. Resolve branding and SSO organization for the tenant host.
+    2. Redirect the browser through SAML and receive a one-time `authCode`.
+    3. Exchange `authCode` with `LoginByAuthCode`; store the returned
+       access and refresh tokens. The web client uses the `access` cookie;
+       the Android client sends the same access token as `Authorization: Bearer`.
+    4. Load the current user, feature/configuration data and meeting lists.
+    5. Batch-resolve recording/transcript states, then load transcript details,
+       summary, utterances, tasks, reaction or the text download.
+  x-sources:
+    - kind: HAR
+      client: web
+      file: HTTPToolkit_2026-09-12_09-47.har
+      capturedAt: 2026-09-12
+    - kind: HAR
+      client: Android
+      clientVersion: 4.9.2-rustore
+      file: HTTPToolkit_2026-09-12_10-07.har
+      capturedAt: 2026-09-12
+servers:
+  - url: https://gw.mts-link.ru
+    description: Main web gateway
+security:
+  - accessCookie: []
+tags:
+  - name: Authentication
+  - name: Account
+  - name: Configuration
+  - name: Meetings
+  - name: Recordings
+  - name: Transcripts
+  - name: Features
+  - name: Connectivity
+  - name: Mobile
+
+paths:
+  /api/superbrandings:
+    get:
+      tags: [Configuration]
+      operationId: getSuperBranding
+      summary: Resolve branding for a web client host
+      security: []
+      parameters:
+        - name: host
+          in: query
+          required: true
+          schema: { type: string, format: hostname }
+      responses:
+        "200":
+          description: Branding lookup result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [branding]
+                properties:
+                  branding:
+                    type: [object, "null"]
+                    additionalProperties: true
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/login:
+    get:
+      tags: [Authentication, Account]
+      operationId: getCurrentUser
+      summary: Read the current authenticated web user
+      description: The capture returned 404 before login and a user document after login.
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserProfile" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ssoExternal/ExternalSSO.GetLoginOrganizationByHost:
+    post:
+      tags: [Authentication]
+      operationId: getLoginOrganizationByHost
+      summary: Discover the SSO organization and login methods for a host
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [host]
+              properties:
+                host: { type: string, format: hostname }
+      responses:
+        "200":
+          description: RPC LoginOrganization envelope
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/LoginOrganizationEnvelope" }
+        "400": { $ref: "#/components/responses/RpcError" }
+
+  /ssoExternal/ExternalSSO.GetLoginOrganizationsByEmail:
+    post:
+      tags: [Authentication, Mobile]
+      operationId: getLoginOrganizationsByEmail
+      summary: Discover SSO organizations for a user's email address
+      description: Observed as the first authentication API call made by the Android client.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: RPC list of matching login organizations
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/LoginOrganizationsEnvelope" }
+        "400": { $ref: "#/components/responses/RpcError" }
+
+  /accountUcaas/AccountUcaas.GetLoginData:
+    post:
+      tags: [Authentication]
+      operationId: getLoginData
+      summary: Read identity data associated with the current login
+      description: |
+        The web capture authenticated this call with the `access` cookie. The
+        Android capture sent the same token as a Bearer token and an empty body.
+      security:
+        - accessCookie: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+          text/plain:
+            schema:
+              type: string
+              maxLength: 0
+      responses:
+        "200":
+          description: RPC LoginData envelope
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/LoginDataEnvelope" }
+        "401": { $ref: "#/components/responses/RpcError" }
+
+  /accountUcaas/AccountUcaas.LoginByAuthCode:
+    post:
+      tags: [Authentication]
+      operationId: loginByAuthCode
+      summary: Exchange an SSO authorization code for an MTS Link session
+      description: |
+        The response body contains access and refresh tokens. The observed
+        response also sets `access` and `refresh` cookies. The Android client
+        copied `value.accessToken` verbatim into the Bearer authorization header;
+        the refresh token was not used in any captured outgoing request.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [authCode]
+              properties:
+                authCode: { type: string, writeOnly: true }
+      responses:
+        "200":
+          description: Tokens issued; session cookies are set
+          headers:
+            Set-Cookie:
+              description: Contains the `access` and `refresh` session cookies.
+              schema: { type: string }
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/TokensEnvelope" }
+        "400": { $ref: "#/components/responses/RpcError" }
+        "401": { $ref: "#/components/responses/RpcError" }
+
+  /sso/saml/login:
+    get:
+      tags: [Authentication]
+      operationId: startSamlLogin
+      summary: Start organization SAML login
+      security: []
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema: { type: string, format: email }
+        - name: returnUrl
+          in: query
+          required: true
+          schema: { type: string, format: uri }
+        - name: token
+          in: query
+          required: true
+          description: Organization/login connection token.
+          schema: { type: string }
+        - name: params
+          in: query
+          required: false
+          description: Base64-encoded client state passed through the SSO flow.
+          schema: { type: string, contentEncoding: base64 }
+      responses:
+        "302":
+          description: Redirect to the identity provider
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+
+  /sso/saml/return:
+    post:
+      tags: [Authentication]
+      operationId: completeSamlLogin
+      summary: Receive a SAML assertion and continue the browser login flow
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [SAMLResponse]
+              properties:
+                SAMLResponse:
+                  type: string
+                  contentEncoding: base64
+                  writeOnly: true
+                RelayState: { type: string }
+      responses:
+        "302":
+          description: |
+            Redirect to the client with a one-time authorization code. For
+            Android the observed target was
+            `mtslink://mobile/login?authCode={authCode}`; that exact code was
+            then submitted to `AccountUcaas.LoginByAuthCode`.
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/saml/acs:
+    post:
+      tags: [Authentication]
+      operationId: samlAssertionConsumerBridge
+      summary: SAML assertion consumer bridge
+      description: Observed on `my.mts-link.ru`; forwards the form to the gateway.
+      security: []
+      servers:
+        - url: https://my.mts-link.ru
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [SAMLResponse]
+              properties:
+                SAMLResponse:
+                  type: string
+                  contentEncoding: base64
+                  writeOnly: true
+                RelayState: { type: string }
+      responses:
+        "307":
+          description: Temporary redirect preserving the POST body
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+
+  /httpMember/MemberService.GetMember:
+    post:
+      tags: [Account]
+      operationId: getMember
+      summary: Read organization member data by user ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string }
+      responses:
+        "200":
+          description: RPC Member envelope
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/MemberEnvelope" }
+        "401": { $ref: "#/components/responses/RpcError" }
+
+  /api/user/sso-transfer-organizations:
+    get:
+      tags: [Account]
+      operationId: listSsoTransferOrganizations
+      summary: List organizations available for SSO transfer
+      responses:
+        "200":
+          description: Organization list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/login/options:
+    get:
+      tags: [Authentication, Configuration]
+      operationId: getLoginOptions
+      summary: Read login options for a branded host
+      security: []
+      parameters:
+        - name: host
+          in: query
+          required: true
+          schema: { type: string, format: hostname }
+      responses:
+        "200":
+          description: Login options
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginOptionsResponse" }
+
+  /api/organizations/{organizationId}/brandings/default:
+    get:
+      tags: [Configuration]
+      operationId: getDefaultOrganizationBranding
+      summary: Read the default branding of an organization
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      responses:
+        "200":
+          description: Organization branding
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationBranding" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /orgHttp/OrgHttp.GetProjectManagement:
+    post:
+      tags: [Account]
+      operationId: getProjectManagement
+      summary: List projects available to the current account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        "200":
+          description: RPC Projects envelope
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/ProjectsEnvelope" }
+
+  /api/user/comet:
+    get:
+      tags: [Configuration]
+      operationId: getRealtimeConfiguration
+      summary: Read realtime and streaming connection settings
+      responses:
+        "200":
+          description: Connection settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RealtimeConfiguration" }
+
+  /api/user/activity/{activityName}:
+    get:
+      tags: [Account]
+      operationId: getUserActivityState
+      summary: Read a named UI activity/onboarding marker
+      parameters:
+        - name: activityName
+          in: path
+          required: true
+          schema: { type: string }
+          examples:
+            initialOnboardingStarted: { value: initialOnboardingStarted }
+            meetingsVisited: { value: meetingsVisited }
+            newNavHintSeen: { value: newNavHintSeen }
+      responses:
+        "200":
+          description: Activity state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivityState" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/users/{userId}/featureSettings:
+    get:
+      tags: [Features]
+      operationId: getUserFeatureSettings
+      summary: Read effective feature flags for a user
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Map of feature names to effective values
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: [boolean, string, number, "null"]
+
+  /api/users/qualifications:
+    get:
+      tags: [Account]
+      operationId: listUserQualifications
+      summary: Read user qualification/onboarding answers
+      responses:
+        "200":
+          description: Qualification answers
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QualificationsResponse" }
+
+  /api/user/tariff/request/{tariffCode}:
+    get:
+      tags: [Account]
+      operationId: getTariffRequestState
+      summary: Read the current user's request state for a tariff/trial
+      parameters:
+        - name: tariffCode
+          in: path
+          required: true
+          schema: { type: string }
+          example: WeStudyTrial
+      responses:
+        "200":
+          description: Matching requests; the observed response was an empty array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+
+  /api/user/{userId}/notifications:
+    get:
+      tags: [Account]
+      operationId: listUserNotifications
+      summary: List notifications for a user
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+        - name: lang
+          in: query
+          required: false
+          schema: { type: string, example: RU }
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Notification" }
+
+  /api/mobile/installation:
+    get:
+      tags: [Mobile, Configuration]
+      operationId: getMobileInstallation
+      summary: Bootstrap mobile application configuration
+      description: |
+        Called both before and after login. The response was identical in the
+        capture; authentication is optional and does not appear necessary for
+        obtaining the installation configuration.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+      responses:
+        "200":
+          description: Mobile bootstrap configuration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MobileInstallation" }
+
+  /api/mobile/users/sessions:
+    get:
+      tags: [Mobile, Account]
+      operationId: getMobileUserSession
+      summary: Bootstrap the authenticated mobile user and messaging session
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+      responses:
+        "200":
+          description: Mobile user and messaging bootstrap data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MobileUserSession" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/mobile/pushtoken:
+    post:
+      tags: [Mobile]
+      operationId: registerMobilePushToken
+      summary: Register a mobile push-notification token
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MobilePushTokenRequest" }
+      responses:
+        "201":
+          description: Token registered; the capture echoed the submitted token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token:
+                    type: string
+                    readOnly: true
+                    x-sensitive: true
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/mobile/eventsessions/schedule:
+    get:
+      tags: [Mobile, Meetings]
+      operationId: getMobileEventSessionSchedule
+      summary: List mobile event sessions in a date/time interval
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+        - name: eventType[]
+          in: query
+          required: false
+          style: form
+          explode: true
+          description: Repeated bracketed key used by the Android client.
+          schema:
+            type: array
+            items: { $ref: "#/components/schemas/EventType" }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Mobile schedule entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ScheduleEntry" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/mobile/eventsessions/endless:
+    get:
+      tags: [Mobile, Meetings]
+      operationId: listMobileEndlessEventSessions
+      summary: List persistent meeting rooms for the mobile client
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XAppVersion"
+        - $ref: "#/components/parameters/XDevice"
+        - $ref: "#/components/parameters/XDeviceId"
+        - $ref: "#/components/parameters/XOs"
+        - $ref: "#/components/parameters/XPlatform"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: filters[visibility][eq]
+          in: query
+          required: false
+          schema: { type: string, example: visible }
+      responses:
+        "200":
+          description: Mobile endless meeting page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EndlessSessionsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/event-sessions/creators:
+    get:
+      tags: [Meetings]
+      operationId: listEventSessionCreators
+      summary: List creators available in the event-session filter
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: filters[date][gte]
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: filters[date][lte]
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Creator page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreatorsResponse" }
+
+  /api/eventsessions/schedule:
+    get:
+      tags: [Meetings]
+      operationId: getEventSessionSchedule
+      summary: List event sessions in a date/time interval
+      description: |
+        The captured client serialized event types as the bracketed query keys
+        `eventType[0]`, `eventType[1]`, and `eventType[2]`.
+      parameters:
+        - name: eventType[0]
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/EventType" }
+        - name: eventType[1]
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/EventType" }
+        - name: eventType[2]
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/EventType" }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Schedule entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ScheduleEntry" }
+
+  /api/eventsessions/endless:
+    get:
+      tags: [Meetings]
+      operationId: listEndlessEventSessions
+      summary: List persistent (endless) meeting rooms
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: filters[visibility][eq]
+          in: query
+          required: false
+          schema: { type: string, example: visible }
+      responses:
+        "200":
+          description: Endless meeting page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EndlessSessionsResponse" }
+
+  /api/users/current/default-event-session-for-integration:
+    get:
+      tags: [Meetings]
+      operationId: getDefaultIntegrationEventSession
+      summary: Read the default event session used by integrations
+      responses:
+        "200":
+          description: Default event session; null was observed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    oneOf:
+                      - { $ref: "#/components/schemas/EventSession" }
+                      - { type: "null" }
+
+  /api/onboarding-v2/meetings_list:
+    get:
+      tags: [Account]
+      operationId: getMeetingsListOnboarding
+      summary: Read meeting-list onboarding markers
+      responses:
+        "200":
+          description: Onboarding steps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [token, passed]
+                  properties:
+                    token: { type: string }
+                    passed: { type: boolean }
+
+  /api/event-sessions/activity-sessions/transcript-states:
+    get:
+      tags: [Recordings, Transcripts]
+      operationId: getTranscriptStates
+      summary: Batch-read transcript states for event/activity sessions
+      parameters:
+        - $ref: "#/components/parameters/ActivitySessionItems"
+      responses:
+        "200":
+          description: Transcript states
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/TranscriptState" }
+
+  /api/event-sessions/activity-sessions/record-states:
+    get:
+      tags: [Recordings]
+      operationId: getRecordStates
+      summary: Batch-read recording states for event/activity sessions
+      parameters:
+        - $ref: "#/components/parameters/ActivitySessionItems"
+      responses:
+        "200":
+          description: Recording states
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RecordState" }
+
+  /api/transcript/{transcriptId}:
+    get:
+      tags: [Transcripts]
+      operationId: getTranscript
+      summary: Read transcript utterances
+      parameters:
+        - $ref: "#/components/parameters/TranscriptId"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Transcript page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TranscriptPageResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/transcript/{transcriptId}/details:
+    get:
+      tags: [Transcripts]
+      operationId: getTranscriptDetails
+      summary: Read transcript metadata
+      parameters:
+        - $ref: "#/components/parameters/TranscriptId"
+      responses:
+        "200":
+          description: Transcript metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TranscriptDetailsResponse" }
+
+  /api/transcript/{transcriptId}/summary:
+    get:
+      tags: [Transcripts]
+      operationId: getTranscriptSummary
+      summary: Read an AI-generated transcript summary
+      parameters:
+        - $ref: "#/components/parameters/TranscriptId"
+      responses:
+        "200":
+          description: Transcript summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TranscriptSummaryResponse" }
+
+  /api/transcript/{transcriptId}/tasks:
+    get:
+      tags: [Transcripts]
+      operationId: getTranscriptTasks
+      summary: Read tasks extracted from a transcript
+      parameters:
+        - $ref: "#/components/parameters/TranscriptId"
+      responses:
+        "200":
+          description: Extracted tasks grouped by assignment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TranscriptTasksResponse" }
+
+  /api/transcript/{transcriptId}/summary/reaction:
+    get:
+      tags: [Transcripts]
+      operationId: getTranscriptSummaryReaction
+      summary: Read the current user's reaction to a transcript summary
+      parameters:
+        - $ref: "#/components/parameters/TranscriptId"
+      responses:
+        "200":
+          description: Reaction state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [reaction]
+                    properties:
+                      reaction: { type: string }
+
+  /api/transcript/{transcriptId}/download:
+    get:
+      tags: [Transcripts]
+      operationId: downloadTranscript
+      summary: Download a transcript as plain text
+      parameters:
+        - $ref: "#/components/parameters/TranscriptId"
+      responses:
+        "200":
+          description: Plain-text transcript
+          content:
+            text/plain:
+              schema: { type: string }
+
+  /Featurer.GetFeatures:
+    post:
+      tags: [Features]
+      operationId: getChatFeatures
+      summary: Resolve feature values through the chat gateway
+      servers:
+        - url: https://prod-gw-chat.mts-link.ru
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema: { $ref: "#/components/schemas/FeatureRequest" }
+          application/json:
+            schema: { $ref: "#/components/schemas/FeatureRequest" }
+      responses:
+        "200":
+          description: Feature values
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/FeatureResponse" }
+
+  /whoami:
+    get:
+      tags: [Connectivity, Mobile]
+      operationId: getSfuNetworkIdentity
+      summary: Resolve the client's public network location at the SFU edge
+      security: []
+      servers:
+        - url: https://sfu.mts-link.ru
+      responses:
+        "200":
+          description: Public address and approximate network lookup
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkIdentity" }
+
+  /rtc/conncheck/connect:
+    post:
+      tags: [Connectivity]
+      operationId: checkRtcConnectivity
+      summary: Perform an RTC/SFU connectivity check
+      description: Exchanges SDP with the media server; no meeting media is described here.
+      security: []
+      servers:
+        - url: https://sfu.mts-link.ru
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              description: SDP offer
+      responses:
+        "200":
+          description: SDP answer
+          content:
+            application/sdp:
+              schema: { type: string }
+
+components:
+  securitySchemes:
+    accessCookie:
+      type: apiKey
+      in: cookie
+      name: access
+      description: Session access token cookie set by LoginByAuthCode.
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh
+      description: Refresh token cookie set during login; its refresh endpoint was not observed.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Mobile authorization using `value.accessToken` returned by
+        `AccountUcaas.LoginByAuthCode`. The captured access token was an RS256
+        JWT with claims `cid`, `exp`, `iat`, `jti`, `oid`, `sso`, `sub`, `uid`
+        and an observed lifetime of 302400 seconds. Do not assume that lifetime
+        is a stable server contract.
+
+  parameters:
+    XAppVersion:
+      name: X-App-Version
+      in: header
+      required: true
+      schema: { type: string }
+      description: Mobile application version/build identifier.
+    XDevice:
+      name: X-Device
+      in: header
+      required: true
+      schema: { type: string }
+      description: Device model reported by the mobile client.
+    XDeviceId:
+      name: X-Device-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9A-Fa-f]{16}$"
+      description: Android device identifier; the capture used 16 hexadecimal characters.
+    XOs:
+      name: X-Os
+      in: header
+      required: true
+      schema: { type: string }
+      description: Operating system name and version.
+    XPlatform:
+      name: X-Platform
+      in: header
+      required: true
+      schema: { type: string }
+      description: Client platform marker; `Android` and `AndroidRoot` were observed.
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    TranscriptId:
+      name: transcriptId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    Page:
+      name: page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: perPage
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1 }
+    ActivitySessionItems:
+      name: items
+      in: query
+      required: true
+      style: deepObject
+      explode: true
+      description: |
+        Batch items. The observed wire form uses indexed PHP-style brackets,
+        for example `items[0][eventSessionId]=...` and
+        `items[0][activitySessionId]=...`. `activitySessionId` may be omitted.
+      x-observed-serialization: items[index][field]
+      schema:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required: [eventSessionId]
+          properties:
+            eventSessionId: { type: integer, format: int64 }
+            activitySessionId: { type: integer, format: int64 }
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid session
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource or session not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RpcError:
+      description: RPC error envelope
+      content:
+        text/plain:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        name: { type: string }
+        message: { type: string }
+      additionalProperties: true
+
+    EventType:
+      type: string
+      enum: [meeting, webinar, training]
+
+    LoginOrganizationEnvelope:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, const: LoginOrganization }
+        value: { $ref: "#/components/schemas/LoginOrganization" }
+
+    LoginOrganizationsEnvelope:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, const: LoginOrganizations }
+        value:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/LoginOrganization" }
+
+    LoginOrganization:
+      type: object
+      required: [id, name, subdomain, methods]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        subdomain: { type: string }
+        methods:
+          type: array
+          items:
+            type: object
+            required: [type, value]
+            properties:
+              type: { type: string }
+              value:
+                type: object
+                properties:
+                  connectionToken:
+                    type: string
+                    readOnly: true
+                    x-sensitive: true
+                  params: { type: string }
+
+    TokensEnvelope:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, const: Tokens }
+        value:
+          type: object
+          required: [accessToken, refreshToken]
+          properties:
+            accessToken:
+              type: string
+              readOnly: true
+              x-sensitive: true
+              x-observed-jwt:
+                algorithm: RS256
+                claims: [cid, exp, iat, jti, oid, sso, sub, uid]
+                lifetimeSeconds: 302400
+            refreshToken:
+              type: string
+              readOnly: true
+              x-sensitive: true
+              description: Opaque refresh token; no refresh operation was present in the capture.
+
+    LoginDataEnvelope:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, const: LoginData }
+        value:
+          type: object
+          required: [userId, organizationId, email]
+          properties:
+            userId: { type: string }
+            organizationId: { type: string }
+            meetingsId: { type: integer, format: int64 }
+            clientId: { type: string }
+            email: { type: string, format: email }
+            createdAt: { type: integer, format: int64 }
+            ssoSessionId: { type: string }
+            carrotQuestHash: { type: string }
+
+    MemberEnvelope:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, const: Member }
+        value:
+          type: object
+          required: [id, userId, organizationId, profile, role, status]
+          properties:
+            id: { type: string }
+            userId: { type: string }
+            organizationId: { type: string }
+            role: { type: string }
+            status: { type: string }
+            profile:
+              type: object
+              properties:
+                displayName: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                patronymicName: { type: string }
+                nickName: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                position: { type: string }
+                orgName: { type: string }
+                description: { type: string }
+                avatar:
+                  type: object
+                  properties:
+                    id: { type: integer, format: int64 }
+                    uid: { type: string }
+                    url: { type: string, format: uri }
+                additionalFields:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      profileFieldId: { type: string }
+                      value: { type: string }
+
+    UserProfile:
+      type: object
+      required: [id, uid, email, type, status, name]
+      properties:
+        id: { type: integer, format: int64 }
+        uid: { type: string }
+        clientId: { type: string }
+        email: { type: string, format: email }
+        type: { type: string }
+        status: { type: string }
+        name: { type: string }
+        secondName: { type: string }
+        patrName: { type: string }
+        nickname: { type: string }
+        realNickname: { type: string }
+        phone: { type: string }
+        position: { type: string }
+        locale: { type: string }
+        avatarUrl: { type: string, format: uri }
+        createAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+        regDate: { type: string, format: date-time }
+        lastVisitedDate: { type: string, format: date-time }
+        defaultEventType: { $ref: "#/components/schemas/EventType" }
+        defaultRecordViewAccess: { type: string }
+        defaultTranscriptViewAccess: { type: string }
+        isDeleted: { type: boolean }
+        isSubmitted: { type: boolean }
+        isEnterprise: { type: boolean }
+        isAutoRecord: { type: boolean }
+        isAutoTranscriptionEnabled: { type: boolean }
+        memberships:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        featureFlags:
+          type: object
+          additionalProperties: true
+        auth:
+          type: object
+          additionalProperties: true
+        properties:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    LoginOptionsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            organization:
+              type: object
+              properties:
+                name: { type: string }
+            sso:
+              type: object
+              properties:
+                methods:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      redirectUrl: { type: string, format: uri }
+          additionalProperties: true
+
+    FileAsset:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { type: string }
+        typeFile: { type: string }
+        format: { type: string }
+        mimeType: { type: string }
+        size: { type: integer }
+        path: { type: string }
+        uri: { type: string }
+        url: { type: string, format: uri }
+        downloadUrl: { type: string, format: uri }
+        createAt: { type: string, format: date-time }
+        thumbnails:
+          type: object
+          additionalProperties:
+            type: string
+            format: uri
+      additionalProperties: true
+
+    OrganizationBranding:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        isDefault: { type: boolean }
+        eventButtonAndLinkColor: { type: string }
+        eventCustomLink: { type: string }
+        eventPauseImage: { $ref: "#/components/schemas/FileAsset" }
+        interfaceLogoImage: { $ref: "#/components/schemas/FileAsset" }
+        landingLogoImage: { $ref: "#/components/schemas/FileAsset" }
+      additionalProperties: true
+
+    ProjectsEnvelope:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, const: Projects }
+        value:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [id, name, systemName, isEnabled]
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  systemName: { type: string }
+                  isEnabled: { type: boolean }
+
+    RealtimeConfiguration:
+      type: object
+      properties:
+        cometPort: { type: integer }
+        cometServer: { type: string }
+        organizationCometId: { type: string }
+        sessionCometId: { type: string }
+        userCometId: { type: string }
+        streamerServer: { type: string }
+        rtmpUrl: { type: string, format: uri }
+
+    ActivityState:
+      type: object
+      required: [activityCounter, lastActiveAt]
+      properties:
+        activityCounter: { type: integer }
+        lastActiveAt: { type: string, format: date-time }
+
+    QualificationsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: integer, format: int64 }
+                  product: { type: string }
+                  target: { type: string }
+                  corporateTarget: { type: string }
+                  employeesCount: { type: string }
+                  comment: { type: string }
+
+    Notification:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        templateName: { type: string }
+        priority: { type: integer }
+        createAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+        expireAt: { type: string, format: date-time }
+        delivery:
+          type: object
+          additionalProperties: true
+        template:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    Creator:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        secondName: { type: string }
+        nickname: { type: string }
+        email: { type: string, format: email }
+        photo: { type: string, format: uri }
+
+    CreatorsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Creator" }
+          additionalProperties: true
+
+    EventSessionUser:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        secondName: { type: string }
+        avatarUrl: { type: string, format: uri }
+        avatarThumbnails:
+          type: object
+          additionalProperties:
+            type: string
+            format: uri
+
+    EventSession:
+      type: object
+      required: [id, eventId, name, type, status, startsAt]
+      properties:
+        id: { type: integer, format: int64 }
+        eventId: { type: integer, format: int64 }
+        activitySessionId: { type: [integer, "null"], format: int64 }
+        name: { type: string }
+        type: { $ref: "#/components/schemas/EventType" }
+        status: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: [string, "null"], format: date-time }
+        estimatedAt: { type: [string, "null"], format: date-time }
+        duration: { type: [string, "null"] }
+        timezoneName: { type: string }
+        access: { type: integer }
+        accessSettings:
+          type: object
+          properties:
+            isModerationRequired: { type: boolean }
+          additionalProperties: true
+        createUser: { $ref: "#/components/schemas/EventSessionUser" }
+        image: { type: [string, "null"], format: uri }
+        participationCount: { type: integer }
+        isAuto: { type: boolean }
+        isEndless: { type: boolean }
+        agreementStatus: { type: string }
+      additionalProperties: true
+
+    ScheduleEntry:
+      type: object
+      required: [type, date, data]
+      properties:
+        type: { type: string }
+        date: { type: string, format: date-time }
+        userRelationToEvent: { type: string }
+        isCreatorFromSameOrganization: { type: boolean }
+        data: { $ref: "#/components/schemas/EventSession" }
+
+    EndlessSession:
+      type: object
+      required: [eventSession, link]
+      properties:
+        eventSession: { $ref: "#/components/schemas/EventSession" }
+        link: { type: string, format: uri }
+        userRelationToEvent: { type: string }
+        recordsFolderId: { type: integer, format: int64 }
+        onlineParticipantsCount: { type: integer }
+        hasAgendaFiles: { type: boolean }
+        hasTranscripts: { type: boolean }
+        cometEventChannel: { type: string }
+        cometAdminInEventChannel: { type: string }
+        unreadCounters:
+          type: array
+          description: Present in the mobile endless-meeting response.
+          items:
+            type: object
+            required: [type, unreadCount]
+            properties:
+              type: { type: string }
+              unreadCount: { type: integer, minimum: 0 }
+
+    EndlessSessionsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [items, total]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/EndlessSession" }
+            total: { type: integer, minimum: 0 }
+
+    TranscriptState:
+      type: object
+      required: [eventSessionId, status]
+      properties:
+        eventSessionId: { type: integer, format: int64 }
+        activitySessionId: { type: [integer, "null"], format: int64 }
+        transcriptId: { type: [integer, "null"], format: int64 }
+        status: { type: string }
+        visibility: { type: string }
+        isDisabled: { type: boolean }
+        isPublished: { type: boolean }
+        stateChangeCometChannel: { type: string }
+
+    RecordState:
+      type: object
+      required: [eventSessionId, state]
+      properties:
+        eventSessionId: { type: integer, format: int64 }
+        activitySessionId: { type: [integer, "null"], format: int64 }
+        recordFileId: { type: [integer, "null"], format: int64 }
+        state: { type: string }
+        viewAccess: { type: string }
+        isViewAllowed: { type: boolean }
+        isViewable: { type: boolean }
+        canRequestAccess: { type: boolean }
+        cometEventChannel: { type: string }
+        cometUserInEventCometChannel: { type: string }
+
+    TranscriptDetailsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [transcriptId, transcriptName, ownerName, organization, createdAt, visibility]
+          properties:
+            transcriptId: { type: integer, format: int64 }
+            transcriptName: { type: string }
+            ownerName: { type: string }
+            createdAt: { type: string, format: date-time }
+            visibility: { type: string }
+            organization:
+              type: object
+              required: [id, name]
+              properties:
+                id: { type: integer, format: int64 }
+                name: { type: string }
+
+    TranscriptSummaryResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [status, summary, createdAt, template]
+          properties:
+            status: { type: string }
+            summary: { type: string }
+            createdAt: { type: string, format: date-time }
+            template:
+              type: object
+              required: [id, name, description, isEnabled]
+              properties:
+                id: { type: integer, format: int64 }
+                name: { type: string }
+                description: { type: string }
+                isEnabled: { type: boolean }
+
+    TranscriptUtterance:
+      type: object
+      required: [id, text, dateTime, nickname]
+      properties:
+        id: { type: integer, format: int64 }
+        userId: { type: [integer, "null"], format: int64 }
+        nickname: { type: string }
+        text: { type: string }
+        dateTime: { type: string, format: date-time }
+
+    TranscriptPageResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [transcriptName, items]
+          properties:
+            transcriptName: { type: string }
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/TranscriptUtterance" }
+          additionalProperties: true
+
+    TranscriptTask:
+      type: object
+      required: [id, taskText, assigneeUserId, assigneeUserName, dueDate]
+      properties:
+        id: { type: integer, format: int64 }
+        taskText: { type: string }
+        assigneeUserId: { type: integer, format: int64 }
+        assigneeUserName: { type: string }
+        dueDate: { type: string, format: date-time }
+
+    TranscriptTasksResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [commonTasks, myTasks]
+          properties:
+            commonTasks:
+              type: array
+              items: { $ref: "#/components/schemas/TranscriptTask" }
+            myTasks:
+              type: array
+              items: { $ref: "#/components/schemas/TranscriptTask" }
+
+    MobileInstallation:
+      type: object
+      required: [version, capabilities, configuration, installationToken]
+      properties:
+        version: { type: string }
+        capabilities:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        installationToken:
+          type: string
+          readOnly: true
+          x-sensitive: true
+        configuration:
+          type: object
+          required:
+            - records-delivery
+            - isSaas
+            - isEncrypted
+            - isMobileUsePlatformAuthEnabled
+            - telemetryUrl
+            - blackholeUrl
+            - apiGatewayUrl
+            - chatsConfigUrl
+          properties:
+            records-delivery: { type: string, format: uri }
+            isSaas: { type: boolean }
+            isEncrypted: { type: boolean }
+            isMobileUsePlatformAuthEnabled: { type: boolean }
+            telemetryUrl: { type: string, format: uri }
+            blackholeUrl: { type: string, format: uri }
+            apiGatewayUrl: { type: string, format: uri }
+            chatsConfigUrl: { type: string, format: uri }
+          additionalProperties: true
+
+    MobileUserSession:
+      type: object
+      required: [message, user]
+      properties:
+        message:
+          type: object
+          required: [url, channels]
+          properties:
+            url: { type: string, format: uri }
+            channels:
+              type: array
+              items: { type: string }
+        user:
+          type: object
+          required: [id, organizationId, email, name, type]
+          properties:
+            id: { type: integer, format: int64 }
+            organizationId: { type: integer, format: int64 }
+            email: { type: string, format: email }
+            name: { type: string }
+            secondName: { type: string }
+            nickname: { type: string }
+            phone: { type: string }
+            position: { type: string }
+            type: { type: string }
+            isSubmitted: { type: boolean }
+            canChangePassword: { type: boolean }
+            hasAccessToMeeting: { type: boolean }
+            hasPersonalCabinet: { type: boolean }
+            avatar:
+              type: [object, "null"]
+              properties:
+                thumbnails:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    format: uri
+              additionalProperties: true
+          additionalProperties: true
+
+    MobilePushTokenRequest:
+      type: object
+      required: [platform, provider, sessionId, token]
+      properties:
+        platform:
+          type: string
+          enum: [android, ios]
+        provider:
+          type: string
+          description: Push provider; `gms` was observed on Android.
+        sessionId:
+          type: string
+          description: May be an empty string; it was empty in the capture.
+        token:
+          type: string
+          writeOnly: true
+          x-sensitive: true
+
+    NetworkIdentity:
+      type: object
+      required: [ip, lookup]
+      properties:
+        ip: { type: string }
+        lookup:
+          type: object
+          properties:
+            asn: { type: integer }
+            city: { type: string }
+            continent: { type: string }
+            country: { type: string }
+            subdivision: { type: string }
+
+    FeatureRequest:
+      type: object
+      required: [features]
+      properties:
+        features:
+          type: array
+          items:
+            oneOf:
+              - { type: string }
+              - type: object
+                additionalProperties: true
+
+    FeatureResponse:
+      type: object
+      required: [features]
+      properties:
+        features:
+          type: array
+          items:
+            type: object
+            required: [name, isEnabled]
+            properties:
+              name: { type: string }
+              isEnabled: { type: boolean }
+              value: { type: string }

@@ -1,0 +1,27 @@
+{$PUBLIC_HOST:localhost}:443 {
+	tls {$SERVER_CERT_FILE:/certs/server.crt} {$SERVER_KEY_FILE:/certs/server.key} {
+		client_auth {
+			mode require_and_verify
+			trust_pool file {
+				pem_file {$CLIENT_CA_FILE:/certs/client-ca.crt}
+			}
+		}
+	}
+
+	encode zstd gzip
+	header {
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self'"
+		Referrer-Policy "no-referrer"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+
+	@api path /api/* /health/* /admin /admin/*
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}
