@@ -20,6 +20,8 @@ class NotificationService:
         self._app = None
 
     def _initialize(self) -> bool:
+        if self.config.server.local_web_only:
+            return False
         credentials_payload = self.config.notifications.firebase_credentials
         if not credentials_payload:
             return False
@@ -42,6 +44,8 @@ class NotificationService:
         return True
 
     async def send(self, session: AsyncSession, event_type: str, object_id: str) -> int:
+        if self.config.server.local_web_only:
+            return 0
         if not self._initialize():
             log.info("notification_skipped", reason="firebase_not_configured", type=event_type)
             return 0

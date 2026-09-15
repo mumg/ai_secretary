@@ -31,6 +31,7 @@ button { cursor: pointer; }
 .intro p:not(.eyebrow) { max-width: 680px; color: var(--muted); line-height: 1.6; margin: 0; }
 .eyebrow { margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .14em; color: var(--accent); }
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: rgba(255,255,255,.45); }
+.metrics.local-web { grid-template-columns: repeat(3, 1fr); }
 .metrics article { padding: 18px 14px; border-right: 1px solid var(--line); }
 .metrics article:last-child { border: 0; }
 .metrics strong, .metrics span { display: block; }

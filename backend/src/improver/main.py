@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from improver import __version__
 from improver.api import (
@@ -61,6 +62,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Improver API", version=__version__, lifespan=lifespan)
+if get_config().server.local_web_only:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1"])
 
 
 @app.middleware("http")

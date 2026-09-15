@@ -1,0 +1,23 @@
+# Local browser only: docker compose -f compose.yaml -f compose.local-web.yaml up -d --build
+services:
+  api:
+    environment:
+      LOCAL_WEB_ONLY: "true"
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  worker:
+    environment:
+      LOCAL_WEB_ONLY: "true"
+
+  migrate:
+    environment:
+      LOCAL_WEB_ONLY: "true"
+
+  # Not started in this mode. API/worker do not depend on these services.
+  cert-init:
+    profiles: ["network-services"]
+  proxy:
+    profiles: ["network-services"]
+  extensions:
+    profiles: ["network-services"]

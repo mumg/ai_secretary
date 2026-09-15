@@ -18,13 +18,13 @@
       <div>
         <p class="eyebrow">ПЕРСОНАЛЬНЫЙ КОНТУР</p>
         <h1>Настройка без YAML</h1>
-        <p>Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён тем же клиентским сертификатом, что и мобильное приложение.</p>
+        <p id="deploymentHint">Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён тем же клиентским сертификатом, что и мобильное приложение.</p>
       </div>
-      <div class="metrics" aria-label="Состояние системы">
+      <div id="statusMetrics" class="metrics" aria-label="Состояние системы">
         <article><strong id="metricSources">—</strong><span>источников</span></article>
         <article><strong id="metricTasks">—</strong><span>задач</span></article>
-        <article><strong id="metricDevices">—</strong><span>устройств</span></article>
-        <article><strong id="metricOllama">—</strong><span>Ollama</span></article>
+        <article id="devicesMetric"><strong id="metricDevices">—</strong><span>устройств</span></article>
+        <article><strong id="metricOllama">—</strong><span>Модель</span></article>
       </div>
     </section>
 
@@ -69,8 +69,11 @@
           <label>Дополнительные нерабочие даты <small>YYYY-MM-DD, через запятую</small><input id="nonWorkingDates"></label>
           <label>Дополнительные рабочие даты <small>YYYY-MM-DD, через запятую</small><input id="workingDates"></label>
         </fieldset>
-        <fieldset class="wide"><legend>Локальная модель</legend>
-          <div class="two-columns"><label>URL Ollama<input id="llmUrl" type="url"></label><label>Модель<input id="llmModel"></label></div>
+        <fieldset class="wide"><legend>Модель</legend>
+          <label>Тип API<select id="llmProvider"><option value="ollama">Ollama</option><option value="openai">OpenAI-совместимый (LLMOps / vLLM)</option></select></label>
+          <div class="two-columns"><label>URL API<input id="llmUrl" type="url"><small>Для LLMOps укажите базовый URL, например https://llm.example.com/v1</small></label><label>Модель<input id="llmModel"></label></div>
+          <label>API_KEY <small id="llmKeyState">Ключ не настроен</small><input id="llmApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Оставьте пустым, чтобы сохранить текущий ключ"></label>
+          <label class="toggle"><input id="clearLlmApiKey" type="checkbox">Удалить сохранённый API_KEY при сохранении</label>
           <div class="four-columns"><label>Контекст<input id="contextLength" type="number" min="4096" max="131072" step="1024"></label><label>Температура<input id="temperature" type="number" min="0" max="2" step="0.05"></label><label>Автосоздание от<input id="autoConfidence" type="number" min="0" max="1" step="0.01"></label><label>Выполнение от<input id="completionConfidence" type="number" min="0" max="1" step="0.01"></label></div>
           <label>Таймаут запроса, секунд<input id="llmTimeout" type="number" min="10" max="1800"></label>
           <p class="hint">Контекст до 128K поддерживается, но 16K остаётся экономичным режимом для RTX 3090.</p>
@@ -90,15 +93,16 @@
     </section>
 
     <section id="notifications" class="panel">
-      <div class="section-heading"><div><p class="eyebrow">FCM</p><h2>Уведомления и расписание</h2></div><button class="primary save-settings">Сохранить</button></div>
+      <div class="section-heading"><div><p id="notificationsEyebrow" class="eyebrow">FCM</p><h2>Уведомления и расписание</h2></div><button class="primary save-settings">Сохранить</button></div>
+      <p id="localWebNotice" class="hint" hidden>Локальный WEB-режим: изменения появляются автоматически в открытом интерфейсе. Мобильные push-уведомления отключены.</p>
       <div class="settings-grid">
-        <fieldset><legend>Сроки</legend>
-          <label>Предупреждать за, минут<input id="dueSoonMinutes" type="number" min="1" max="10080"></label>
-          <label>Повторять просроченные после часа<input id="overdueHour" type="number" min="0" max="23"></label>
+        <fieldset><legend id="scheduleLegend">Сроки</legend>
+          <label id="dueSoonSetting">Предупреждать за, минут<input id="dueSoonMinutes" type="number" min="1" max="10080"></label>
+          <label id="overdueSetting">Повторять просроченные после часа<input id="overdueHour" type="number" min="0" max="23"></label>
           <label>Повторное ранжирование, секунд<input id="rankingInterval" type="number" min="60"></label>
           <label>Проверка источников, секунд<input id="pollInterval" type="number" min="10"></label>
         </fieldset>
-        <fieldset><legend>Firebase service account</legend>
+        <fieldset id="firebaseSettings"><legend>Firebase service account</legend>
           <div id="firebaseState" class="credential-state">Не настроен</div>
           <label>Новый JSON-ключ <small>сохраняется зашифрованно</small><textarea id="firebaseJson" rows="8" spellcheck="false" placeholder="Вставьте содержимое service-account.json"></textarea></label>
         </fieldset>

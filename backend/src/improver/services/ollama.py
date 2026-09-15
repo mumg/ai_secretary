@@ -26,6 +26,7 @@ from improver.services.chat_context import (
     fit_records,
     serialized_size,
 )
+from improver.services.text import bounded_text, clean_email_body
 
 
 class ExtractedTask(BaseModel):
@@ -282,16 +283,77 @@ class OllamaAnalyzer:
         payload["keep_alive"] = -1
         return payload
 
+    def _request_payload(self, payload: dict[str, object]) -> dict[str, object]:
+        if self.config.llm.provider == "ollama":
+            return self._force_gpu_residency(payload)
+        options = payload.get("options", {})
+        result = {
+            "model": payload["model"],
+            "messages": payload["messages"],
+            "stream": payload.get("stream", False),
+            "temperature": options.get("temperature", self.config.llm.temperature),
+            "max_tokens": options.get(
+                "num_predict", min(8192, self.config.llm.context_length // 2)
+            ),
+        }
+        if schema := payload.get("format"):
+            result["response_format"] = (
+                {"type": "json_schema", "json_schema": {"name": "response", "schema": schema}}
+                if isinstance(schema, dict)
+                else {"type": "json_object"}
+            )
+        return result
+
+    def _chat_url(self) -> str:
+        return self.config.llm.api_url(
+            "chat/completions" if self.config.llm.provider == "openai" else "api/chat"
+        )
+
+    def _stream_content(self, line: str) -> str | None:
+        if self.config.llm.provider == "openai":
+            if not line.startswith("data:"):
+                return None
+            line = line[5:].strip()
+            if line == "[DONE]":
+                return None
+            item = json.loads(line)
+            if item.get("error"):
+                raise OllamaResponseError("LLM returned a streaming error")
+            choices = item.get("choices") or []
+            return choices[0].get("delta", {}).get("content") if choices else None
+        return json.loads(line).get("message", {}).get("content")
+
     async def _post_chat(self, payload: dict[str, object]) -> httpx.Response:
         timeout = httpx.Timeout(self.config.llm.request_timeout_seconds)
         async with ollama_request_slot():
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.post(
-                    f"{self.config.llm.base_url}/api/chat",
-                    json=self._force_gpu_residency(payload),
+                    self._chat_url(),
+                    json=self._request_payload(payload),
+                    headers=self.config.llm.request_headers(),
                 )
+                if response.is_error and self.config.llm.api_key:
+                    response = httpx.Response(
+                        response.status_code,
+                        text=response.text.replace(
+                            self.config.llm.api_key.get_secret_value(), "[REDACTED]"
+                        ),
+                        request=response.request,
+                    )
                 if not response.is_error:
                     data = response.json()
+                    if self.config.llm.provider == "openai":
+                        try:
+                            message = data["choices"][0]["message"]
+                            if not isinstance(message.get("content"), str):
+                                raise ValueError("Missing text response")
+                        except (KeyError, IndexError, TypeError, AttributeError, ValueError) as exc:
+                            raise OllamaResponseError(
+                                "LLM returned an invalid chat response"
+                            ) from exc
+                        return httpx.Response(
+                            200, json={"message": message}, request=response.request
+                        )
                     structlog.get_logger().info(
                         "ollama_request_metrics",
                         **{
@@ -508,6 +570,9 @@ class OllamaAnalyzer:
         now: datetime,
         timezone_name: str,
     ) -> TaskExtractionResult:
+        # The focused fallback can run after the pipeline has restored the raw
+        # email. Never send its quoted history as fresh assignments.
+        body = clean_email_body(event.body or "") if event.event_type == "email" else event.body
         user_payload = {
             "current_datetime": now.isoformat(),
             "timezone": timezone_name,
@@ -531,7 +596,7 @@ class OllamaAnalyzer:
             "subject": event.subject,
             "author": event.author,
             "participants": event.participants,
-            "body": event.body,
+            "body": bounded_text(body or "", max(8_000, self.config.llm.context_length * 3) // 2),
             "attachments_text": attachment_texts,
             "previous_events_in_thread": conversation_context,
         }
@@ -936,11 +1001,17 @@ class OllamaAnalyzer:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 async with client.stream(
                     "POST",
-                    f"{self.config.llm.base_url}/api/chat",
-                    json=self._force_gpu_residency(payload),
+                    self._chat_url(),
+                    json=self._request_payload(payload),
+                    headers=self.config.llm.request_headers(),
                 ) as response:
                     if response.is_error:
-                        detail = (await response.aread()).decode(errors="replace")[:2000]
+                        detail = (await response.aread()).decode(errors="replace")
+                        if self.config.llm.api_key:
+                            detail = detail.replace(
+                                self.config.llm.api_key.get_secret_value(), "[REDACTED]"
+                            )
+                        detail = detail[:2000]
                         raise httpx.HTTPStatusError(
                             f"Ollama returned HTTP {response.status_code}: {detail}",
                             request=response.request,
@@ -949,8 +1020,13 @@ class OllamaAnalyzer:
                     async for line in response.aiter_lines():
                         if not line:
                             continue
-                        item = json.loads(line)
-                        content = item.get("message", {}).get("content", "")
+                        if (
+                            self.config.llm.provider == "openai"
+                            and line.startswith("data:")
+                            and line[5:].strip() == "[DONE]"
+                        ):
+                            break
+                        content = self._stream_content(line)
                         if content:
                             yield content
 

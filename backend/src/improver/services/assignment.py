@@ -23,6 +23,13 @@ ASSIGNMENT_PROMPT = (
     "исполнителя; не переносись между независимыми поручениями. Для сообщения «я сделаю» "
     "проверь автора. При неразрешённой неоднозначности ставь assignee=uncertain, даже если "
     "наличие самого поручения очевидно. При явном назначении другому человеку ставь other. "
+    "В списках и протоколах отметки «отв.», «ответственный», «исполнитель» относятся к своему "
+    "пункту. Фамилия с инициалами — это указание исполнителя: «отв. Сидоров А.» не означает "
+    "поручение пользователю из To/Cc. Сохраняй весь пункт вместе с ответственным в evidence, "
+    "а точное назначение — в assignment_evidence; при наличии mailto укажи assignee_address. "
+    "Не переноси ответственного из соседнего пункта. previous_events_in_thread нужны для "
+    "понимания контекста, а не повторного создания старых задач. Новое поручение или явное "
+    "возобновление старого должно подтверждаться цитатой из текущего body или вложения. "
 )
 
 
@@ -249,3 +256,177 @@ def assignment_evidence_is_grounded(
         ) and re.search(r"\b(?:я|беру|возьму|сделаю|подготовлю|отправлю)\b", quote.casefold()):
             return True
     return False
+
+
+_OWNER_LABEL = re.compile(
+    r"(?<!\w)(?:отв\.|ответственн(?:ый|ая|ые|ого)|исполнитель(?:ница|и)?)"
+    r"\s*[:—–-]?\s*",
+    re.IGNORECASE,
+)
+_PERSON = re.compile(
+    r"@?(?:[А-ЯЁA-Z][а-яёa-z-]+\s+(?:[А-ЯЁA-Z]\.\s*){1,2}|"
+    r"(?:[А-ЯЁA-Z][а-яёa-z-]+|[А-ЯЁA-Z]\.)(?:\s+"
+    r"(?:[А-ЯЁA-Z][а-яёa-z-]+|[А-ЯЁA-Z]\.)){0,2})"
+    r"(?:\s*<mailto:[^>]+>|\s*<[^>]+@[^>]+>)?"
+)
+_EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}")
+
+
+def _normalized_quote(value: str) -> str:
+    return " ".join(value.casefold().replace("ё", "е").replace("**", "").split())
+
+
+def _task_blocks(body: str) -> list[str]:
+    body = body.replace("**", "")
+    blocks: list[str] = []
+    for block in re.split(r"\n\s*\n|(?m:^\s*(?=[*•⁃▪‣–—-]\s|\d+[.)]\s))", body):
+        block = block.strip()
+        if not block:
+            continue
+        # A separate '- отв.' line still belongs to the preceding action item.
+        if blocks and _OWNER_LABEL.match(block.lstrip("*•⁃▪‣–—- ")):
+            blocks[-1] += "\n" + block
+        else:
+            blocks.append(block)
+    return blocks
+
+
+def _name_matches(short: str, full: str) -> bool:
+    supplied = re.findall(r"[\w-]+", short.casefold().replace("ё", "е"))
+    available = re.findall(r"[\w-]+", full.casefold().replace("ё", "е"))
+    # Match full tokens first, then initials, without reusing the surname token.
+    for token in sorted(supplied, key=len, reverse=True):
+        match = next(
+            (
+                i
+                for i, name in enumerate(available)
+                if name == token or (len(token) == 1 and name.startswith(token))
+            ),
+            None,
+        )
+        if match is None:
+            return False
+        available.pop(match)
+    return bool(supplied)
+
+
+def _owner_identity(owner: str, identity: IdentityConfig, roster: list[dict]) -> str:
+    addresses = set(_EMAIL.findall(owner.casefold()))
+    user_addresses = {a.casefold() for a in identity.addresses}
+    if addresses:
+        return "user" if addresses & user_addresses else "other"
+    name = owner.strip("@ ")
+    user_names = [
+        *identity.names,
+        *(str(p.get("name") or "") for p in roster if _addresses(p) & user_addresses),
+    ]
+    user_match = any(_name_matches(name, full) for full in user_names)
+    competing = any(
+        _name_matches(name, str(p.get("name") or ""))
+        and not _participant_is_user(p, user_addresses, identity)
+        for p in roster
+    )
+    matching_speakers = {
+        str(p["external_id"])
+        for p in roster
+        if p.get("external_id")
+        and not _addresses(p)
+        and _name_matches(name, str(p.get("name") or ""))
+    }
+    if user_match:
+        return "uncertain" if competing or len(matching_speakers) > 1 else "user"
+    # A missing patronymic in the profile cannot disprove a matching surname/name.
+    supplied = re.findall(r"[\w-]+", name.casefold().replace("ё", "е"))
+    for full in user_names:
+        known = re.findall(r"[\w-]+", full.casefold().replace("ё", "е"))
+        remaining = supplied.copy()
+        if not 1 < len(known) < len(supplied):
+            continue
+        if any(set(known) < _tokens(other) for other in user_names):
+            continue  # Prefer the fuller profile over a shortened participant alias.
+        for token in known:
+            match = next(
+                (
+                    i
+                    for i, part in enumerate(remaining)
+                    if part == token or (len(part) == 1 and token.startswith(part))
+                ),
+                None,
+            )
+            if match is None:
+                break
+            remaining.pop(match)
+        else:
+            return "uncertain"
+    # With only a configured first name, an unknown surname is not proof of another person.
+    if any(len(_tokens(full)) > 1 for full in user_names):
+        return "other"
+    return "uncertain"
+
+
+def _block_owner(block: str, identity: IdentityConfig, roster: list[dict]) -> str | None:
+    owners: list[str] = []
+    labels = list(_OWNER_LABEL.finditer(block))
+    if len(labels) > 1:
+        return "uncertain"
+    for label in labels:
+        tail = " ".join(block[label.end() :].split())
+        while tail:
+            email = _EMAIL.match(tail)
+            person = email or _PERSON.match(tail)
+            if not person:
+                owners.append("uncertain")
+                break
+            owners.append(_owner_identity(person.group(), identity, roster))
+            tail = tail[person.end() :]
+            separator = re.match(r"\s*(?:,|/|;|и\b)\s*", tail)
+            if not separator:
+                break
+            tail = tail[separator.end() :]
+            if re.match(r"(?:срок|до\b|дедлайн|к\s+\d)", tail, re.IGNORECASE):
+                break
+    if not owners:
+        return None
+    if "user" in owners:
+        return "user"  # Explicit joint responsibility includes the user.
+    return "uncertain" if "uncertain" in owners else "other"
+
+
+def task_assignment_verdict(
+    evidence: str,
+    identity: IdentityConfig,
+    event: CommunicationEvent,
+    conversation_context: list[dict[str, object]] | None = None,
+) -> str | None:
+    """Check original task-local responsibility, independently of the model's assignee.
+
+    None leaves contextual inference to Qwen. Ambiguous/unlocatable labelled items
+    require confirmation; explicit foreign owners and quoted-history tasks are excluded.
+    """
+    raw = event.body or ""
+    body = clean_email_body(raw) if event.event_type == "email" else raw
+    quote = _normalized_quote(evidence)
+    current = _normalized_quote(body)
+    if len(quote) < 8:
+        return "uncertain" if _OWNER_LABEL.search(body) else None
+    if quote not in current:
+        originals = [
+            raw,
+            *(str(p.get("body") or "") for p in conversation_context or [] if p.get("occurred_at")),
+        ]
+        if event.event_type == "email" and any(
+            quote in _normalized_quote(original) for original in originals
+        ):
+            return "stale"
+        return "uncertain" if _OWNER_LABEL.search(body) else None
+    roster = [*(event.participants or []), *_author_participants(event.author or "")]
+    for previous in conversation_context or []:
+        roster.extend(previous.get("participants") or [])
+        if previous.get("occurred_at"):
+            roster.extend(_author_participants(str(previous.get("author") or "")))
+    roster = [p for p in roster if isinstance(p, dict)]
+    blocks = [block for block in _task_blocks(body) if quote in _normalized_quote(block)]
+    if len(blocks) != 1:
+        # Evidence spanning separate items cannot borrow the user's ownership from one.
+        return "uncertain" if _OWNER_LABEL.search(body) else None
+    return _block_owner(blocks[0], identity, roster)

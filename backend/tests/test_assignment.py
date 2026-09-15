@@ -202,3 +202,175 @@ class NamesakeAssignmentTests(TestCase):
             self.identity,
         )
         self.assertTrue(signals.name_ambiguous)
+
+
+class ExplicitItemAssignmentTests(TestCase):
+    def setUp(self):
+        self.identity = IdentityConfig(
+            names=["Иван Петров", "Иван"], addresses=["ivan@example.test"]
+        )
+        self.event = CommunicationEvent(
+            event_type="email",
+            author="manager@example.test",
+            participants=[{"name": "Иван Петров", "address": "ivan@example.test"}],
+        )
+
+    def verdict(self, body, evidence=None, context=None):
+        from improver.services.assignment import task_assignment_verdict
+
+        self.event.body = body
+        return task_assignment_verdict(evidence or body, self.identity, self.event, context)
+
+    def test_foreign_surname_and_initial(self):
+        self.assertEqual(self.verdict("Назначить встречу — отв. Сидоров А."), "other")
+
+    def test_user_surname_and_initial(self):
+        self.assertEqual(self.verdict("Назначить встречу — отв. Петров И."), "user")
+
+    def test_same_surname_different_initial(self):
+        self.assertEqual(self.verdict("Назначить встречу — отв. Петров А."), "other")
+
+    def test_foreign_mailbox_overrides_identical_full_name(self):
+        self.assertEqual(
+            self.verdict("Назначить встречу — отв. @Иван Петров<mailto:other@example.test>"),
+            "other",
+        )
+
+    def test_user_mailbox_identifies_owner(self):
+        self.assertEqual(
+            self.verdict(
+                "Назначить встречу — отв. @Петров Иван<mailto:ivan@example.test>, срок - 27.09."
+            ),
+            "user",
+        )
+
+    def test_unique_first_name(self):
+        self.assertEqual(self.verdict("Подготовить документ — отв. Иван"), "user")
+
+    def test_shared_first_name(self):
+        self.event.participants.append({"name": "Иван Сидоров", "address": "other@example.test"})
+        self.assertEqual(self.verdict("Подготовить документ — отв. Иван"), "uncertain")
+
+    def test_shared_surname_and_initial(self):
+        self.event.participants.append({"name": "Илья Петров", "address": "other@example.test"})
+        self.assertEqual(self.verdict("Подготовить документ — отв. Петров И."), "uncertain")
+
+    def test_previous_participants_resolve_namesakes(self):
+        context = [
+            {
+                "occurred_at": "2026-09-14",
+                "participants": [{"name": "Илья Петров", "address": "other@example.test"}],
+            }
+        ]
+        self.assertEqual(
+            self.verdict("Подготовить документ — отв. Петров И.", context=context), "uncertain"
+        )
+
+    def test_joint_responsibility_includes_user(self):
+        for separator in (", ", " и ", " / "):
+            with self.subTest(separator=separator):
+                self.assertEqual(
+                    self.verdict(
+                        "Подготовить документ — отв. Сидоров А." + separator + "Петров И."
+                    ),
+                    "user",
+                )
+
+    def test_neighbouring_user_item_does_not_own_foreign_item(self):
+        body = "1. Подготовить договор — отв. Сидоров А.\n2. Проверить смету — отв. Петров И."
+        self.assertEqual(self.verdict(body, "Подготовить договор"), "other")
+        self.assertEqual(self.verdict(body, "Проверить смету"), "user")
+
+    def test_owner_on_next_line_or_paragraph(self):
+        for separator in ("\n", "\n\n"):
+            with self.subTest(separator=separator):
+                body = "Подготовить договор" + separator + "- отв. Сидоров А."
+                self.assertEqual(self.verdict(body, "Подготовить договор"), "other")
+
+    def test_short_quote_recovers_omitted_owner(self):
+        self.assertEqual(
+            self.verdict("Подготовить договор — ответственный: Сидоров А.", "Подготовить договор"),
+            "other",
+        )
+
+    def test_quote_spanning_different_items_cannot_borrow_user_assignment(self):
+        body = "1. Подготовить договор — отв. Сидоров А.\n2. Проверить смету — отв. Петров И."
+        self.assertEqual(self.verdict(body), "uncertain")
+
+    def test_invented_quote_with_labelled_source_cannot_auto_assign(self):
+        self.assertEqual(
+            self.verdict(
+                "Подготовить договор — отв. Сидоров А.", "Подготовить документы — отв. Петров И."
+            ),
+            "uncertain",
+        )
+
+    def test_team_owner_is_not_a_person(self):
+        self.assertEqual(self.verdict("Подготовить договор — отв. ИМ"), "uncertain")
+
+    def test_contextual_assignment_without_explicit_label_is_preserved(self):
+        self.assertIsNone(self.verdict("Иван, подготовьте договор"))
+
+    def test_old_quoted_instruction_does_not_create_task(self):
+        old = "Подготовить договор — отв. Петров И."
+        self.assertEqual(
+            self.verdict("Спасибо, всё готово.\nFrom: old@example.test\n" + old, old), "stale"
+        )
+
+    def test_previous_task_without_current_instruction_is_not_recreated(self):
+        old = "Подготовить договор — отв. Петров И."
+        self.assertEqual(
+            self.verdict(
+                "Спасибо, всё готово.", old, context=[{"occurred_at": "2026-09-14", "body": old}]
+            ),
+            "stale",
+        )
+
+    def test_current_renewal_can_use_previous_context(self):
+        old = "Подготовить договор — отв. Петров И."
+        self.assertEqual(
+            self.verdict(
+                "Повторно подготовить договор — отв. Петров И.",
+                context=[{"occurred_at": "2026-09-14", "body": old}],
+            ),
+            "user",
+        )
+
+    def test_two_initials_can_disambiguate_person(self):
+        self.identity.names = ["Иван Сергеевич Петров"]
+        self.assertEqual(self.verdict("Подготовить документ — отв. Петров И.С."), "user")
+        self.assertEqual(self.verdict("Подготовить документ — отв. Петров И.А."), "other")
+
+    def test_multiple_labels_in_single_paragraph_do_not_merge_owners(self):
+        self.assertEqual(
+            self.verdict(
+                "Подготовить договор — отв. Сидоров А.; проверить смету — отв. Петров И.",
+                "Подготовить договор",
+            ),
+            "uncertain",
+        )
+
+    def test_different_speaker_ids_with_identical_names_remain_ambiguous(self):
+        self.event.participants = [
+            {"name": "Иван Петров", "external_id": "one"},
+            {"name": "Иван Петров", "external_id": "two"},
+        ]
+        self.assertEqual(self.verdict("Подготовить документ — отв. Петров И."), "uncertain")
+
+    def test_markdown_owner_label(self):
+        self.assertEqual(self.verdict("Подготовить договор — **отв.** Сидоров А."), "other")
+
+    def test_missing_patronymic_in_profile_is_not_proof_of_foreign_owner(self):
+        self.assertEqual(self.verdict("Подготовить договор — отв. Петров И.С."), "uncertain")
+        self.assertEqual(
+            self.verdict("Подготовить договор — отв. Петров Иван Сергеевич"), "uncertain"
+        )
+        self.assertEqual(self.verdict("Подготовить договор — отв. Петров А.С."), "other")
+
+    def test_joint_owners_on_wrapped_line(self):
+        self.assertEqual(self.verdict("Подготовить договор — отв. Сидоров А.,\nПетров И."), "user")
+
+    def test_outlook_unicode_bullets_keep_owners_separate(self):
+        body = " ⁃ Подготовить договор — отв. Сидоров А.\r\n ⁃ Проверить смету — отв. Петров И."
+        self.assertEqual(self.verdict(body, "Подготовить договор"), "other")
+        self.assertEqual(self.verdict(body, "Проверить смету"), "user")

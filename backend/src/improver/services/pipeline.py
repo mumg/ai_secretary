@@ -35,6 +35,7 @@ from improver.services.assignment import (
     AssignmentSignals,
     assignment_evidence_is_grounded,
     assignment_signals,
+    task_assignment_verdict,
 )
 from improver.services.calendar import BusinessCalendar
 from improver.services.documents import SUPPORTED_SUFFIXES, DocumentParserClient
@@ -186,6 +187,11 @@ class EventPipeline:
                 address.casefold() for address in self.config.identity.addresses
             }:
                 continue
+            owner = task_assignment_verdict(
+                candidate.evidence, self.config.identity, event, conversation_context
+            )
+            if owner in {"other", "stale"}:
+                continue
             duplicate_query = select(Task.id).where(
                 func.lower(Task.title) == candidate.title.lower(),
                 Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED]),
@@ -201,9 +207,11 @@ class EventPipeline:
                 continue
             auto_create = (
                 candidate.assignee == "user"
+                and owner != "uncertain"
                 and candidate.confidence >= self.config.llm.auto_create_confidence
                 and (
-                    not assignment.name_ambiguous
+                    owner == "user"
+                    or not assignment.name_ambiguous
                     or assignment_evidence_is_grounded(
                         candidate.assignment_evidence or candidate.evidence,
                         assignment,
@@ -219,14 +227,12 @@ class EventPipeline:
                 status=TaskStatus.NEW if auto_create else TaskStatus.NEEDS_CONFIRMATION,
                 priority=(
                     TaskPriority.HIGH
-                    if event.event_type == "email"
-                    and email_has_high_importance(event.raw_headers)
+                    if event.event_type == "email" and email_has_high_importance(event.raw_headers)
                     else candidate.priority
                 ),
                 priority_source=(
                     PrioritySource.SOURCE
-                    if event.event_type == "email"
-                    and email_has_high_importance(event.raw_headers)
+                    if event.event_type == "email" and email_has_high_importance(event.raw_headers)
                     else PrioritySource.LLM
                 ),
                 due_at=BusinessCalendar(self.config).normalize_due(candidate.due_at),

@@ -9,6 +9,7 @@ from hashlib import sha256
 from typing import Any
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,9 +48,7 @@ def identity_addresses_from_sources(sources: list[dict[str, Any]]) -> list[str]:
 
 class SecretCipher:
     def __init__(self) -> None:
-        secret = read_secret(
-            os.getenv("APP_MASTER_KEY_FILE", "/run/secrets/app_master_key")
-        )
+        secret = read_secret(os.getenv("APP_MASTER_KEY_FILE", "/run/secrets/app_master_key"))
         if not secret or len(secret) < 32:
             raise ValueError("APP master key must contain at least 32 characters")
         self._cipher = AESGCM(sha256((secret or "").encode("utf-8")).digest())
@@ -68,6 +67,7 @@ class SecretCipher:
 def runtime_payload(config: AppConfig) -> dict[str, Any]:
     raw = config.model_dump(mode="json")
     raw["server"].pop("data_dir", None)
+    raw["server"].pop("local_web_only", None)
     raw["notifications"].pop("firebase_credentials", None)
     raw["communication_sources"].pop("items", None)
     raw["document_parser"].pop("base_url", None)
@@ -83,6 +83,7 @@ def validate_runtime_payload(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload[key], dict):
             raise ValueError(f"Section {key!r} must be an object")
         base.setdefault(key, {}).update(deepcopy(payload[key]))
+    base["server"]["local_web_only"] = get_config().server.local_web_only
     return runtime_payload(AppConfig.model_validate(base))
 
 
@@ -93,6 +94,8 @@ async def load_runtime_config(session: AsyncSession) -> AppConfig:
         for key, value in setting.payload.items():
             if key in RUNTIME_KEYS and isinstance(value, dict):
                 base.setdefault(key, {}).update(deepcopy(value))
+        if encrypted_key := setting.payload.get("llm_api_key_encrypted"):
+            base.setdefault("llm", {})["api_key"] = SecretCipher().decrypt(encrypted_key)
         if setting.firebase_credentials_encrypted:
             credentials_json = SecretCipher().decrypt(setting.firebase_credentials_encrypted)
             base.setdefault("notifications", {})["firebase_credentials"] = json.loads(
@@ -101,9 +104,7 @@ async def load_runtime_config(session: AsyncSession) -> AppConfig:
 
     source_rows = list(
         (
-            await session.execute(
-                select(CommunicationSource).order_by(CommunicationSource.label)
-            )
+            await session.execute(select(CommunicationSource).order_by(CommunicationSource.label))
         ).scalars()
     )
     sources: list[dict[str, Any]] = []
@@ -120,6 +121,10 @@ async def load_runtime_config(session: AsyncSession) -> AppConfig:
         sources.append(source)
     base.setdefault("communication_sources", {})["items"] = sources
     base.setdefault("identity", {})["addresses"] = identity_addresses_from_sources(sources)
+    # Deployment mode is controlled by the launcher, never by stored/UI settings.
+    base["server"]["local_web_only"] = get_config().server.local_web_only
+    if base["server"]["local_web_only"]:
+        base["server"]["public_url"] = "http://127.0.0.1:8000"
     return AppConfig.model_validate(base)
 
 
@@ -127,6 +132,8 @@ async def save_runtime_settings(
     session: AsyncSession,
     payload: dict[str, Any],
     firebase_credentials_json: str | None = None,
+    llm_api_key: SecretStr | None = None,
+    clear_llm_api_key: bool = False,
 ) -> SystemSetting:
     setting = await session.get(SystemSetting, 1)
     merged = deepcopy(setting.payload) if setting else {}
@@ -136,6 +143,18 @@ async def save_runtime_settings(
         else:
             merged[key] = deepcopy(value)
     validated = validate_runtime_payload(merged)
+    api_key = llm_api_key.get_secret_value().strip() if llm_api_key else ""
+    if clear_llm_api_key and api_key:
+        raise ValueError("Нельзя одновременно заменить и удалить API_KEY")
+    if api_key and (len(api_key) > 8192 or any(not 33 <= ord(ch) <= 126 for ch in api_key)):
+        raise ValueError("API_KEY должен быть одной строкой без пробелов")
+    encrypted_key = setting.payload.get("llm_api_key_encrypted") if setting else None
+    if api_key:
+        encrypted_key = SecretCipher().encrypt(api_key)
+    if clear_llm_api_key:
+        encrypted_key = None
+    if encrypted_key:
+        validated["llm_api_key_encrypted"] = encrypted_key
     if setting is None:
         setting = SystemSetting(id=1, payload=validated)
         session.add(setting)

@@ -144,7 +144,7 @@ async def get_thread(
                 subject=event.subject,
                 author=event.author,
                 occurred_at=event.occurred_at,
-                preview=bounded_text(event.semantic_summary or event.body, 1_000),
+                preview=bounded_text(event.body, 1_000),
                 source_url=event.source_url,
             )
             for event in events[:events_limit]

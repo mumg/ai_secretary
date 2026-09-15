@@ -44,6 +44,19 @@ const setValue = (id, value) => { $(id).value = value ?? ""; };
 function populateSettings(data) {
   settingsState = data.settings;
   const s = data.settings;
+  const localWeb = Boolean(data.local_web_only);
+  $("deploymentHint").textContent = localWeb
+    ? "Локальный WEB-режим. Работа в браузере на этом компьютере, без мобильного приложения и сертификатов."
+    : "Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён клиентским сертификатом.";
+  $("devicesMetric").hidden = localWeb;
+  $("statusMetrics").classList.toggle("local-web", localWeb);
+  $("firebaseSettings").hidden = localWeb;
+  $("localWebNotice").hidden = !localWeb;
+  $("notificationsEyebrow").textContent = localWeb ? "WEB" : "FCM";
+  $("dueSoonSetting").hidden = localWeb;
+  $("overdueSetting").hidden = localWeb;
+  $("scheduleLegend").textContent = localWeb ? "Обработка" : "Сроки";
+  $("publicUrl").disabled = localWeb;
   setValue("identityNames", (s.identity.names || []).join(", "));
   setValue("timezone", s.server.timezone);
   setValue("publicUrl", s.server.public_url);
@@ -54,6 +67,10 @@ function populateSettings(data) {
   setValue("nonWorkingDates", (s.calendar.non_working_dates || []).join(", "));
   setValue("workingDates", (s.calendar.working_dates || []).join(", "));
   setValue("llmUrl", s.llm.base_url);
+  setValue("llmProvider", s.llm.provider || "ollama");
+  setValue("llmApiKey", "");
+  $("clearLlmApiKey").checked = false;
+  $("llmKeyState").textContent = data.llm_api_key_configured ? "Ключ сохранён" : "Ключ не настроен";
   setValue("llmModel", s.llm.model);
   setValue("contextLength", s.llm.context_length);
   setValue("temperature", s.llm.temperature);
@@ -90,6 +107,7 @@ async function saveSettings() {
     s.calendar.working_dates = csv($("workingDates").value);
     s.communication_sources.initial_sync_days = Number($("initialDays").value);
     s.llm.base_url = $("llmUrl").value.trim();
+    s.llm.provider = $("llmProvider").value;
     s.llm.model = $("llmModel").value.trim();
     s.llm.context_length = Number($("contextLength").value);
     s.llm.temperature = Number($("temperature").value);
@@ -107,7 +125,12 @@ async function saveSettings() {
     s.notifications.overdue_repeat_hour = Number($("overdueHour").value);
     s.worker.ranking_interval_seconds = Number($("rankingInterval").value);
     s.worker.poll_interval_seconds = Number($("pollInterval").value);
-    const result = await request("/settings", { method: "PUT", body: JSON.stringify({ settings: s, firebase_credentials_json: $("firebaseJson").value.trim() || null }) });
+    const result = await request("/settings", { method: "PUT", body: JSON.stringify({
+      settings: s,
+      firebase_credentials_json: $("firebaseJson").value.trim() || null,
+      llm_api_key: $("llmApiKey").value.trim() || null,
+      clear_llm_api_key: $("clearLlmApiKey").checked,
+    }) });
     $("firebaseJson").value = "";
     populateSettings(result);
     const scan = result.filter_reconciliation;

@@ -20,7 +20,6 @@ from improver.models import (
 from improver.schemas import ComponentStatusRead, SystemStatusRead
 from improver.services.ollama import OLLAMA_ADVISORY_LOCK_ID
 
-
 STATUS_SEVERITY = {
     ComponentHealthStatus.OK: 0,
     ComponentHealthStatus.DISABLED: 0,
@@ -95,9 +94,7 @@ async def _source_components(
 ) -> list[ComponentStatusRead]:
     rows = list(
         (
-            await session.execute(
-                select(CommunicationSource).order_by(CommunicationSource.label)
-            )
+            await session.execute(select(CommunicationSource).order_by(CommunicationSource.label))
         ).scalars()
     )
     configured = {source.id: source for source in config.communication_sources.items}
@@ -152,32 +149,45 @@ async def _ollama_component(config: AppConfig, now: datetime) -> ComponentStatus
     started = monotonic()
     metrics: dict[str, float] = {}
     version: str | None = None
+    label = "LLMOps / OpenAI API" if config.llm.provider == "openai" else "Ollama"
     try:
         async with httpx.AsyncClient(timeout=3) as client:
-            version_response = await client.get(f"{config.llm.base_url}/api/version")
-            version_response.raise_for_status()
-            version = str(version_response.json().get("version") or "unknown")
-            tags_response = await client.get(f"{config.llm.base_url}/api/tags")
-            tags_response.raise_for_status()
-            models = tags_response.json().get("models", [])
-        names = {str(item.get("name", "")) for item in models if isinstance(item, dict)}
+            headers = config.llm.request_headers()
+            if config.llm.provider == "openai":
+                response = await client.get(config.llm.api_url("models"), headers=headers)
+                response.raise_for_status()
+                names = {str(item.get("id", "")) for item in response.json().get("data", [])}
+            else:
+                version_response = await client.get(
+                    config.llm.api_url("api/version"), headers=headers
+                )
+                version_response.raise_for_status()
+                version = str(version_response.json().get("version") or "unknown")
+                tags_response = await client.get(config.llm.api_url("api/tags"), headers=headers)
+                tags_response.raise_for_status()
+                models = tags_response.json().get("models", [])
+                names = {str(item.get("name", "")) for item in models if isinstance(item, dict)}
         metrics["latency_ms"] = round((monotonic() - started) * 1000, 1)
         metrics["model_count"] = float(len(names))
         expected = config.llm.model
         available = expected in names or (
-            ":" not in expected and f"{expected}:latest" in names
+            config.llm.provider == "ollama"
+            and ":" not in expected
+            and f"{expected}:latest" in names
         )
         status = ComponentHealthStatus.OK if available else ComponentHealthStatus.DEGRADED
         message = (
-            f"Ollama {version}" if available else f"Модель {expected} не загружена"
+            (f"Ollama {version}" if version else "API модели доступен")
+            if available
+            else f"Модель {expected} отсутствует в списке доступных моделей"
         )
     except Exception as exc:
         metrics["latency_ms"] = round((monotonic() - started) * 1000, 1)
         status = ComponentHealthStatus.ERROR
-        message = f"Ollama недоступна ({type(exc).__name__})"
+        message = f"{label} недоступен ({type(exc).__name__})"
     return ComponentStatusRead(
         id="ollama",
-        label="Ollama",
+        label=label,
         component_type="llm",
         status=status,
         message=message,
@@ -198,31 +208,39 @@ async def _processing_component(session: AsyncSession, now: datetime) -> Compone
     chat_counts = await _status_counts(session, ChatRequest, ChatRequest.status)
     context_counts = await _status_counts(session, MeetingContext, MeetingContext.status)
     active_tasks = await session.scalar(
-        select(func.count()).select_from(Task).where(
-            Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED])
-        )
+        select(func.count())
+        .select_from(Task)
+        .where(Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED]))
     )
     retry_waiting = await session.scalar(
-        select(func.count()).select_from(CommunicationEvent).where(
+        select(func.count())
+        .select_from(CommunicationEvent)
+        .where(
             CommunicationEvent.analysis_state == AnalysisState.PENDING,
             CommunicationEvent.next_analysis_at > now,
         )
     )
     stale_cutoff = now - timedelta(minutes=15)
     stuck_events = await session.scalar(
-        select(func.count()).select_from(CommunicationEvent).where(
+        select(func.count())
+        .select_from(CommunicationEvent)
+        .where(
             CommunicationEvent.analysis_state == AnalysisState.PROCESSING,
             CommunicationEvent.updated_at < stale_cutoff,
         )
     )
     stuck_chats = await session.scalar(
-        select(func.count()).select_from(ChatRequest).where(
+        select(func.count())
+        .select_from(ChatRequest)
+        .where(
             ChatRequest.status == ChatRequestStatus.PROCESSING,
             ChatRequest.started_at < stale_cutoff,
         )
     )
     stuck_contexts = await session.scalar(
-        select(func.count()).select_from(MeetingContext).where(
+        select(func.count())
+        .select_from(MeetingContext)
+        .where(
             MeetingContext.status == "PROCESSING",
             MeetingContext.started_at < stale_cutoff,
         )
@@ -252,10 +270,7 @@ async def _processing_component(session: AsyncSession, now: datetime) -> Compone
     )
     if metrics["stuck"]:
         status = ComponentHealthStatus.ERROR
-        message = (
-            "Есть обработчики без прогресса "
-            "более 15 минут"
-        )
+        message = "Есть обработчики без прогресса более 15 минут"
     elif failed:
         status = ComponentHealthStatus.DEGRADED
         message = "Есть завершившиеся с ошибкой операции"
@@ -287,7 +302,9 @@ async def _semaphore_component(session: AsyncSession, now: datetime) -> Componen
         )
     ).one()
     ready_chat = await session.scalar(
-        select(func.count()).select_from(ChatRequest).where(
+        select(func.count())
+        .select_from(ChatRequest)
+        .where(
             ChatRequest.status == ChatRequestStatus.PENDING,
             (ChatRequest.next_attempt_at.is_(None)) | (ChatRequest.next_attempt_at <= now),
         )
@@ -297,7 +314,7 @@ async def _semaphore_component(session: AsyncSession, now: datetime) -> Componen
     status = ComponentHealthStatus.BUSY if holders or waiters else ComponentHealthStatus.OK
     return ComponentStatusRead(
         id="ollama-semaphore",
-        label="Семафор Ollama",
+        label="Семафор модели",
         component_type="semaphore",
         status=status,
         message="Модель занята" if status == ComponentHealthStatus.BUSY else None,

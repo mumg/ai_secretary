@@ -8,7 +8,7 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 from sqlalchemy.engine import make_url
 
 
@@ -30,6 +30,7 @@ def read_secret(path: str | Path | None, *, required: bool = True) -> str | None
 
 
 class ServerConfig(BaseModel):
+    local_web_only: bool = False
     public_url: str = "https://localhost"
     timezone: str = "Europe/Moscow"
     log_level: str = "INFO"
@@ -48,8 +49,14 @@ class ServerConfig(BaseModel):
     @classmethod
     def secure_public_url(cls, value: str) -> str:
         parsed = urlparse(value)
-        if parsed.scheme != "https" or not parsed.netloc:
-            raise ValueError("public_url must be an absolute HTTPS URL")
+        local_http = (
+            parsed.scheme == "http"
+            and parsed.hostname in {"127.0.0.1", "localhost"}
+            and not parsed.username
+            and not parsed.password
+        )
+        if not parsed.netloc or (parsed.scheme != "https" and not local_http):
+            raise ValueError("public_url must use HTTPS, or HTTP on localhost/127.0.0.1")
         return value.rstrip("/")
 
 
@@ -102,6 +109,8 @@ class CalendarConfig(BaseModel):
 
 
 class LlmConfig(BaseModel):
+    provider: Literal["ollama", "openai"] = "ollama"
+    api_key: SecretStr | None = Field(default=None, exclude=True, repr=False)
     base_url: str = "http://ollama:11434"
     model: str = "qwen3.8:27b-q4_K_M"
     context_length: int = Field(default=16_384, ge=4_096, le=131_072)
@@ -109,6 +118,17 @@ class LlmConfig(BaseModel):
     auto_create_confidence: float = Field(default=0.85, ge=0, le=1)
     possible_completion_confidence: float = Field(default=0.80, ge=0, le=1)
     request_timeout_seconds: int = Field(default=300, ge=10, le=1800)
+
+    def request_headers(self) -> dict[str, str]:
+        return (
+            {"Authorization": f"Bearer {self.api_key.get_secret_value()}"} if self.api_key else {}
+        )
+
+    def api_url(self, path: str) -> str:
+        base = self.base_url
+        if self.provider == "openai" and not base.endswith("/v1"):
+            base += "/v1"
+        return f"{base}/{path.lstrip('/')}"
 
     @field_validator("base_url")
     @classmethod
@@ -247,6 +267,9 @@ def load_config() -> AppConfig:
     if password_file := os.getenv("DATABASE_PASSWORD_FILE"):
         raw["database"]["password_file"] = password_file
     raw.setdefault("server", {})
+    if os.getenv("LOCAL_WEB_ONLY", "false").lower() in {"true", "1", "yes"}:
+        raw["server"]["local_web_only"] = True
+        raw["server"]["public_url"] = "http://127.0.0.1:8000"
     if data_dir := os.getenv("DATA_DIR"):
         raw["server"]["data_dir"] = data_dir
     if log_level := os.getenv("LOG_LEVEL"):

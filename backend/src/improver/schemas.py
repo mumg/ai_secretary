@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from improver.enums import ComponentHealthStatus, Direction, TaskPriority, TaskStatus
 
@@ -334,11 +334,15 @@ class ChatRequestRead(BaseModel):
 class AdminSettingsWrite(BaseModel):
     settings: dict[str, Any]
     firebase_credentials_json: str | None = None
+    llm_api_key: SecretStr | None = None
+    clear_llm_api_key: bool = False
 
 
 class AdminSettingsRead(BaseModel):
+    local_web_only: bool = False
     settings: dict[str, Any]
     firebase_configured: bool
+    llm_api_key_configured: bool = False
     filter_reconciliation: dict[str, int] | None = None
     identity_requeued: int | None = None
 
@@ -438,9 +442,7 @@ class ExternalTaskBatchWrite(BaseModel):
 
     @field_validator("tasks")
     @classmethod
-    def unique_external_ids(
-        cls, tasks: list[ExternalTaskWrite]
-    ) -> list[ExternalTaskWrite]:
+    def unique_external_ids(cls, tasks: list[ExternalTaskWrite]) -> list[ExternalTaskWrite]:
         ids = [task.external_id for task in tasks]
         if len(ids) != len(set(ids)):
             raise ValueError("external_id values must be unique within a batch")
@@ -498,8 +500,7 @@ class ComponentStatusWrite(BaseModel):
         if not isinstance(value, dict):
             return value
         if any(
-            isinstance(item, bool) or not isinstance(item, (int, float))
-            for item in value.values()
+            isinstance(item, bool) or not isinstance(item, (int, float)) for item in value.values()
         ):
             raise ValueError("component metrics must contain only numbers")
         return value

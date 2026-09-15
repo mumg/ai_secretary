@@ -249,3 +249,36 @@ class AssignmentPromptTests(IsolatedAsyncioTestCase):
         task_schema = payload["format"]["$defs"]["ExtractedTask"]["properties"]
         self.assertIn("assignee_address", task_schema)
         self.assertIn("assignment_evidence", task_schema)
+
+    async def test_focused_fallback_removes_quoted_history_and_bounds_current_body(self):
+        import json
+        from datetime import UTC, datetime
+        from unittest.mock import AsyncMock
+
+        from improver.config import AppConfig
+        from improver.models import CommunicationEvent
+        from improver.services.assignment import assignment_signals
+
+        config = AppConfig()
+        analyzer = OllamaAnalyzer(config)
+        analyzer._post_chat = AsyncMock(
+            return_value=httpx.Response(
+                200,
+                request=httpx.Request("POST", "http://ollama/api/chat"),
+                json={"message": {"content": '{"tasks": []}'}},
+            )
+        )
+        for current in ("Текущий статус проекта.", "Текущий статус. " * 5000):
+            event = CommunicationEvent(
+                event_type="email",
+                body=current + "\nFrom: old@example.test\nСТАРОЕ поручение — отв. Сидоров А.",
+            )
+            original = event.body
+            await analyzer.extract_tasks(
+                event, [], [], assignment_signals(event, config.identity), datetime.now(UTC), "UTC"
+            )
+            payload = json.loads(analyzer._post_chat.call_args.args[0]["messages"][1]["content"])
+            self.assertNotIn("СТАРОЕ", payload["body"])
+            self.assertTrue(payload["body"].startswith("Текущий статус"))
+            self.assertLessEqual(len(payload["body"]), config.llm.context_length * 3 // 2 + 40)
+            self.assertEqual(event.body, original)

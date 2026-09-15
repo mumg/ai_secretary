@@ -94,7 +94,9 @@ async def get_settings(
     setting = await session.get(SystemSetting, 1)
     return AdminSettingsRead(
         settings=runtime_payload(config),
+        local_web_only=config.server.local_web_only,
         firebase_configured=bool(setting and setting.firebase_credentials_encrypted),
+        llm_api_key_configured=bool(config.llm.api_key),
     )
 
 
@@ -111,6 +113,8 @@ async def put_settings(
             session,
             payload.settings,
             payload.firebase_credentials_json,
+            llm_api_key=payload.llm_api_key,
+            clear_llm_api_key=payload.clear_llm_api_key,
         )
         config = await load_runtime_config(session)
         if previous_config.analysis_filters != config.analysis_filters:
@@ -118,9 +122,7 @@ async def put_settings(
             reconciliation = stats.model_dump()
             log.info("analysis_filters_reconciled", **reconciliation)
         if previous_config.identity.names != config.identity.names:
-            identity_requeued = await requeue_newly_eligible_events(
-                session, config.identity
-            )
+            identity_requeued = await requeue_newly_eligible_events(session, config.identity)
             log.info("identity_analysis_requeued", count=identity_requeued)
         await session.commit()
     except (ValueError, json.JSONDecodeError) as exc:
@@ -128,7 +130,9 @@ async def put_settings(
         raise HTTPException(status_code=422, detail=str(exc)) from None
     return AdminSettingsRead(
         settings=runtime_payload(config),
+        local_web_only=config.server.local_web_only,
         firebase_configured=bool(setting.firebase_credentials_encrypted),
+        llm_api_key_configured=bool(config.llm.api_key),
         filter_reconciliation=reconciliation,
         identity_requeued=identity_requeued,
     )
@@ -189,9 +193,7 @@ async def _save_source(
     if payload.tag_ids is not None:
         unique_tag_ids = list(dict.fromkeys(payload.tag_ids))
         tags = list(
-            (
-                await session.execute(select(Tag).where(Tag.id.in_(unique_tag_ids)))
-            ).scalars()
+            (await session.execute(select(Tag).where(Tag.id.in_(unique_tag_ids)))).scalars()
         )
         if len(tags) != len(unique_tag_ids):
             raise HTTPException(status_code=422, detail="Один или несколько тегов не существуют")
@@ -203,9 +205,7 @@ async def _save_source(
     if existing is None:
         session.add(row)
     elif reset_cursor:
-        await session.execute(
-            sql_delete(SourceCursor).where(SourceCursor.source_id == payload.id)
-        )
+        await session.execute(sql_delete(SourceCursor).where(SourceCursor.source_id == payload.id))
     await session.commit()
     await session.refresh(row)
     await session.refresh(row, attribute_names=["tags"])
@@ -256,9 +256,7 @@ def _tag_read(row: Tag) -> TagRead:
 async def list_tags(session: AsyncSession = Depends(get_session)) -> list[TagRead]:
     rows = list(
         (
-            await session.execute(
-                select(Tag).options(selectinload(Tag.sources)).order_by(Tag.name)
-            )
+            await session.execute(select(Tag).options(selectinload(Tag.sources)).order_by(Tag.name))
         ).scalars()
     )
     return [_tag_read(row) for row in rows]
@@ -386,7 +384,10 @@ async def get_status(
     ollama = "unavailable"
     try:
         async with httpx.AsyncClient(timeout=3) as client:
-            response = await client.get(f"{config.llm.base_url}/api/version")
+            path = "models" if config.llm.provider == "openai" else "api/version"
+            response = await client.get(
+                config.llm.api_url(path), headers=config.llm.request_headers()
+            )
             response.raise_for_status()
             ollama = response.json().get("version", "ok")
     except httpx.HTTPError:

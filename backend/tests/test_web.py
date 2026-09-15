@@ -88,7 +88,10 @@ class ThreadPaginationTests(IsolatedAsyncioTestCase):
                         thread_external_id="thread",
                         event_type="email",
                         subject=f"Message {index}",
-                        body="Synthetic",
+                        body=(
+                            f"Original message {index}\n\nDetails from the sender." if index else ""
+                        ),
+                        semantic_summary="Repeated Qwen summary",
                         occurred_at=now,
                         participants=[],
                         analysis_state="COMPLETED",
@@ -151,6 +154,10 @@ class ThreadPaginationTests(IsolatedAsyncioTestCase):
                         self.assertEqual(page["has_more_events"], more)
                         self.assertEqual(page["event_count"], 66)
                         ids.extend(row["id"] for row in page["events"])
+                        originals = {str(event.id): event.body for event in events}
+                        for row in page["events"]:
+                            self.assertEqual(row["preview"], originals[row["id"]])
+                            self.assertNotIn("Repeated Qwen summary", row["preview"])
                     self.assertEqual(ids, expected)
                     chat_ids = []
                     before = None
