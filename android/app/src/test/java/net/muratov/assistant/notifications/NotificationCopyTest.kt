@@ -8,6 +8,14 @@ import org.junit.Test
 
 class NotificationCopyTest {
     @Test
+    fun taskPushRendersFromPayloadWithoutApiAccess() {
+        val copy = notificationCopy("NEW_TASK", null, "Оценить эпики", "Предоставить\nобратную связь")
+        assertEquals("Новая задача", copy.title)
+        assertEquals("Оценить эпики", copy.text)
+        assertEquals("Оценить эпики\nПредоставить обратную связь", copy.expandedText)
+    }
+
+    @Test
     fun meetingPreparationHasItsOwnNotification() {
         val copy = notificationCopy("MEETING_CONTEXT_READY", null)
         assertEquals("Контекст встречи готов", copy.title)

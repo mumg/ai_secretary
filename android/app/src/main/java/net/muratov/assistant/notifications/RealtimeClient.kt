@@ -5,6 +5,14 @@ import android.app.Application
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import net.muratov.assistant.data.ApiFactory
 import net.muratov.assistant.data.SettingsStore
 import okhttp3.OkHttpClient
@@ -20,7 +28,10 @@ import kotlin.random.Random
 class RealtimeClient(
     private val application: Application,
     private val settings: SettingsStore,
+    private val registerDevice: suspend () -> Unit,
 ) : Application.ActivityLifecycleCallbacks {
+    private val registrationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var registrationJob: Job? = null
     private val handler = Handler(Looper.getMainLooper())
     private var visibleActivities = 0
     private var socket: WebSocket? = null
@@ -53,7 +64,28 @@ class RealtimeClient(
         handler.post {
             disconnect()
             attempt = 0
-            if (RealtimeState.active.value) connect()
+            if (RealtimeState.active.value) {
+                connect()
+                registerPushToken()
+            }
+        }
+    }
+
+    private fun registerPushToken() {
+        registrationJob?.cancel()
+        registrationJob = registrationScope.launch {
+            while (RealtimeState.active.value) {
+                try {
+                    registerDevice()
+                    Log.i("SecretaryPush", "Device registration succeeded")
+                    return@launch
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    Log.w("SecretaryPush", "Device registration failed: ${failure.javaClass.simpleName}")
+                    delay(30_000)
+                }
+            }
         }
     }
 
@@ -138,6 +170,7 @@ class RealtimeClient(
             RealtimeState.active.value = true
             RealtimeState.changed(listOf("all"))
             connect()
+            registerPushToken()
             handler.postDelayed(watchdog, 10_000)
             handler.postDelayed(fallback, 30_000)
         }
@@ -149,6 +182,7 @@ class RealtimeClient(
             handler.removeCallbacks(watchdog)
             handler.removeCallbacks(fallback)
             disconnect()
+            registrationJob?.cancel()
         }
     }
     override fun onActivityCreated(activity: Activity, state: Bundle?) = Unit

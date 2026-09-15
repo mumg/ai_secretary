@@ -5,14 +5,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.muratov.assistant.ChatActivity
@@ -40,7 +39,12 @@ internal data class NotificationCopy(
     val expandedText: String,
 )
 
-internal fun notificationCopy(type: String, task: TaskDto?): NotificationCopy {
+internal fun notificationCopy(
+    type: String,
+    task: TaskDto?,
+    payloadTitle: String? = null,
+    payloadDescription: String? = null,
+): NotificationCopy {
     val title = when (type) {
         "CRITICAL_TASK" -> "Критическая задача"
         "NEW_TASK" -> "Новая задача"
@@ -53,8 +57,8 @@ internal fun notificationCopy(type: String, task: TaskDto?): NotificationCopy {
         "MEETING_CONTEXT_READY" -> "Контекст встречи готов"
         else -> "Обновление задач"
     }
-    val taskTitle = task?.title?.trim()?.takeIf(String::isNotEmpty)?.take(180)
-    val description = task?.description
+    val taskTitle = (task?.title ?: payloadTitle)?.trim()?.takeIf(String::isNotEmpty)?.take(180)
+    val description = (task?.description ?: payloadDescription)
         ?.replace(Regex("\\s+"), " ")
         ?.trim()
         ?.takeIf(String::isNotEmpty)
@@ -95,6 +99,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val type = message.data["type"] ?: "TASK_UPDATE"
         val objectId = message.data["object_id"] ?: type
+        Log.i("SecretaryPush", "Received $type for $objectId")
         val repository = (application as ImproverApplication).container.repository
         RealtimeState.changed(listOf("all"))
         if (RealtimeState.active.value) {
@@ -116,23 +121,17 @@ class ImproverMessagingService : FirebaseMessagingService() {
             }
             return
         }
-        val task = runBlocking(Dispatchers.IO) {
-            coroutineScope {
-                val detail = async {
-                    if (type in taskNotificationTypes) {
-                        runCatching { repository.detail(objectId).task }.getOrNull()
-                    } else {
-                        null
-                    }
-                }
-                val refresh = async { runCatching { repository.refresh() } }
-                detail.await().also { refresh.await() }
-            }
-        }
-        showNotification(type, objectId, task)
+        // FCM gives this callback only a few seconds. Render from the payload;
+        // the task and list are fetched when the user opens the application.
+        showNotification(type, objectId, null, message.data)
     }
 
-    private fun showNotification(type: String, objectId: String, task: TaskDto?) {
+    private fun showNotification(
+        type: String,
+        objectId: String,
+        task: TaskDto?,
+        data: Map<String, String> = emptyMap(),
+    ) {
         val manager = getSystemService(NotificationManager::class.java)
         val channelId = when (type) {
             "CRITICAL_TASK" -> "critical_tasks"
@@ -155,7 +154,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
         }
         val intent = if (type == "MEETING_CONTEXT_READY") {
             MeetingContextActivity.intent(this, objectId)
-        } else if (task != null) {
+        } else if (type in taskNotificationTypes) {
             TaskDetailActivity.intent(this, objectId)
         } else {
             Intent(this, MainActivity::class.java)
@@ -166,7 +165,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val copy = notificationCopy(type, task)
+        val copy = notificationCopy(type, task, data["task_title"], data["task_description"])
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle(copy.title)
@@ -179,6 +178,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .build()
         manager.notify(objectId.hashCode(), notification)
+        Log.i("SecretaryPush", "Displayed $type for $objectId")
     }
 
     private fun showChatNotification(objectId: String, request: ChatRequestDto?) {

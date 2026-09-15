@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import uuid
 
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from improver.config import AppConfig
-from improver.models import Device
+from improver.models import Device, Task
 
 log = structlog.get_logger()
 
@@ -52,13 +53,29 @@ class NotificationService:
         result = await session.execute(select(Device.fcm_token).where(Device.active.is_(True)))
         tokens = list(result.scalars())
         if not tokens:
+            log.info("notification_skipped", reason="no_active_devices", type=event_type)
             return 0
 
         from firebase_admin import messaging
 
+        data = {"type": event_type, "object_id": object_id}
+        if event_type in {
+            "NEW_TASK",
+            "CRITICAL_TASK",
+            "TASK_CONFIRMATION_REQUIRED",
+            "TASK_REMINDER",
+            "TASK_DUE_SOON",
+            "TASK_OVERDUE",
+            "TASK_POSSIBLY_COMPLETED",
+        }:
+            task = await session.get(Task, uuid.UUID(object_id))
+            if task:
+                data["task_title"] = task.title[:180]
+                data["task_description"] = " ".join((task.description or "").split())[:360]
         message = messaging.MulticastMessage(
-            data={"type": event_type, "object_id": object_id},
+            data=data,
             tokens=tokens,
+            android=messaging.AndroidConfig(priority="high"),
         )
         try:
             response = await asyncio.to_thread(
@@ -74,5 +91,16 @@ class NotificationService:
             type=event_type,
             success=response.success_count,
             failure=response.failure_count,
+            object_id=object_id,
         )
+        for token, delivery in zip(tokens, response.responses, strict=True):
+            if not delivery.success:
+                log.warning(
+                    "notification_delivery_failed",
+                    type=event_type,
+                    object_id=object_id,
+                    token_fingerprint=hashlib.sha256(token.encode()).hexdigest()[:12],
+                    error_type=type(delivery.exception).__name__,
+                    error_code=getattr(delivery.exception, "code", None),
+                )
         return response.success_count
