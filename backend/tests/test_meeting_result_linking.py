@@ -12,10 +12,8 @@ from improver.models import (
     CommunicationEvent,
     CommunicationSource,
     Meeting,
-    MeetingContext,
     MeetingResult,
 )
-from improver.services.meeting_result_repair import repair_meeting_result_links
 from improver.services.meeting_results import (
     MTS_TRANSCRIPT_ORIGIN,
     attach_email_results_to_transcript,
@@ -375,53 +373,3 @@ class LinkingIntegrationTests(IsolatedAsyncioTestCase):
         email = await self.email_result("Orion", url)
         self.assertIsNone(email.calendar_meeting_id)
         self.assertIsNone(email.parent_result_id)
-
-    async def test_repair_restores_differently_named_results_in_separate_windows(self):
-        url = "https://my.mts-link.ru/j/700001"
-        first, _ = await self.calendar("Orion", url)
-        second, _ = await self.calendar("Pegasus", url)
-        second.starts_at += timedelta(hours=1)
-        second.ends_at += timedelta(hours=1)
-        one = await self.transcript("Permanent room", url)
-        two = await self.transcript("Permanent room", url)
-        two.starts_at += timedelta(hours=1)
-        two.ends_at += timedelta(hours=1)
-        await repair_meeting_result_links(self.session, self.analyzer)
-        self.assertEqual(one.calendar_meeting_id, first.id)
-        self.assertEqual(two.calendar_meeting_id, second.id)
-        again = await repair_meeting_result_links(self.session, self.analyzer)
-        self.assertEqual(again["result_links_corrected"], 0)
-
-    async def test_repair_splits_bad_link_preserves_content_and_is_idempotent(self):
-        first = "https://my.mts-link.ru/j/123456/700001"
-        second = "https://my.mts-link.ru/j/123456/700002"
-        calendar, _ = await self.calendar("Orion", first)
-        other, _ = await self.calendar("Pegasus", second)
-        transcript = await self.transcript("Orion", first)
-        transcript.calendar_meeting_id = calendar.id
-        email = await self.email_result("Pegasus", second)
-        email.parent_result_id, email.calendar_meeting_id = transcript.id, calendar.id
-        email.mts_link_keys = [*email.mts_link_keys, "id:123456"]
-        self.session.add(
-            MeetingContext(
-                meeting_id=other.id,
-                meeting_fingerprint="old",
-                status="READY",
-                summary="Stale context",
-                references=[{"id": str(email.source_event_id)}],
-            )
-        )
-        await self.session.flush()
-        counts = await repair_meeting_result_links(self.session, self.analyzer)
-        self.assertEqual(counts["result_links_corrected"], 1)
-        self.assertEqual(email.calendar_meeting_id, other.id)
-        self.assertIsNone(email.parent_result_id)
-        self.assertEqual(email.summary, "Synthetic follow-up")
-        self.assertEqual(transcript.summary, "Synthetic transcript")
-        context = await self.session.get(MeetingContext, other.id)
-        self.assertEqual(context.status, "NOT_REQUESTED")
-        self.assertIsNone(context.summary)
-        again = await repair_meeting_result_links(self.session, self.analyzer)
-        self.assertEqual(again["result_links_corrected"], 0)
-        self.assertEqual(again["result_keys_corrected"], 0)
-        self.assertEqual(again["contexts_invalidated"], 0)

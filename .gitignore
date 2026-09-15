@@ -46,3 +46,4 @@ android/**/build/
 google-services.json
 /android/.kotlin/
 /dataPack*.json
+/extensions/
