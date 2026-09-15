@@ -12,6 +12,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.muratov.assistant.data.TaskRepository
 import net.muratov.assistant.data.remote.SystemStatusDto
+import net.muratov.assistant.notifications.RealtimeState
+import net.muratov.assistant.notifications.observeRealtime
 
 data class SystemStatusUiState(
     val snapshot: SystemStatusDto? = null,
@@ -26,9 +28,10 @@ class SystemStatusViewModel(private val repository: TaskRepository) : ViewModel(
     private var requestInProgress = false
 
     init {
+        observeRealtime("status", "tasks", "events", "chat", "contexts") { refresh() }
         viewModelScope.launch {
             while (isActive) {
-                load()
+                if (RealtimeState.active.value && !RealtimeState.connected.value) load()
                 delay(15_000)
             }
         }

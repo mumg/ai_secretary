@@ -1,6 +1,9 @@
 package net.muratov.assistant.ui
 
 import androidx.lifecycle.ViewModel
+import net.muratov.assistant.notifications.observeRealtime
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,20 +26,25 @@ class ConversationThreadDetailViewModel(
     private val mutableState = MutableStateFlow(ConversationThreadDetailUiState())
     val state: StateFlow<ConversationThreadDetailUiState> = mutableState.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
+        observeRealtime("threads", "events") { load(silent = true) }
         load()
     }
 
-    fun load() {
-        viewModelScope.launch {
-            mutableState.value = ConversationThreadDetailUiState(loading = true)
+    fun load(silent: Boolean = false) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            if (!silent) mutableState.value = mutableState.value.copy(loading = true, error = null)
             mutableState.value = try {
                 ConversationThreadDetailUiState(
                     detail = repository.thread(threadId),
                     loading = false,
                 )
             } catch (exception: Exception) {
-                ConversationThreadDetailUiState(
+                if (exception is CancellationException) throw exception
+                mutableState.value.copy(
                     loading = false,
                     error = exception.message ?: "Не удалось загрузить переписку",
                 )

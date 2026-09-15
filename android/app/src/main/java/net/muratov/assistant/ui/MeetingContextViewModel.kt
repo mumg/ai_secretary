@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.muratov.assistant.data.TaskRepository
 import net.muratov.assistant.data.remote.MeetingContextDto
+import net.muratov.assistant.notifications.observeRealtime
+import net.muratov.assistant.notifications.RealtimeState
 
 data class MeetingContextUiState(
     val detail: MeetingContextDto? = null,
@@ -29,18 +31,22 @@ class MeetingContextViewModel(
     val state: StateFlow<MeetingContextUiState> = mutableState.asStateFlow()
     private var job: Job? = null
 
-    init { load() }
+    init {
+        observeRealtime("contexts", "meetings", "events") { load(silent = true) }
+        load()
+    }
 
-    fun load(refresh: Boolean = false) {
+    fun load(refresh: Boolean = false, silent: Boolean = false) {
         job?.cancel()
         job = viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(loading = true, error = null)
+            if (!silent) mutableState.value = mutableState.value.copy(loading = true, error = null)
             try {
                 var detail = if (refresh) repository.refreshMeetingContext(meetingId)
                              else repository.meetingContext(meetingId)
                 mutableState.value = MeetingContextUiState(detail = detail, loading = false)
                 while (meetingContextPending(detail.status)) {
                     delay(3_000)
+                    if (!RealtimeState.active.value || RealtimeState.connected.value) break
                     detail = repository.meetingContext(meetingId)
                     mutableState.value = MeetingContextUiState(detail = detail, loading = false)
                 }

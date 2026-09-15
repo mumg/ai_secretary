@@ -85,6 +85,11 @@ def _read_result(
         origin_type=meeting_result.origin_type,
         supplement_count=len(child_results),
         brief_summary=result_brief_summary(meeting_result, child_results),
+        time_known=(
+            meeting_result.origin_type != EMAIL_FOLLOWUP_ORIGIN
+            or meeting_result.calendar_meeting_id is not None
+        ),
+        received_at=event.occurred_at,
     )
 
 

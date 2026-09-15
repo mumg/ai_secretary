@@ -96,6 +96,12 @@ class ImproverMessagingService : FirebaseMessagingService() {
         val type = message.data["type"] ?: "TASK_UPDATE"
         val objectId = message.data["object_id"] ?: type
         val repository = (application as ImproverApplication).container.repository
+        RealtimeState.changed(listOf("all"))
+        if (RealtimeState.active.value) {
+            // FCM may race the transition into the foreground or reconnect.
+            // Reconcile through the same stream without a duplicate system alert.
+            return
+        }
         if (type == "MEETING_CONTEXT_READY") {
             showNotification(type, objectId, null)
             return

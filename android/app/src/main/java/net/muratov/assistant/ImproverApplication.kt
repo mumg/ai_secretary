@@ -10,6 +10,6 @@ class ImproverApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.realtime.install()
     }
 }
-

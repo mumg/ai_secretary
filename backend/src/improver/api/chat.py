@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from improver.api.deps import get_runtime_config
@@ -40,9 +40,18 @@ async def enqueue_archive_query(
 async def list_archive_queries(
     limit: int = Query(100, ge=1, le=500),
     session: AsyncSession = Depends(get_session),
+    before: uuid.UUID | None = Query(None),
 ) -> list[ChatRequest]:
+    statement = select(ChatRequest)
+    if before:
+        cursor = await session.get(ChatRequest, before)
+        if cursor is None:
+            raise HTTPException(status_code=404, detail="Chat request not found")
+        statement = statement.where(
+            tuple_(ChatRequest.created_at, ChatRequest.id) < (cursor.created_at, cursor.id)
+        )
     result = await session.execute(
-        select(ChatRequest).order_by(ChatRequest.created_at.desc()).limit(limit)
+        statement.order_by(ChatRequest.created_at.desc(), ChatRequest.id.desc()).limit(limit)
     )
     return list(reversed(list(result.scalars())))
 

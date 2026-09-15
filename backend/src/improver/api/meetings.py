@@ -40,6 +40,7 @@ async def context_detail(meeting_id: uuid.UUID, session: AsyncSession, *, refres
         references=row.references,
         generated_at=row.generated_at,
         error=row.error,
+        stale=row.summary is not None and row.input_fingerprint is None,
     )
     await session.commit()
     return response

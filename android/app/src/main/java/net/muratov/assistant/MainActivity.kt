@@ -156,13 +156,17 @@ class MainActivity : ComponentActivity() {
                     onOpenThread = { threadId ->
                         startActivity(ConversationThreadDetailActivity.intent(this, threadId))
                     },
-                    onSaveServer = { application.container.settings.serverUrl = it },
+                    onSaveServer = {
+                        application.container.settings.serverUrl = it
+                        application.container.realtime.connectionSettingsChanged()
+                    },
                     onChooseCertificate = {
                         KeyChain.choosePrivateKeyAlias(
                             this,
                             { alias ->
                                 if (alias != null) {
                                     application.container.settings.certificateAlias = alias
+                                    application.container.realtime.connectionSettingsChanged()
                                     taskViewModel.refresh()
                                     threadsViewModel.refresh()
                                     meetingsViewModel.refresh()

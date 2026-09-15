@@ -16,8 +16,8 @@ import javax.net.ssl.X509TrustManager
 import java.util.concurrent.TimeUnit
 
 object ApiFactory {
-    fun create(context: Context, baseUrl: String, certificateAlias: String?): ImproverApi {
-        val client = OkHttpClient.Builder()
+    fun client(context: Context, baseUrl: String, certificateAlias: String?): OkHttpClient =
+        OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(6, TimeUnit.MINUTES)
@@ -38,6 +38,9 @@ object ApiFactory {
                 }
             }
             .build()
+
+    fun create(context: Context, baseUrl: String, certificateAlias: String?): ImproverApi {
+        val client = client(context, baseUrl, certificateAlias)
         val gson = GsonBuilder().create()
         return Retrofit.Builder()
             .baseUrl(baseUrl.trimEnd('/') + "/")

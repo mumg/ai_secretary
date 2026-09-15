@@ -1,6 +1,7 @@
 package net.muratov.assistant.ui
 
 import androidx.lifecycle.ViewModel
+import net.muratov.assistant.notifications.observeRealtime
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
@@ -33,12 +34,13 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
     private var searchJob: Job? = null
 
     init {
+        observeRealtime("tasks", "meetings") { refresh() }
         refresh()
     }
 
     fun refresh() = execute {
         repository.refresh()
-        todayMeetings.value = repository.today(refresh = true).meetings
+        todayMeetings.value = repository.today().meetings
         updateSearch()
     }
 

@@ -1,6 +1,9 @@
 package net.muratov.assistant.ui
 
 import androidx.lifecycle.ViewModel
+import net.muratov.assistant.notifications.observeRealtime
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,20 +26,25 @@ class MeetingResultDetailViewModel(
     private val mutableState = MutableStateFlow(MeetingResultDetailUiState())
     val state: StateFlow<MeetingResultDetailUiState> = mutableState.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
+        observeRealtime("results", "events") { load(silent = true) }
         load()
     }
 
-    fun load() {
-        viewModelScope.launch {
-            mutableState.value = MeetingResultDetailUiState(loading = true)
+    fun load(silent: Boolean = false) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            if (!silent) mutableState.value = mutableState.value.copy(loading = true, error = null)
             mutableState.value = try {
                 MeetingResultDetailUiState(
                     detail = repository.meetingResult(resultId),
                     loading = false,
                 )
             } catch (exception: Exception) {
-                MeetingResultDetailUiState(
+                if (exception is CancellationException) throw exception
+                mutableState.value.copy(
                     loading = false,
                     error = exception.message ?: "Не удалось загрузить результат встречи",
                 )

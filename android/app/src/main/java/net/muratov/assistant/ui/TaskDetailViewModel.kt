@@ -1,6 +1,9 @@
 package net.muratov.assistant.ui
 
 import androidx.lifecycle.ViewModel
+import net.muratov.assistant.notifications.observeRealtime
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,17 +26,22 @@ class TaskDetailViewModel(
     private val _state = MutableStateFlow(TaskDetailUiState())
     val state: StateFlow<TaskDetailUiState> = _state.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
+        observeRealtime("tasks", "events") { load(silent = true) }
         load()
     }
 
-    fun load() {
-        viewModelScope.launch {
-            _state.value = TaskDetailUiState(loading = true)
+    fun load(silent: Boolean = false) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            if (!silent) _state.value = _state.value.copy(loading = true, error = null)
             runCatching { repository.detail(taskId) }
                 .onSuccess { _state.value = TaskDetailUiState(loading = false, detail = it) }
                 .onFailure {
-                    _state.value = TaskDetailUiState(
+                    if (it is CancellationException) throw it
+                    _state.value = _state.value.copy(
                         loading = false,
                         error = it.message ?: "Не удалось загрузить задачу",
                     )

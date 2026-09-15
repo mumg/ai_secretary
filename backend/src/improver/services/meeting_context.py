@@ -94,8 +94,10 @@ async def ensure_context(
         session.add(row)
     elif row.meeting_fingerprint != current:
         row.meeting_fingerprint = current
-        row.status, row.summary, row.references = "NOT_REQUESTED", None, []
-        row.input_fingerprint = row.generation = row.generated_at = row.next_refresh_at = None
+        # Keep the last readable version while invalidating its provenance/generation.
+        # The API marks it stale until a new generation replaces it atomically.
+        row.status = "NOT_REQUESTED"
+        row.input_fingerprint = row.generation = row.next_refresh_at = None
         row.notify_after = None
         row.error = None
     if force:
@@ -458,11 +460,14 @@ async def prepare_next_meeting_context(config: AppConfig, session_factory=None) 
                 row.input_fingerprint = inputs
                 row.generated_at, row.error = datetime.now(UTC), None
                 row.next_refresh_at = next_refresh(meeting, datetime.now(UTC))
-                manually_requested = row.requested_at is not None
+                requested_future = (
+                    row.requested_at is not None
+                    and utc(meeting.starts_at).astimezone(local_now.tzinfo).date()
+                    > utc(row.requested_at).astimezone(local_now.tzinfo).date()
+                )
                 row.requested_at = None
-                # A push is the completion receipt for an explicit button press.
-                # Automatic preparation and refresh of today's plan stay silent.
-                row.notify_after = datetime.now(UTC) if manually_requested else None
+                # Only an explicit request for a future date produces a push.
+                row.notify_after = datetime.now(UTC) if requested_future else None
             await session.commit()
         log.info(
             "meeting_context_prepared",

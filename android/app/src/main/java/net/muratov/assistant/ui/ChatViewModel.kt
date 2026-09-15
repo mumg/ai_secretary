@@ -13,6 +13,10 @@ import net.muratov.assistant.data.remote.ChatHistoryMessageDto
 import net.muratov.assistant.data.remote.ChatReferenceDto
 import net.muratov.assistant.data.remote.ChatRequestDto
 import net.muratov.assistant.notifications.ChatNotificationState
+import net.muratov.assistant.notifications.RealtimeState
+import net.muratov.assistant.notifications.observeRealtime
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class ChatMessageUi(
     val role: String,
@@ -36,8 +40,10 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
     private var requests: List<ChatRequestDto> = emptyList()
     private val localRequests = linkedMapOf<String, LocalRequest>()
+    private val refreshMutex = Mutex()
 
     init {
+        observeRealtime("chat") { viewModelScope.launch { refresh(silent = true) } }
         viewModelScope.launch {
             refresh()
             while (true) {
@@ -45,7 +51,7 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
                     it.status == "PENDING" || it.status == "PROCESSING"
                 }
                 delay(if (hasPending) 2_000 else 15_000)
-                refresh(silent = true)
+                if (RealtimeState.active.value && !RealtimeState.connected.value) refresh(silent = true)
             }
         }
         viewModelScope.launch {
@@ -86,7 +92,7 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
         }
     }
 
-    private suspend fun refresh(silent: Boolean = false) {
+    private suspend fun refresh(silent: Boolean = false) = refreshMutex.withLock {
         try {
             val remote = repository.chatRequests()
             requests = remote

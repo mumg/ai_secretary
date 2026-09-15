@@ -392,7 +392,8 @@ class MeetingContextIntegrationTests(IsolatedAsyncioTestCase):
         async with self.factory() as session:
             detail = await context_detail(meeting.id, session)
         self.assertEqual(detail.status, "NOT_REQUESTED")
-        self.assertIsNone(detail.summary)
+        self.assertIsNotNone(detail.summary)
+        self.assertTrue(detail.stale)
         async with self.factory() as session:
             with self.assertRaises(HTTPException) as caught:
                 await context_detail(uuid.uuid4(), session)
@@ -483,6 +484,18 @@ class MeetingContextIntegrationTests(IsolatedAsyncioTestCase):
         await self.make_due(meeting)
         await self.run_worker()
         self.assertIsNone((await self.context(meeting)).notify_after)
+
+    async def test_manual_refresh_for_today_never_queues_push(self):
+        from improver.api.meetings import context_detail
+
+        meeting = await self.meeting(starts_at=self.now, ends_at=self.now + timedelta(hours=1))
+        await self.result()
+        async with self.factory() as session:
+            await context_detail(meeting.id, session, refresh=True)
+        await self.run_worker()
+        row = await self.context(meeting)
+        self.assertEqual(row.status, "READY")
+        self.assertIsNone(row.notify_after)
 
     async def test_manual_push_is_durable_retried_and_sent_once(self):
         meeting = await self.meeting(

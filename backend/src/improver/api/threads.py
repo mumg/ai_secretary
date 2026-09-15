@@ -94,6 +94,8 @@ async def list_threads(
 async def get_thread(
     thread_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
+    events_offset: int = Query(0, ge=0),
+    events_limit: int = Query(100, ge=1, le=100),
 ) -> ConversationThreadDetail:
     row = (
         await session.execute(
@@ -123,7 +125,8 @@ async def get_thread(
         select(CommunicationEvent)
         .where(*event_conditions)
         .order_by(CommunicationEvent.occurred_at.desc(), CommunicationEvent.id.desc())
-        .limit(101)
+        .offset(events_offset)
+        .limit(events_limit + 1)
     )
     events = list(event_result.scalars())
     base = _thread_read(thread, source_label)
@@ -144,7 +147,9 @@ async def get_thread(
                 preview=bounded_text(event.semantic_summary or event.body, 1_000),
                 source_url=event.source_url,
             )
-            for event in events[:100]
+            for event in events[:events_limit]
         ],
-        has_more_events=total_events > 100,
+        has_more_events=total_events > events_offset + events_limit,
+        events_offset=events_offset,
+        events_limit=events_limit,
     )

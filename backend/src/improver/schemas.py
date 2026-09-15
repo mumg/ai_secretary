@@ -147,6 +147,8 @@ class MeetingResultRead(BaseModel):
     origin_type: str
     supplement_count: int = 0
     brief_summary: str
+    time_known: bool = True
+    received_at: datetime | None = None
 
 
 class ParticipantMeetingSummary(BaseModel):
@@ -264,6 +266,8 @@ class ConversationEventRead(BaseModel):
 class ConversationThreadDetail(ConversationThreadRead):
     events: list[ConversationEventRead] = Field(default_factory=list)
     has_more_events: bool = False
+    events_offset: int = 0
+    events_limit: int = 100
 
 
 class ChatHistoryMessage(BaseModel):
@@ -309,6 +313,7 @@ class MeetingContextRead(BaseModel):
     references: list[MeetingContextReference] = Field(default_factory=list)
     generated_at: datetime | None = None
     error: str | None = None
+    stale: bool = False
 
 
 class ChatRequestRead(BaseModel):

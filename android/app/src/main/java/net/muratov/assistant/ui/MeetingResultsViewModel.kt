@@ -1,6 +1,7 @@
 package net.muratov.assistant.ui
 
 import androidx.lifecycle.ViewModel
+import net.muratov.assistant.notifications.observeRealtime
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
@@ -28,6 +29,7 @@ class MeetingResultsViewModel(private val repository: TaskRepository) : ViewMode
     private var loadJob: Job? = null
 
     init {
+        observeRealtime("results", "events") { refresh() }
         loadNext()
     }
 
@@ -65,12 +67,25 @@ class MeetingResultsViewModel(private val repository: TaskRepository) : ViewMode
         if (current.loading || !current.hasMore) return
         try {
             mutableState.value = current.copy(loading = true, error = null)
-            val page = repository.meetingResults(
-                offset = if (replace) 0 else current.items.size,
+            val target = if (replace) current.items.size.coerceAtLeast(20) else 20
+            var offset = if (replace) 0 else current.items.size
+            var page = repository.meetingResults(
+                offset = offset,
+                limit = target.coerceAtMost(100),
                 query = current.query.trim().ifBlank { null },
             )
+            val received = page.items.toMutableList()
+            while (replace && page.hasMore && received.size < target && page.items.isNotEmpty()) {
+                offset += page.items.size
+                page = repository.meetingResults(
+                    offset = offset,
+                    limit = (target - received.size).coerceAtMost(100),
+                    query = current.query.trim().ifBlank { null },
+                )
+                received.addAll(page.items)
+            }
             mutableState.value = MeetingResultsUiState(
-                items = ((if (replace) emptyList() else current.items) + page.items)
+                items = ((if (replace) emptyList() else current.items) + received)
                     .distinctBy { it.id },
                 loading = false,
                 hasMore = page.hasMore,
