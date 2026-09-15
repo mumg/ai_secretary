@@ -144,7 +144,7 @@ class DocumentParserConfig(BaseModel):
 
 class SourceConfig(BaseModel):
     id: str
-    type: Literal["imap", "exchange", "mts_link"]
+    type: Literal["imap", "exchange", "mts_link", "external_tasks"]
     enabled: bool = True
     host: str | None = None
     port: int | None = Field(default=None, ge=1, le=65_535)
@@ -158,7 +158,7 @@ class SourceConfig(BaseModel):
     auth_type: str = "ntlm"
     base_url: str | None = None
     content: list[str] = Field(default_factory=list)
-    poll_interval_seconds: int | None = None
+    poll_interval_seconds: int | None = Field(default=None, ge=10)
 
     @model_validator(mode="after")
     def validate_required_fields(self) -> SourceConfig:

@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
@@ -40,10 +42,10 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -66,12 +68,14 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,15 +94,19 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import net.muratov.assistant.data.local.TaskEntity
 import net.muratov.assistant.data.remote.ConversationThreadDto
 import net.muratov.assistant.data.remote.MeetingDto
 import net.muratov.assistant.data.remote.MeetingResultDto
+import net.muratov.assistant.data.remote.ComponentStatusDto
 import net.muratov.assistant.ui.ImproverTheme
 import net.muratov.assistant.ui.MeetingResultsViewModel
 import net.muratov.assistant.ui.MeetingsViewModel
 import net.muratov.assistant.ui.TaskViewModel
 import net.muratov.assistant.ui.ThreadsViewModel
+import net.muratov.assistant.ui.SystemStatusViewModel
+import net.muratov.assistant.ui.SystemStatusUiState
 import net.muratov.assistant.ui.parseMessageLinks
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -125,18 +133,22 @@ class MainActivity : ComponentActivity() {
                 val meetingResultsViewModel: MeetingResultsViewModel = viewModel(
                     factory = MeetingResultsViewModel.Factory(application.container.repository),
                 )
+                val systemStatusViewModel: SystemStatusViewModel = viewModel(
+                    factory = SystemStatusViewModel.Factory(application.container.repository),
+                )
                 ImproverScreen(
                     viewModel = taskViewModel,
                     threadsViewModel = threadsViewModel,
                     meetingsViewModel = meetingsViewModel,
                     meetingResultsViewModel = meetingResultsViewModel,
+                    systemStatusViewModel = systemStatusViewModel,
                     serverUrl = application.container.settings.serverUrl,
                     onOpenTask = { taskId ->
                         startActivity(TaskDetailActivity.intent(this, taskId))
                     },
                     onOpenChat = { startActivity(Intent(this, ChatActivity::class.java)) },
-                    onOpenMeeting = { eventId, sourceLabel ->
-                        startActivity(EventDetailActivity.intent(this, eventId, sourceLabel))
+                    onOpenMeeting = { meetingId ->
+                        startActivity(MeetingContextActivity.intent(this, meetingId))
                     },
                     onOpenMeetingResult = { resultId ->
                         startActivity(MeetingResultDetailActivity.intent(this, resultId))
@@ -155,6 +167,7 @@ class MainActivity : ComponentActivity() {
                                     threadsViewModel.refresh()
                                     meetingsViewModel.refresh()
                                     meetingResultsViewModel.refresh()
+                                    systemStatusViewModel.refresh()
                                     taskViewModel.registerDevice()
                                 }
                             },
@@ -178,10 +191,11 @@ private fun ImproverScreen(
     threadsViewModel: ThreadsViewModel,
     meetingsViewModel: MeetingsViewModel,
     meetingResultsViewModel: MeetingResultsViewModel,
+    systemStatusViewModel: SystemStatusViewModel,
     serverUrl: String,
     onOpenTask: (String) -> Unit,
     onOpenChat: () -> Unit,
-    onOpenMeeting: (String, String?) -> Unit,
+    onOpenMeeting: (String) -> Unit,
     onOpenMeetingResult: (String) -> Unit,
     onOpenThread: (String) -> Unit,
     onSaveServer: (String) -> Unit,
@@ -189,6 +203,7 @@ private fun ImproverScreen(
 ) {
     val tasks by viewModel.tasks.collectAsState()
     val loading by viewModel.loading.collectAsState()
+    val taskRefreshing by viewModel.refreshing.collectAsState()
     val voiceProcessing by viewModel.voiceProcessing.collectAsState()
     val error by viewModel.error.collectAsState()
     val todayMeetings by viewModel.todayMeetings.collectAsState()
@@ -196,6 +211,7 @@ private fun ImproverScreen(
     val taskSearchResults by viewModel.searchResults.collectAsState()
     val taskSearchLoading by viewModel.searchLoading.collectAsState()
     val taskSearchError by viewModel.searchError.collectAsState()
+    val systemStatus by systemStatusViewModel.state.collectAsState()
     val currentTime = rememberMinuteClock()
     val visibleTodayMeetings = remember(todayMeetings, currentTime) {
         todayMeetings.filter { meetingIsUpcoming(it, currentTime) }
@@ -205,8 +221,13 @@ private fun ImproverScreen(
     var showSettings by remember { mutableStateOf(false) }
     var reminderTask by remember { mutableStateOf<TaskEntity?>(null) }
     var sortByDue by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(HomeTab.TASKS) }
     var voiceError by remember { mutableStateOf<String?>(null) }
+    val pagerState = rememberPagerState(pageCount = { HomeTab.entries.size })
+    val pagerScope = rememberCoroutineScope()
+    val selectedTab = HomeTab.entries[pagerState.currentPage]
+    val selectTab: (HomeTab) -> Unit = { tab ->
+        pagerScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+    }
     val speechIntent = remember {
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(
@@ -290,6 +311,7 @@ private fun ImproverScreen(
                                     HomeTab.MEETINGS -> "Встречи"
                                     HomeTab.RESULTS -> "Результаты встреч"
                                     HomeTab.THREADS -> "Резюме переписок"
+                                    HomeTab.STATUS -> "Состояние компонентов"
                                 },
                             )
                             Text(
@@ -302,33 +324,53 @@ private fun ImproverScreen(
                                     HomeTab.MEETINGS -> "Предстоящие по времени"
                                     HomeTab.RESULTS -> "Сначала новые"
                                     HomeTab.THREADS -> "Сначала новые"
+                                    HomeTab.STATUS -> systemStatus.snapshot?.let {
+                                        "Обновлено ${formatStatusTime(it.generatedAt)}"
+                                    } ?: "Состояние системы"
                                 },
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     },
+                    actions = {
+                        SystemHealthIndicator(
+                            status = systemStatus.snapshot?.overallStatus
+                                ?: if (systemStatus.error != null) "ERROR" else "UNKNOWN",
+                            onClick = { selectTab(HomeTab.STATUS) },
+                        )
+                    },
                 )
                 TabRow(selectedTabIndex = selectedTab.ordinal) {
                     Tab(
                         selected = selectedTab == HomeTab.TASKS,
-                        onClick = { selectedTab = HomeTab.TASKS },
-                        text = { HomeTabLabel("Задачи") },
+                        onClick = { selectTab(HomeTab.TASKS) },
+                        modifier = Modifier.height(48.dp),
+                        content = { HomeTabLabel("Задачи") },
                     )
                     Tab(
                         selected = selectedTab == HomeTab.MEETINGS,
-                        onClick = { selectedTab = HomeTab.MEETINGS },
-                        text = { HomeTabLabel("Встречи") },
+                        onClick = { selectTab(HomeTab.MEETINGS) },
+                        modifier = Modifier.height(48.dp),
+                        content = { HomeTabLabel("Встречи") },
                     )
                     Tab(
                         selected = selectedTab == HomeTab.RESULTS,
-                        onClick = { selectedTab = HomeTab.RESULTS },
-                        text = { HomeTabLabel("Итоги") },
+                        onClick = { selectTab(HomeTab.RESULTS) },
+                        modifier = Modifier.height(48.dp),
+                        content = { HomeTabLabel("Итоги") },
                     )
                     Tab(
                         selected = selectedTab == HomeTab.THREADS,
-                        onClick = { selectedTab = HomeTab.THREADS },
-                        text = { HomeTabLabel("Переписки") },
+                        onClick = { selectTab(HomeTab.THREADS) },
+                        modifier = Modifier.height(48.dp),
+                        content = { HomeTabLabel("Переписки") },
+                    )
+                    Tab(
+                        selected = selectedTab == HomeTab.STATUS,
+                        onClick = { selectTab(HomeTab.STATUS) },
+                        modifier = Modifier.height(48.dp),
+                        content = { HomeTabLabel("Статус") },
                     )
                 }
             }
@@ -340,7 +382,6 @@ private fun ImproverScreen(
                     voiceProcessing = voiceProcessing,
                     onSettings = { showSettings = true },
                     onSort = { sortByDue = !sortByDue },
-                    onRefresh = viewModel::refresh,
                     onChat = onOpenChat,
                     onAdd = { showCreate = true },
                     onVoiceAdd = startVoiceCapture,
@@ -348,31 +389,59 @@ private fun ImproverScreen(
             } else if (selectedTab == HomeTab.MEETINGS) {
                 SecondaryActionBar(
                     onSettings = { showSettings = true },
-                    onRefresh = meetingsViewModel::refresh,
                     onChat = onOpenChat,
-                    refreshDescription = "Обновить встречи",
                 )
             } else if (selectedTab == HomeTab.RESULTS) {
                 SecondaryActionBar(
                     onSettings = { showSettings = true },
-                    onRefresh = meetingResultsViewModel::refresh,
                     onChat = onOpenChat,
-                    refreshDescription = "Обновить результаты встреч",
+                )
+            } else if (selectedTab == HomeTab.THREADS) {
+                SecondaryActionBar(
+                    onSettings = { showSettings = true },
+                    onChat = onOpenChat,
                 )
             } else {
                 SecondaryActionBar(
                     onSettings = { showSettings = true },
-                    onRefresh = threadsViewModel::refresh,
                     onChat = onOpenChat,
-                    refreshDescription = "Обновить переписки",
                 )
             }
         },
     ) { padding ->
-        when (selectedTab) {
-            HomeTab.TASKS -> Column(
-                Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+        val meetingsState by meetingsViewModel.state.collectAsState()
+        val meetingResultsState by meetingResultsViewModel.state.collectAsState()
+        val threadsState by threadsViewModel.state.collectAsState()
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().padding(padding),
+            key = { HomeTab.entries[it] },
+        ) { page ->
+            val pageTab = HomeTab.entries[page]
+            val refreshing = when (pageTab) {
+                HomeTab.TASKS -> taskRefreshing
+                HomeTab.MEETINGS -> meetingsState.refreshing
+                HomeTab.RESULTS -> meetingResultsState.refreshing
+                HomeTab.THREADS -> threadsState.refreshing
+                HomeTab.STATUS -> systemStatus.refreshing
+            }
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = {
+                    when (pageTab) {
+                        HomeTab.TASKS -> viewModel.refreshFromPull()
+                        HomeTab.MEETINGS -> meetingsViewModel.refresh()
+                        HomeTab.RESULTS -> meetingResultsViewModel.refresh()
+                        HomeTab.THREADS -> threadsViewModel.refresh()
+                        HomeTab.STATUS -> systemStatusViewModel.refresh()
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
             ) {
+                when (pageTab) {
+                    HomeTab.TASKS -> Column(
+                        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    ) {
                 if (loading) CircularProgressIndicator(Modifier.padding(vertical = 8.dp))
                 if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
                 if (taskSearchError != null) {
@@ -413,7 +482,7 @@ private fun ImproverScreen(
                                 meeting = meeting,
                                 compact = true,
                                 onOpen = {
-                                    onOpenMeeting(meeting.sourceEventId, meeting.sourceLabel)
+                                    onOpenMeeting(meeting.id)
                                 },
                             )
                         }
@@ -443,21 +512,27 @@ private fun ImproverScreen(
                     loading = taskSearchLoading,
                 )
             }
-            HomeTab.MEETINGS -> MeetingList(
-                viewModel = meetingsViewModel,
-                onOpenMeeting = onOpenMeeting,
-                modifier = Modifier.fillMaxSize().padding(padding),
-            )
-            HomeTab.RESULTS -> MeetingResultList(
-                viewModel = meetingResultsViewModel,
-                onOpenResult = onOpenMeetingResult,
-                modifier = Modifier.fillMaxSize().padding(padding),
-            )
-            HomeTab.THREADS -> ConversationThreadList(
-                viewModel = threadsViewModel,
-                onOpenThread = onOpenThread,
-                modifier = Modifier.fillMaxSize().padding(padding),
-            )
+                    HomeTab.MEETINGS -> MeetingList(
+                        viewModel = meetingsViewModel,
+                        onOpenMeeting = onOpenMeeting,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    HomeTab.RESULTS -> MeetingResultList(
+                        viewModel = meetingResultsViewModel,
+                        onOpenResult = onOpenMeetingResult,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    HomeTab.THREADS -> ConversationThreadList(
+                        viewModel = threadsViewModel,
+                        onOpenThread = onOpenThread,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    HomeTab.STATUS -> SystemStatusTable(
+                        state = systemStatus,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
     }
 
@@ -481,6 +556,7 @@ private fun ImproverScreen(
                 threadsViewModel.refresh()
                 meetingsViewModel.refresh()
                 meetingResultsViewModel.refresh()
+                systemStatusViewModel.refresh()
             },
             onChooseCertificate = onChooseCertificate,
         )
@@ -513,7 +589,186 @@ private enum class HomeTab {
     MEETINGS,
     RESULTS,
     THREADS,
+    STATUS,
 }
+
+@Composable
+private fun SystemHealthIndicator(status: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Default.Circle,
+            contentDescription = "Состояние системы: ${statusLabel(status)}",
+            tint = overallStatusColor(status),
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+@Composable
+private fun SystemStatusTable(state: SystemStatusUiState, modifier: Modifier = Modifier) {
+    Column(modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        if (state.loading && state.snapshot == null) {
+            CircularProgressIndicator(Modifier.padding(12.dp))
+        }
+        state.error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+        }
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp)) {
+                Text("Компонент", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1.05f))
+                Text("Состояние", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(0.8f))
+                Text("Данные", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1.25f))
+            }
+        }
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            val components = state.snapshot?.components.orEmpty()
+            items(components, key = ComponentStatusDto::id) { component ->
+                ComponentStatusRow(component)
+            }
+            if (components.isEmpty() && !state.loading) {
+                item {
+                    Text(
+                        "Нет данных о компонентах",
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComponentStatusRow(component: ComponentStatusDto) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(Modifier.weight(1.05f).padding(end = 6.dp)) {
+            Text(component.label, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                componentTypeLabel(component.componentType),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                formatStatusTime(component.observedAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(
+            Modifier.weight(0.8f).padding(end = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.Circle,
+                contentDescription = null,
+                tint = statusColor(component.status),
+                modifier = Modifier.size(10.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(statusLabel(component.status), style = MaterialTheme.typography.labelMedium)
+        }
+        Column(Modifier.weight(1.25f)) {
+            component.metrics.toSortedMap().forEach { (key, value) ->
+                Text(
+                    "${metricLabel(key)}: ${formatMetric(value)}",
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            component.message?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (component.status == "ERROR") {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
+    }
+}
+
+private fun statusLabel(status: String): String = when (status) {
+    "OK" -> "Норма"
+    "BUSY" -> "Занят"
+    "DEGRADED" -> "Снижен"
+    "ERROR" -> "Ошибка"
+    "STALE" -> "Нет связи"
+    "DISABLED" -> "Отключён"
+    else -> "Неизвестно"
+}
+
+private fun statusColor(status: String): Color = when (status) {
+    "OK" -> Color(0xFF2E7D32)
+    "BUSY" -> Color(0xFF1565C0)
+    "DEGRADED", "STALE", "UNKNOWN" -> Color(0xFFF9A825)
+    "ERROR" -> Color(0xFFC62828)
+    else -> Color(0xFF757575)
+}
+
+private fun overallStatusColor(status: String): Color = when (status) {
+    "OK", "BUSY" -> Color(0xFF2E7D32)
+    else -> statusColor(status)
+}
+
+private fun componentTypeLabel(type: String): String = when (type) {
+    "event_loader" -> "Загрузчик событий"
+    "external_loader" -> "Внешний загрузчик"
+    "llm" -> "Языковая модель"
+    "processing" -> "Очереди"
+    "semaphore" -> "Семафор"
+    "worker" -> "Фоновый процесс"
+    else -> type.replace('_', ' ')
+}
+
+private fun metricLabel(key: String): String = mapOf(
+    "capacity" to "лимит",
+    "in_use" to "занято",
+    "waiting" to "ожидает",
+    "interactive_ready" to "чатов готово",
+    "latency_ms" to "задержка, мс",
+    "model_count" to "моделей",
+    "poll_interval_seconds" to "интервал, с",
+    "seconds_since_sync" to "с последней загрузки, с",
+    "events_last_cycle" to "событий за цикл",
+    "events_loaded" to "загружено событий",
+    "candidates" to "найдено",
+    "tasks_sent" to "отправлено задач",
+    "duration_seconds" to "длительность, с",
+    "consecutive_errors" to "ошибок подряд",
+    "seconds_until_next_poll" to "до следующей загрузки, с",
+    "events_pending" to "событий в очереди",
+    "events_processing" to "событий в работе",
+    "events_failed" to "ошибок событий",
+    "events_retry_waiting" to "повторных попыток",
+    "chat_pending" to "чатов в очереди",
+    "chat_processing" to "чатов в работе",
+    "chat_failed" to "ошибок чата",
+    "contexts_pending" to "контекстов в очереди",
+    "contexts_processing" to "контекстов в работе",
+    "contexts_failed" to "ошибок контекста",
+    "tasks_active" to "активных задач",
+    "stuck" to "зависло",
+)[key] ?: key.replace('_', ' ')
+
+private fun formatMetric(value: Double): String =
+    if (value % 1.0 == 0.0) value.toLong().toString() else "%.1f".format(value)
+
+private fun formatStatusTime(value: String): String = runCatching {
+    ZonedDateTime.parse(value)
+        .withZoneSameInstant(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("dd.MM HH:mm:ss"))
+}.getOrElse { value.take(19).replace('T', ' ') }
 
 @Composable
 private fun FullTextSearchField(
@@ -527,7 +782,14 @@ private fun FullTextSearchField(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
-        placeholder = { Text(placeholder) },
+        placeholder = {
+            Text(
+                text = placeholder,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
         leadingIcon = {
             Icon(Icons.Default.Search, contentDescription = null)
         },
@@ -550,7 +812,7 @@ private fun FullTextSearchField(
 @Composable
 private fun MeetingList(
     viewModel: MeetingsViewModel,
-    onOpenMeeting: (String, String?) -> Unit,
+    onOpenMeeting: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsState()
@@ -600,7 +862,7 @@ private fun MeetingList(
             items(visibleMeetings, key = MeetingDto::id) { meeting ->
                 MeetingCard(
                     meeting = meeting,
-                    onOpen = { onOpenMeeting(meeting.sourceEventId, meeting.sourceLabel) },
+                    onOpen = { onOpenMeeting(meeting.id) },
                 )
             }
             if (state.loading) {
@@ -784,7 +1046,7 @@ private fun MeetingResultList(
         FullTextSearchField(
             query = state.query,
             onQueryChange = viewModel::setSearchQuery,
-            placeholder = "Поиск по результатам встреч",
+            placeholder = "Поиск по итогам",
             loading = state.loading,
         )
     }
@@ -1029,19 +1291,17 @@ private fun formatMeetingTime(meeting: MeetingDto): String = runCatching {
     }
 }.getOrDefault(meeting.startsAt)
 
-private fun formatMeetingResultTime(result: MeetingResultDto): String = runCatching {
-    val start = ZonedDateTime.parse(result.startsAt).withZoneSameInstant(ZoneId.systemDefault())
-    val end = ZonedDateTime.parse(result.endsAt).withZoneSameInstant(ZoneId.systemDefault())
-    val date = start.format(meetingDateFormatter)
-    "$date • ${start.format(meetingTimeFormatter)}–${end.format(meetingTimeFormatter)}"
-}.getOrDefault(result.startsAt)
+private fun formatMeetingResultTime(result: MeetingResultDto): String = formatMeetingResultPeriod(
+    result.startsAt,
+    result.endsAt,
+    result.originType,
+    result.calendarMeetingId,
+)
 
 @Composable
 private fun SecondaryActionBar(
     onSettings: () -> Unit,
-    onRefresh: () -> Unit,
     onChat: () -> Unit,
-    refreshDescription: String,
 ) {
     Surface(tonalElevation = 8.dp, shadowElevation = 8.dp) {
         Row(
@@ -1054,9 +1314,6 @@ private fun SecondaryActionBar(
         ) {
             IconButton(onClick = onSettings, modifier = Modifier.size(52.dp)) {
                 Icon(Icons.Default.Settings, contentDescription = "Настройки")
-            }
-            IconButton(onClick = onRefresh, modifier = Modifier.size(52.dp)) {
-                Icon(Icons.Default.Refresh, contentDescription = refreshDescription)
             }
             IconButton(onClick = onChat, modifier = Modifier.size(52.dp)) {
                 Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Чат с Qwen")
@@ -1072,7 +1329,6 @@ private fun RightThumbActionBar(
     voiceProcessing: Boolean,
     onSettings: () -> Unit,
     onSort: () -> Unit,
-    onRefresh: () -> Unit,
     onChat: () -> Unit,
     onAdd: () -> Unit,
     onVoiceAdd: () -> Unit,
@@ -1099,16 +1355,13 @@ private fun RightThumbActionBar(
                     },
                 )
             }
-            IconButton(onClick = onRefresh, modifier = Modifier.size(52.dp)) {
-                Icon(Icons.Default.Refresh, contentDescription = "Обновить")
-            }
             IconButton(onClick = onChat, modifier = Modifier.size(52.dp)) {
                 Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Чат с Qwen")
             }
             Spacer(Modifier.width(6.dp))
             Surface(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(52.dp)
                     .combinedClickable(
                         enabled = !voiceProcessing,
                         onClickLabel = "Добавить задачу вручную",

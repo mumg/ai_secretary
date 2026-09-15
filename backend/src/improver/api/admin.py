@@ -60,7 +60,8 @@ SOURCE_FIELDS = {
         "inbox_folder",
         "sent_folder",
     },
-    "mts_link": {"base_url"},
+    "mts_link": {"base_url", "poll_interval_seconds"},
+    "external_tasks": set(),
 }
 
 

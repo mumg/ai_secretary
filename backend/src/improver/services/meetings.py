@@ -10,6 +10,7 @@ from improver.models import CommunicationEvent, Meeting
 from improver.schemas import MeetingRead
 from improver.services.meeting_results import link_results_to_calendar_meeting
 from improver.services.mts_link import find_mts_link_urls, mts_link_reference_keys
+from improver.services.ollama import OllamaAnalyzer
 
 MEETING_EVENT_TYPE = "meeting_invitation"
 
@@ -41,6 +42,7 @@ def meeting_payload(event: CommunicationEvent) -> dict[str, Any] | None:
 async def upsert_meeting(
     session: AsyncSession,
     event: CommunicationEvent,
+    analyzer: OllamaAnalyzer | None = None,
 ) -> Meeting | None:
     payload = meeting_payload(event)
     if payload is None:
@@ -75,9 +77,7 @@ async def upsert_meeting(
             mts_link_url=mts_link_url,
             mts_link_keys=mts_link_keys,
             organizer=(
-                payload.get("organizer")
-                if isinstance(payload.get("organizer"), dict)
-                else None
+                payload.get("organizer") if isinstance(payload.get("organizer"), dict) else None
             ),
             attendees=[item for item in payload.get("attendees", []) if isinstance(item, dict)][
                 :200
@@ -88,7 +88,7 @@ async def upsert_meeting(
         )
         session.add(meeting)
         await session.flush()
-        await link_results_to_calendar_meeting(session, meeting, event)
+        await link_results_to_calendar_meeting(session, meeting, event, analyzer)
         return meeting
     if event.occurred_at < meeting.last_event_at:
         return meeting
@@ -103,14 +103,14 @@ async def upsert_meeting(
     meeting.organizer = (
         payload.get("organizer") if isinstance(payload.get("organizer"), dict) else None
     )
-    meeting.attendees = [
-        item for item in payload.get("attendees", []) if isinstance(item, dict)
-    ][:200]
+    meeting.attendees = [item for item in payload.get("attendees", []) if isinstance(item, dict)][
+        :200
+    ]
     meeting.status = str(payload.get("status") or "CONFIRMED")[:32]
     meeting.method = str(payload.get("method") or "REQUEST")[:32]
     meeting.last_event_at = event.occurred_at
     await session.flush()
-    await link_results_to_calendar_meeting(session, meeting, event)
+    await link_results_to_calendar_meeting(session, meeting, event, analyzer)
     return meeting
 
 

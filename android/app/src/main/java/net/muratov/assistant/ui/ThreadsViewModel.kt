@@ -19,6 +19,7 @@ data class ThreadsUiState(
     val hasMore: Boolean = true,
     val error: String? = null,
     val query: String = "",
+    val refreshing: Boolean = false,
 )
 
 class ThreadsViewModel(private val repository: TaskRepository) : ViewModel() {
@@ -31,10 +32,16 @@ class ThreadsViewModel(private val repository: TaskRepository) : ViewModel() {
     }
 
     fun refresh() {
-        val query = mutableState.value.query
+        val current = mutableState.value
         loadJob?.cancel()
-        mutableState.value = ThreadsUiState(query = query)
-        loadNext()
+        val refreshState = current.copy(
+            loading = false,
+            hasMore = true,
+            refreshing = true,
+            error = null,
+        )
+        mutableState.value = refreshState
+        loadJob = viewModelScope.launch { loadPage(refreshState, replace = true) }
     }
 
     fun setSearchQuery(value: String) {
@@ -56,25 +63,28 @@ class ThreadsViewModel(private val repository: TaskRepository) : ViewModel() {
         }
     }
 
-    private suspend fun loadPage(current: ThreadsUiState) {
+    private suspend fun loadPage(current: ThreadsUiState, replace: Boolean = false) {
         if (current.loading || !current.hasMore) return
         try {
             mutableState.value = current.copy(loading = true, error = null)
             val page = repository.threads(
-                offset = current.items.size,
+                offset = if (replace) 0 else current.items.size,
                 query = current.query.trim().ifBlank { null },
             )
             mutableState.value = ThreadsUiState(
-                items = (current.items + page.items).distinctBy { it.id },
+                items = ((if (replace) emptyList() else current.items) + page.items)
+                    .distinctBy { it.id },
                 loading = false,
                 hasMore = page.hasMore,
                 query = current.query,
+                refreshing = false,
             )
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
             mutableState.value = current.copy(
                 loading = false,
+                refreshing = false,
                 error = exception.message ?: "Не удалось загрузить переписки",
             )
         }

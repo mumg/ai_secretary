@@ -12,16 +12,43 @@ from improver.config import AppConfig, get_config
 from improver.connectors import connector_for
 from improver.db import SessionFactory, engine
 from improver.enums import AnalysisState, TaskStatus
-from improver.models import CommunicationEvent, CommunicationSource, DailyPlan, Reminder, Task
+from improver.models import (
+    CommunicationEvent,
+    CommunicationSource,
+    ComponentStatus,
+    DailyPlan,
+    Reminder,
+    Task,
+)
 from improver.schema_version import wait_for_compatible_database
 from improver.services.calendar import BusinessCalendar
+from improver.services.chat_queue import process_next_chat_request
+from improver.services.meeting_context import (
+    notify_next_meeting_context,
+    prepare_next_meeting_context,
+)
 from improver.services.notifications import NotificationService
 from improver.services.pipeline import EventPipeline
 from improver.services.plans import rebuild_plan
-from improver.services.scheduling import next_worker_delay
+from improver.services.scheduling import next_worker_delay, source_sync_due
 from improver.services.settings import load_runtime_config
+from improver.services.system_status import upsert_component_status
 
 log = structlog.get_logger()
+
+
+def source_error_message(exc: Exception) -> str:
+    error_name = type(exc).__name__
+    normalized = error_name.casefold()
+    response = getattr(exc, "response", None)
+    code = getattr(exc, "code", None) or getattr(response, "status_code", None)
+    if code in {401, 403} or "auth" in normalized or "unauthorized" in normalized:
+        return "Ошибка авторизации источника"
+    if isinstance(code, int):
+        return f"Источник вернул HTTP {code}"
+    if isinstance(exc, TimeoutError) or "timeout" in normalized:
+        return "Источник не ответил вовремя"
+    return f"Ошибка загрузки данных ({error_name})"
 
 
 async def semantic_backfill_loop() -> None:
@@ -65,6 +92,31 @@ async def semantic_backfill_loop() -> None:
         await asyncio.sleep(2 if indexed or mailings_classified or tasks_checked else 60)
 
 
+async def chat_request_loop() -> None:
+    while True:
+        processed = False
+        try:
+            async with SessionFactory() as session:
+                config = await load_runtime_config(session)
+            processed = await process_next_chat_request(config)
+        except Exception as exc:
+            log.exception("chat_request_loop_failed", error=str(exc))
+        await asyncio.sleep(0 if processed else 2)
+
+
+async def meeting_context_loop() -> None:
+    while True:
+        processed = False
+        try:
+            async with SessionFactory() as session:
+                config = await load_runtime_config(session)
+            await notify_next_meeting_context(config)
+            processed = await prepare_next_meeting_context(config)
+        except Exception as exc:
+            log.warning("meeting_context_loop_failed", error_type=type(exc).__name__)
+        await asyncio.sleep(1 if processed else 15)
+
+
 def configure_logging() -> None:
     config = get_config()
     logging.basicConfig(level=getattr(logging, config.server.log_level.upper(), logging.INFO))
@@ -79,16 +131,53 @@ def configure_logging() -> None:
 
 async def sync_sources(config: AppConfig, now: datetime) -> None:
     for source in config.communication_sources.items:
-        if not source.enabled:
+        if not source.enabled or source.type == "external_tasks":
             continue
         async with SessionFactory() as session:
+            status_id = f"source-{source.id}"
+            source_row = await session.get(CommunicationSource, source.id)
+            status_row = await session.get(ComponentStatus, status_id)
+            poll_interval_seconds = (
+                source.poll_interval_seconds or config.worker.poll_interval_seconds
+            )
+            last_attempt_at = status_row.observed_at if status_row is not None else None
+            if last_attempt_at is None and source_row is not None:
+                last_attempt_at = source_row.last_sync_at
+            if not source_sync_due(last_attempt_at, now, poll_interval_seconds):
+                continue
+            await upsert_component_status(
+                session,
+                component_id=status_id,
+                label=source_row.label if source_row else source.id,
+                component_type="event_loader",
+                status="BUSY",
+                message="Загрузка данных",
+                metrics={"poll_interval_seconds": float(poll_interval_seconds)},
+                observed_at=BusinessCalendar(config).now(),
+                ttl_seconds=max(900, poll_interval_seconds * 3),
+            )
+            await session.commit()
             try:
                 count = await connector_for(source, config).sync(session)
                 row = await session.get(CommunicationSource, source.id)
                 if row:
                     row.last_sync_at = now
                     row.last_error = None
-                    await session.commit()
+                await upsert_component_status(
+                    session,
+                    component_id=status_id,
+                    label=row.label if row else source.id,
+                    component_type="event_loader",
+                    status="OK",
+                    message=None,
+                    metrics={
+                        "events_loaded": float(count),
+                        "poll_interval_seconds": float(poll_interval_seconds),
+                    },
+                    observed_at=BusinessCalendar(config).now(),
+                    ttl_seconds=max(900, poll_interval_seconds * 3),
+                )
+                await session.commit()
                 if count:
                     log.info("source_synced", source_id=source.id, events=count)
             except Exception as exc:
@@ -96,7 +185,18 @@ async def sync_sources(config: AppConfig, now: datetime) -> None:
                 row = await session.get(CommunicationSource, source.id)
                 if row:
                     row.last_error = str(exc)[:2000]
-                    await session.commit()
+                await upsert_component_status(
+                    session,
+                    component_id=status_id,
+                    label=row.label if row else source.id,
+                    component_type="event_loader",
+                    status="ERROR",
+                    message=source_error_message(exc),
+                    metrics={"poll_interval_seconds": float(poll_interval_seconds)},
+                    observed_at=BusinessCalendar(config).now(),
+                    ttl_seconds=max(900, poll_interval_seconds * 3),
+                )
+                await session.commit()
                 log.exception("source_sync_failed", source_id=source.id, error=str(exc))
 
 
@@ -180,6 +280,28 @@ async def send_automatic_due_notifications(config: AppConfig, now: datetime) -> 
         await session.commit()
 
 
+async def report_worker_heartbeat(config: AppConfig, now: datetime, processed: int) -> None:
+    async with SessionFactory() as session:
+        await upsert_component_status(
+            session,
+            component_id="worker-main",
+            label="Worker",
+            component_type="worker",
+            status="OK",
+            message=None,
+            metrics={
+                "events_last_cycle": float(processed),
+                "poll_interval_seconds": float(config.worker.poll_interval_seconds),
+            },
+            observed_at=now,
+            ttl_seconds=max(
+                config.worker.poll_interval_seconds * 3,
+                config.llm.request_timeout_seconds + 120,
+            ),
+        )
+        await session.commit()
+
+
 async def run() -> None:
     configure_logging()
     await wait_for_compatible_database()
@@ -187,6 +309,8 @@ async def run() -> None:
     last_ranking_refresh = 0.0
     log.info("worker_started")
     backfill_task = asyncio.create_task(semantic_backfill_loop())
+    chat_task = asyncio.create_task(chat_request_loop())
+    meeting_context_task = asyncio.create_task(meeting_context_loop())
     try:
         while True:
             async with SessionFactory() as session:
@@ -194,6 +318,7 @@ async def run() -> None:
             calendar = BusinessCalendar(config)
             pipeline = EventPipeline(config)
             now = calendar.now()
+            await report_worker_heartbeat(config, now, 0)
             async with SessionFactory() as session:
                 processed = await pipeline.process_batch(session, now)
             if not processed:
@@ -212,13 +337,18 @@ async def run() -> None:
                 last_ranking_refresh = monotonic_now
             await send_due_manual_reminders(config, now)
             await send_automatic_due_notifications(config, now)
-            await asyncio.sleep(
-                next_worker_delay(processed, config.worker.poll_interval_seconds)
-            )
+            await report_worker_heartbeat(config, calendar.now(), processed)
+            await asyncio.sleep(next_worker_delay(processed, config.worker.poll_interval_seconds))
     finally:
         backfill_task.cancel()
+        chat_task.cancel()
+        meeting_context_task.cancel()
         with suppress(asyncio.CancelledError):
             await backfill_task
+        with suppress(asyncio.CancelledError):
+            await chat_task
+        with suppress(asyncio.CancelledError):
+            await meeting_context_task
         await engine.dispose()
 
 

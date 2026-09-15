@@ -2,6 +2,7 @@ import base64
 from unittest import TestCase
 
 from improver.connectors.imap import _parse_message, _root_thread_index
+from improver.services.email_importance import email_has_high_importance
 from improver.services.text import clean_email_body
 
 
@@ -34,6 +35,23 @@ class ImapParserTests(TestCase):
     def test_removes_quoted_reply_and_signature(self) -> None:
         body = "Новый ответ\n\n> старый текст\n--\nПодпись"
         self.assertEqual(clean_email_body(body), "Новый ответ")
+
+    def test_preserves_outlook_high_importance(self) -> None:
+        raw = (
+            b"From: Sender <sender@example.com>\r\n"
+            b"To: User <user@example.com>\r\n"
+            b"Subject: Approval\r\n"
+            b"Message-ID: <important@example.com>\r\n"
+            b"Importance: high\r\n"
+            b"X-Priority: 1 (Highest)\r\n"
+            b"Content-Type: text/plain; charset=utf-8\r\n\r\n"
+            b"Please approve.\r\n"
+        )
+
+        parsed = _parse_message(1, raw)
+
+        self.assertEqual(parsed.headers["Importance"], "high")
+        self.assertTrue(email_has_high_importance(parsed.headers))
 
     def test_outlook_thread_index_children_share_root(self) -> None:
         root_bytes = b"0123456789012345678901"

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -48,14 +49,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.muratov.assistant.data.remote.ChatReferenceDto
+import net.muratov.assistant.notifications.ChatNotificationState
 import net.muratov.assistant.ui.ChatMessageUi
 import net.muratov.assistant.ui.ChatViewModel
 import net.muratov.assistant.ui.ImproverTheme
+import net.muratov.assistant.ui.MarkdownText
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class ChatActivity : ComponentActivity() {
+    override fun onStart() {
+        super.onStart()
+        ChatNotificationState.visible = true
+    }
+
+    override fun onStop() {
+        ChatNotificationState.visible = false
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val application = application as ImproverApplication
@@ -68,7 +81,7 @@ class ChatActivity : ComponentActivity() {
                 ChatScreen(
                     messages = state.messages,
                     loading = state.loading,
-                    progress = state.progress,
+                    error = state.error,
                     onBack = ::finish,
                     onSend = chatViewModel::send,
                     onOpenTask = { startActivity(TaskDetailActivity.intent(this, it)) },
@@ -86,7 +99,7 @@ class ChatActivity : ComponentActivity() {
 private fun ChatScreen(
     messages: List<ChatMessageUi>,
     loading: Boolean,
-    progress: String?,
+    error: String?,
     onBack: () -> Unit,
     onSend: (String) -> Unit,
     onOpenTask: (String) -> Unit,
@@ -94,11 +107,11 @@ private fun ChatScreen(
 ) {
     var input by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    LaunchedEffect(messages.size, loading) {
+    LaunchedEffect(messages.size, messages.lastOrNull()?.content, loading) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
     val submit = {
-        if (input.isNotBlank() && !loading) {
+        if (input.isNotBlank()) {
             onSend(input)
             input = ""
         }
@@ -127,15 +140,22 @@ private fun ChatScreen(
                     maxLines = 5,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }),
-                    enabled = !loading,
                 )
-                IconButton(onClick = submit, enabled = input.isNotBlank() && !loading) {
+                IconButton(onClick = submit, enabled = input.isNotBlank()) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Отправить")
                 }
             }
         },
     ) { padding ->
-        if (messages.isEmpty() && !loading) {
+        if (loading && messages.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (messages.isEmpty()) {
             Column(
                 Modifier.fillMaxSize().padding(padding).padding(32.dp),
                 verticalArrangement = Arrangement.Center,
@@ -143,7 +163,7 @@ private fun ChatScreen(
             ) {
                 Text("Спросите о задачах, письмах, сообщениях или встречах")
                 Text(
-                    "Qwen найдёт подходящие записи в сохранённом архиве и покажет источники.",
+                    error ?: "Qwen найдёт подходящие записи в сохранённом архиве и покажет источники.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
                 )
@@ -156,17 +176,6 @@ private fun ChatScreen(
             ) {
                 itemsIndexed(messages) { _, message ->
                     ChatBubble(message, onOpenTask, onOpenEvent)
-                }
-                if (loading) {
-                    item {
-                        Row(
-                            Modifier.fillMaxWidth().padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.padding(end = 12.dp))
-                            Text(progress ?: "Qwen анализирует архив…")
-                        }
-                    }
                 }
             }
         }
@@ -194,8 +203,20 @@ private fun ChatBubble(
             },
         ) {
             Column(Modifier.padding(14.dp)) {
-                if (message.content.isNotBlank()) {
-                    Text(message.content)
+                if (message.pending) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Text(message.content, modifier = Modifier.padding(start = 8.dp))
+                    }
+                } else if (message.content.isNotBlank()) {
+                    if (user || message.failed) {
+                        Text(message.content)
+                    } else {
+                        MarkdownText(message.content, Modifier.fillMaxWidth())
+                    }
                 }
                 if (message.references.isNotEmpty()) {
                     Text(

@@ -42,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import net.muratov.assistant.data.remote.MeetingResultDetailDto
 import net.muratov.assistant.data.remote.ParticipantMeetingSummaryDto
 import net.muratov.assistant.ui.ImproverTheme
+import net.muratov.assistant.ui.MarkdownText
 import net.muratov.assistant.ui.MeetingResultDetailUiState
 import net.muratov.assistant.ui.MeetingResultDetailViewModel
 import java.time.OffsetDateTime
@@ -144,7 +145,15 @@ private fun MeetingResultDetailContent(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ResultField("Когда", formatResultPeriod(detail.startsAt, detail.endsAt))
+        ResultField(
+            "Когда",
+            formatMeetingResultPeriod(
+                detail.startsAt,
+                detail.endsAt,
+                detail.originType,
+                detail.calendarMeetingId,
+            ),
+        )
         ResultField("Тема", detail.title)
         participantNames(detail.participants).takeIf(String::isNotBlank)?.let {
             ResultField("Участники", it)
@@ -156,8 +165,7 @@ private fun MeetingResultDetailContent(
         }
 
         Text("Автоматическое резюме", style = MaterialTheme.typography.titleMedium)
-        SelectionContainer {
-            Text(
+        MarkdownText(
                 detail.summary?.takeIf(String::isNotBlank)
                     ?: if (detail.analysisState == "COMPLETED") {
                         "Резюме не сформировано"
@@ -165,8 +173,7 @@ private fun MeetingResultDetailContent(
                         "Qwen анализирует материалы встречи…"
                     },
                 modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        )
         ResultList("Решения", detail.decisions)
         ResultList("Основные договорённости", detail.agreements)
 
@@ -245,7 +252,7 @@ private fun ResultList(label: String, values: List<String>) {
     if (values.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, style = MaterialTheme.typography.titleSmall)
-        values.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
+        MarkdownText(values.joinToString("\n") { "- $it" }, Modifier.fillMaxWidth())
     }
 }
 
@@ -260,10 +267,3 @@ private fun formatResultInstant(value: String): String = runCatching {
         DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.forLanguageTag("ru-RU")),
     )
 }.getOrDefault(value)
-
-private fun formatResultPeriod(start: String, end: String): String =
-    "${formatResultInstant(start)} — ${runCatching {
-        OffsetDateTime.parse(end).atZoneSameInstant(ZoneId.systemDefault()).format(
-            DateTimeFormatter.ofPattern("HH:mm", Locale.forLanguageTag("ru-RU")),
-        )
-    }.getOrDefault(end)}"

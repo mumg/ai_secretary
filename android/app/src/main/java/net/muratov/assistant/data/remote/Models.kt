@@ -76,6 +76,15 @@ data class MeetingDto(
     val method: String,
 )
 
+data class MeetingContextDto(
+    val meeting: MeetingDto,
+    val status: String,
+    val summary: String?,
+    val references: List<ChatReferenceDto>,
+    @SerializedName("generated_at") val generatedAt: String?,
+    val error: String?,
+)
+
 data class MeetingPageDto(
     val items: List<MeetingDto>,
     val offset: Int,
@@ -183,11 +192,25 @@ data class ChatReferenceDto(
     @SerializedName("occurred_at") val occurredAt: String?,
     val snippet: String,
     @SerializedName("source_url") val sourceUrl: String?,
+    @SerializedName("meeting_result_id") val meetingResultId: String? = null,
 )
 
 data class ChatResponseDto(
     val answer: String,
     val references: List<ChatReferenceDto>,
+)
+
+data class ChatRequestDto(
+    val id: String,
+    val query: String,
+    val status: String,
+    val answer: String?,
+    val references: List<ChatReferenceDto>,
+    val error: String?,
+    val attempts: Int,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String,
+    @SerializedName("completed_at") val completedAt: String?,
 )
 
 data class ChatStreamEventDto(
@@ -257,4 +280,21 @@ data class ConversationThreadDetailDto(
     @SerializedName("summarized_at") val summarizedAt: String?,
     val events: List<ConversationEventDto>,
     @SerializedName("has_more_events") val hasMoreEvents: Boolean,
+)
+
+data class ComponentStatusDto(
+    val id: String,
+    val label: String,
+    @SerializedName("component_type") val componentType: String,
+    val status: String,
+    val message: String?,
+    val metrics: Map<String, Double>,
+    @SerializedName("observed_at") val observedAt: String,
+    @SerializedName("expires_at") val expiresAt: String?,
+)
+
+data class SystemStatusDto(
+    @SerializedName("overall_status") val overallStatus: String,
+    @SerializedName("generated_at") val generatedAt: String,
+    val components: List<ComponentStatusDto>,
 )

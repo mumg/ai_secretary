@@ -49,6 +49,24 @@ def _parse_datetime(value: object, fallback: datetime) -> datetime:
     return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed
 
 
+def _meeting_interval(session_data: dict[str, Any]) -> tuple[datetime, datetime] | None:
+    """Use actual API session bounds, never room creation/estimated time as an end."""
+    values = []
+    for key in ("startsAt", "endsAt"):
+        raw = session_data.get(key)
+        if not raw:
+            return None
+        try:
+            value = datetime.fromisoformat(str(raw).strip().replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if value.tzinfo is None:
+            return None
+        values.append(value)
+    start, end = values
+    return (start, end) if end > start else None
+
+
 def _data_items(payload: object) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]
@@ -286,11 +304,15 @@ class MtsLinkConnector(SourceConnector):
         body = _format_transcript(utterances)
         if not body:
             return False
-        now = datetime.now(UTC)
-        starts_at = _parse_datetime(session_data.get("startsAt"), now)
-        ends_at = _parse_datetime(
-            session_data.get("endsAt") or session_data.get("estimatedAt"), starts_at
-        )
+        interval = _meeting_interval(session_data)
+        if interval is None:
+            log.info(
+                "mts_link_session_interval_not_ready",
+                source_id=self.source.id,
+                transcript_id=transcript_id,
+            )
+            return False
+        starts_at, ends_at = interval
         entry = session_data.get("_entry", {})
         meeting_url = find_mts_link_url_in_payload(entry) or find_mts_link_url_in_payload(
             session_data

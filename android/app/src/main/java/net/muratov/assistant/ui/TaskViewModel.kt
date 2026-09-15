@@ -22,6 +22,7 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
         initialValue = emptyList(),
     )
     val loading = MutableStateFlow(false)
+    val refreshing = MutableStateFlow(false)
     val voiceProcessing = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)
     val todayMeetings = MutableStateFlow<List<MeetingDto>>(emptyList())
@@ -39,6 +40,15 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
         repository.refresh()
         todayMeetings.value = repository.today(refresh = true).meetings
         updateSearch()
+    }
+
+    fun refreshFromPull() {
+        refreshing.value = true
+        execute(onFinished = { refreshing.value = false }) {
+            repository.refresh()
+            todayMeetings.value = repository.today(refresh = true).meetings
+            updateSearch()
+        }
     }
 
     fun setSearchQuery(value: String) {
@@ -114,12 +124,13 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
         }
     }
 
-    private fun execute(block: suspend () -> Unit) {
+    private fun execute(onFinished: () -> Unit = {}, block: suspend () -> Unit) {
         viewModelScope.launch {
             loading.value = true
             error.value = null
             runCatching { block() }.onFailure { error.value = it.message ?: "Ошибка соединения" }
             loading.value = false
+            onFinished()
         }
     }
 

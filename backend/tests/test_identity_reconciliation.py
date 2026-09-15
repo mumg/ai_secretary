@@ -16,7 +16,7 @@ class IdentityReconciliationTests(TestCase):
 
         self.assertTrue(_previously_eligible(event))
 
-    def test_name_in_quoted_reply_does_not_make_email_eligible(self) -> None:
+    def test_recipient_email_is_eligible_even_when_only_name_is_quoted(self) -> None:
         event = CommunicationEvent(
             event_type="email",
             body="Информация к сведению.\n\nFrom: Sender\nИван, подготовьте документ",
@@ -30,4 +30,4 @@ class IdentityReconciliationTests(TestCase):
             names=["Иван Петров"], addresses=["ivan@example.test"]
         )
 
-        self.assertFalse(_currently_eligible(event, identity))
+        self.assertTrue(_currently_eligible(event, identity))

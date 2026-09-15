@@ -50,6 +50,15 @@ interface ImproverApi {
     @POST("api/v1/chat/query")
     suspend fun chat(@Body request: ChatQueryRequest): ChatResponseDto
 
+    @POST("api/v1/chat/requests")
+    suspend fun enqueueChat(@Body request: ChatQueryRequest): ChatRequestDto
+
+    @GET("api/v1/chat/requests")
+    suspend fun chatRequests(@Query("limit") limit: Int = 100): List<ChatRequestDto>
+
+    @GET("api/v1/chat/requests/{id}")
+    suspend fun chatRequest(@Path("id") id: String): ChatRequestDto
+
     @Streaming
     @POST("api/v1/chat/stream")
     suspend fun chatStream(@Body request: ChatQueryRequest): Response<ResponseBody>
@@ -74,6 +83,12 @@ interface ImproverApi {
         @Query("q") query: String? = null,
     ): MeetingPageDto
 
+    @GET("api/v1/meetings/{id}/context")
+    suspend fun meetingContext(@Path("id") id: String): MeetingContextDto
+
+    @POST("api/v1/meetings/{id}/context/refresh")
+    suspend fun refreshMeetingContext(@Path("id") id: String): MeetingContextDto
+
     @GET("api/v1/meeting-results")
     suspend fun meetingResults(
         @Query("offset") offset: Int,
@@ -83,4 +98,7 @@ interface ImproverApi {
 
     @GET("api/v1/meeting-results/{id}")
     suspend fun meetingResult(@Path("id") id: String): MeetingResultDetailDto
+
+    @GET("api/v1/system/status")
+    suspend fun systemStatus(): SystemStatusDto
 }

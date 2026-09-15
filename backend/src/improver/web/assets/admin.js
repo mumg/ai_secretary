@@ -119,7 +119,7 @@ async function saveSettings() {
   } catch (error) { toast(error.message, true); }
 }
 
-const sourceKind = { imap: "IMAP", exchange: "Exchange EWS", mts_link: "МТС Линк" };
+const sourceKind = { imap: "IMAP", exchange: "Exchange EWS", mts_link: "МТС Линк", external_tasks: "Внешний API задач" };
 function sourceEndpoint(source) {
   return source.settings.host || source.settings.ews_url || source.settings.base_url || "Адрес не указан";
 }
@@ -221,6 +221,7 @@ function renderSourceTagPicker(selectedTags = []) {
 }
 
 function sourceFields(type, values = {}) {
+  if (type === "external_tasks") return `<p class="hint">Задачи загружаются через защищённый API по идентификатору источника. Пароль или токен не требуется; доступ защищён клиентским сертификатом.</p>`;
   if (type === "imap") return `
     <div class="inline"><label>IMAP-сервер<input data-setting="host" value="${escapeAttr(values.host || "")}" required></label><label>Порт<input data-setting="port" type="number" value="${Number(values.port) || 993}" required></label></div>
     <label class="toggle"><input data-setting="tls" type="checkbox" ${values.tls !== false ? "checked" : ""}><span>TLS включён</span></label>
@@ -230,7 +231,7 @@ function sourceFields(type, values = {}) {
     <label>URL EWS<input data-setting="ews_url" type="url" value="${escapeAttr(values.ews_url || "")}" placeholder="https://mail.example.ru/EWS/Exchange.asmx" required></label>
     <label>Основной почтовый адрес<input data-setting="primary_smtp_address" type="email" value="${escapeAttr(values.primary_smtp_address || "")}" required></label>
     <div class="inline"><label>Имя пользователя<input data-setting="username" value="${escapeAttr(values.username || "")}" required></label><label>Аутентификация<select data-setting="auth_type"><option value="ntlm">NTLM</option><option value="basic">Basic</option><option value="digest">Digest</option></select></label></div>`;
-  return `<label>URL шлюза МТС Линк<input data-setting="base_url" type="url" value="${escapeAttr(values.base_url || "https://gw.mts-link.ru")}" required></label><p class="hint">В поле «Пароль или токен» укажите access token МТС Линк. Источник периодически проверяет завершённые встречи, загружает только новые готовые расшифровки и не использует резюме МТС при анализе.</p>`;
+  return `<label>URL шлюза МТС Линк<input data-setting="base_url" type="url" value="${escapeAttr(values.base_url || "https://gw.mts-link.ru")}" required></label><label>Интервал опроса, секунд<input data-setting="poll_interval_seconds" type="number" min="10" value="${Number(values.poll_interval_seconds) || 900}" required></label><p class="hint">В поле «Пароль или токен» укажите access token МТС Линк. Источник периодически проверяет завершённые встречи, загружает только новые готовые расшифровки и не использует резюме МТС при анализе.</p>`;
 }
 
 function openSourceDialog(source = null) {
@@ -337,7 +338,7 @@ function registerModelContextTools() {
       properties: {
         id: { type: "string", pattern: "^[a-zA-Z0-9_-]+$", maxLength: 128 },
         label: { type: "string", minLength: 1, maxLength: 255 },
-        source_type: { type: "string", enum: ["imap", "exchange", "mts_link"] },
+        source_type: { type: "string", enum: ["imap", "exchange", "mts_link", "external_tasks"] },
         enabled: { type: "boolean" },
         settings: { type: "object" },
         credential: { type: ["string", "null"] },

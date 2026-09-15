@@ -71,14 +71,34 @@ def mts_link_reference_keys(
         parsed = urlsplit(url)
         host = (parsed.hostname or "").casefold()
         path = re.sub(r"/+", "/", unquote(parsed.path)).rstrip("/") or "/"
-        canonical = urlunsplit((parsed.scheme.casefold(), host, path, "", ""))
-        keys.add(f"url:{canonical.casefold()}")
-        for segment in path.split("/"):
-            normalized = segment.strip().casefold()
-            if len(normalized) >= 4:
-                keys.add(f"id:{normalized}")
+        parts = [part for part in path.split("/") if part]
+        # A URL can contain an owner/account ID before the meeting ID. Route
+        # names and owner IDs must never merge otherwise unrelated meetings.
+        meeting_path = (
+            len(parts) == 1
+            and parts[0].isdigit()
+            or len(parts) in (2, 3)
+            and parts[0].casefold() == "j"
+            or len(parts) == 2
+            and parts[0].isdigit()
+            or len(parts) == 2
+            and parts[0].casefold() in {"join", "meetings", "events", "room"}
+            or len(parts) == 5
+            and parts[0].casefold() == "j"
+            and parts[3].casefold() == "session"
+            and parts[2].isdigit()
+            and parts[4].isdigit()
+        )
+        if meeting_path:
+            canonical = urlunsplit((parsed.scheme.casefold(), host, path, "", ""))
+            keys.add(f"url:{canonical.casefold()}")
+            keys.add(f"id:{parts[-1].casefold()}")
         for name, query_value in parse_qsl(parsed.query, keep_blank_values=False):
-            if "id" in name.casefold() and query_value.strip():
+            if (
+                name.casefold()
+                in {"eventid", "eventsessionid", "activitysessionid", "meetingid", "roomid"}
+                and query_value.strip()
+            ):
                 keys.add(f"id:{query_value.strip().casefold()}")
     return sorted(keys)
 

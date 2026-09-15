@@ -45,3 +45,4 @@ android/**/build/
 *.keystore
 google-services.json
 /android/.kotlin/
+/dataPack*.json

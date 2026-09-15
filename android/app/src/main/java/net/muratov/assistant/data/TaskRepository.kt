@@ -16,6 +16,7 @@ import net.muratov.assistant.data.remote.CreateTaskRequest
 import net.muratov.assistant.data.remote.CreateTaskFromTextRequest
 import net.muratov.assistant.data.remote.ChatHistoryMessageDto
 import net.muratov.assistant.data.remote.ChatQueryRequest
+import net.muratov.assistant.data.remote.ChatRequestDto
 import net.muratov.assistant.data.remote.ChatResponseDto
 import net.muratov.assistant.data.remote.ChatStreamEventDto
 import net.muratov.assistant.data.remote.ConversationThreadPageDto
@@ -23,11 +24,13 @@ import net.muratov.assistant.data.remote.ConversationThreadDetailDto
 import net.muratov.assistant.data.remote.DeviceRequest
 import net.muratov.assistant.data.remote.EventDto
 import net.muratov.assistant.data.remote.DailyPlanDto
+import net.muratov.assistant.data.remote.MeetingContextDto
 import net.muratov.assistant.data.remote.MeetingPageDto
 import net.muratov.assistant.data.remote.MeetingResultPageDto
 import net.muratov.assistant.data.remote.MeetingResultDetailDto
 import net.muratov.assistant.data.remote.TaskDetailDto
 import net.muratov.assistant.data.remote.TaskDto
+import net.muratov.assistant.data.remote.SystemStatusDto
 
 class TaskRepository(
     private val context: Context,
@@ -92,7 +95,13 @@ class TaskRepository(
         query: String? = null,
     ): MeetingResultPageDto = api().meetingResults(offset, limit, query)
 
+    suspend fun meetingContext(id: String): MeetingContextDto = api().meetingContext(id)
+
+    suspend fun refreshMeetingContext(id: String): MeetingContextDto = api().refreshMeetingContext(id)
+
     suspend fun meetingResult(id: String): MeetingResultDetailDto = api().meetingResult(id)
+
+    suspend fun systemStatus(): SystemStatusDto = api().systemStatus()
 
     suspend fun today(refresh: Boolean = false): DailyPlanDto = api().today(refresh)
 
@@ -135,6 +144,16 @@ class TaskRepository(
         query: String,
         history: List<ChatHistoryMessageDto>,
     ): ChatResponseDto = api().chat(ChatQueryRequest(query = query, history = history))
+
+    suspend fun enqueueChat(
+        query: String,
+        history: List<ChatHistoryMessageDto>,
+    ): ChatRequestDto = api().enqueueChat(ChatQueryRequest(query = query, history = history))
+
+    suspend fun chatRequests(limit: Int = 100): List<ChatRequestDto> =
+        api().chatRequests(limit)
+
+    suspend fun chatRequest(id: String): ChatRequestDto = api().chatRequest(id)
 
     fun chatStream(
         query: String,

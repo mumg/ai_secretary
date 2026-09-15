@@ -24,6 +24,7 @@ from improver.connectors.base import SourceConnector
 from improver.enums import AnalysisState, Direction
 from improver.models import Attachment, CommunicationEvent, SourceCursor
 from improver.services.calendar_events import calendar_event_from_message
+from improver.services.email_importance import IMPORTANCE_HEADERS
 
 
 @dataclass(slots=True)
@@ -142,8 +143,10 @@ def _parse_message(uid: int, raw: bytes) -> ParsedMessage:
             "Auto-Submitted",
             "Message-ID",
             "In-Reply-To",
+            "Importance",
             "References",
             "Thread-Index",
+            "Priority",
             "Precedence",
             "To",
             "Cc",
@@ -151,6 +154,8 @@ def _parse_message(uid: int, raw: bytes) -> ParsedMessage:
             "Date",
             "X-Autoreply",
             "X-Autorespond",
+            "X-MSMail-Priority",
+            "X-Priority",
         )
     }
     calendar_methods = {
@@ -319,10 +324,18 @@ class ImapConnector(SourceConnector):
             )
             if existing:
                 calendar_event = message.headers.get("Calendar-Event")
-                if calendar_event and (
-                    existing.event_type != message.event_type
-                    or existing.raw_headers.get("Calendar-Event") != calendar_event
-                ):
+                calendar_changed = bool(
+                    calendar_event
+                    and (
+                        existing.event_type != message.event_type
+                        or existing.raw_headers.get("Calendar-Event") != calendar_event
+                    )
+                )
+                importance_changed = any(
+                    existing.raw_headers.get(name) != message.headers.get(name)
+                    for name in IMPORTANCE_HEADERS
+                )
+                if calendar_changed or importance_changed:
                     existing.event_type = message.event_type
                     existing.raw_headers = message.headers
                     existing.analysis_state = AnalysisState.PENDING

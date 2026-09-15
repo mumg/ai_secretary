@@ -16,9 +16,11 @@ from improver.api import (
     chat,
     devices,
     events,
+    external_tasks,
     meeting_results,
     meetings,
     plans,
+    system_status,
     tasks,
     threads,
 )
@@ -51,12 +53,14 @@ app = FastAPI(title="Improver API", version=__version__, lifespan=lifespan)
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(plans.router, prefix="/api/v1")
 app.include_router(events.router, prefix="/api/v1")
+app.include_router(external_tasks.router, prefix="/api/v1")
 app.include_router(devices.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(threads.router, prefix="/api/v1")
 app.include_router(meetings.router, prefix="/api/v1")
 app.include_router(meeting_results.router, prefix="/api/v1")
+app.include_router(system_status.router, prefix="/api/v1")
 
 web_dir = Path(__file__).parent / "web"
 app.mount("/admin/assets", StaticFiles(directory=web_dir / "assets"), name="admin-assets")

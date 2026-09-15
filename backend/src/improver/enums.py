@@ -20,6 +20,7 @@ class TaskPriority(StrEnum):
 class PrioritySource(StrEnum):
     MANUAL = "MANUAL"
     LLM = "LLM"
+    SOURCE = "SOURCE"
 
 
 class AnalysisState(StrEnum):
@@ -28,6 +29,13 @@ class AnalysisState(StrEnum):
     COMPLETED = "COMPLETED"
     SKIPPED = "SKIPPED"
     IGNORED = "IGNORED"
+    FAILED = "FAILED"
+
+
+class ChatRequestStatus(StrEnum):
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
 
@@ -42,3 +50,13 @@ class AttachmentState(StrEnum):
     EXTRACTED = "EXTRACTED"
     UNSUPPORTED = "UNSUPPORTED"
     FAILED = "FAILED"
+
+
+class ComponentHealthStatus(StrEnum):
+    OK = "OK"
+    BUSY = "BUSY"
+    DEGRADED = "DEGRADED"
+    ERROR = "ERROR"
+    STALE = "STALE"
+    UNKNOWN = "UNKNOWN"
+    DISABLED = "DISABLED"

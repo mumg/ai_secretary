@@ -1,4 +1,5 @@
-from unittest import TestCase
+from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest.mock import AsyncMock
 
 import httpx
 from pydantic import ValidationError
@@ -10,6 +11,8 @@ from improver.services.ollama import (
     FormalizedTask,
     GroundedChatAnswer,
     MailingBatchResult,
+    MeetingTopicMatch,
+    OllamaAnalyzer,
     RelevantReferenceSelection,
     ResolvedDue,
     SemanticAnalysis,
@@ -21,6 +24,15 @@ from improver.services.ollama import (
 
 
 class OllamaSchemaTests(TestCase):
+    def test_project_requests_force_full_gpu_and_permanent_residency(self) -> None:
+        payload = {"options": {"num_ctx": 16_384}, "keep_alive": "20m"}
+
+        result = OllamaAnalyzer._force_gpu_residency(payload)
+
+        self.assertEqual(result["options"]["num_gpu"], -1)
+        self.assertEqual(result["options"]["num_ctx"], 16_384)
+        self.assertEqual(result["keep_alive"], -1)
+
     def test_schema_keeps_structure_and_removes_unsupported_constraints(self) -> None:
         schema = ollama_json_schema(AnalysisResult)
 
@@ -72,6 +84,55 @@ class OllamaSchemaTests(TestCase):
         self.assertIn("meeting_result", schema["properties"])
         self.assertIn("detected", schema["$defs"]["MeetingResultSignal"]["properties"])
         self.assertIn("mailing", schema["properties"])
+
+    def test_meeting_topic_match_schema_is_supported(self) -> None:
+        schema = ollama_json_schema(MeetingTopicMatch)
+
+        self.assertIn("matches", schema["properties"])
+        self.assertIn("confidence", schema["properties"])
+
+
+class MeetingTopicMatchTests(IsolatedAsyncioTestCase):
+    async def test_topic_match_uses_semantic_summary_and_zero_temperature(self) -> None:
+        analyzer = OllamaAnalyzer.__new__(OllamaAnalyzer)
+        analyzer.config = type(
+            "Config",
+            (),
+            {
+                "llm": type(
+                    "Llm",
+                    (),
+                    {"model": "synthetic", "context_length": 16_384},
+                )()
+            },
+        )()
+        request = httpx.Request("POST", "http://ollama/api/chat")
+        analyzer._post_chat = AsyncMock(
+            return_value=httpx.Response(
+                200,
+                request=request,
+                json={
+                    "message": {
+                        "content": ('{"matches":true,"confidence":0.9,"evidence":"Один проект"}')
+                    }
+                },
+            )
+        )
+
+        result = await analyzer.match_meeting_topic(
+            "Проект Orion",
+            "Обсуждение релиза",
+            SemanticAnalysis(
+                summary="Обсудили релиз Orion",
+                thread_summary="Обсудили релиз Orion",
+                keywords=["Orion", "релиз"],
+            ),
+        )
+
+        self.assertTrue(result.matches)
+        payload = analyzer._post_chat.await_args.args[0]
+        self.assertEqual(payload["options"]["temperature"], 0)
+        self.assertIn("Обсудили релиз Orion", payload["messages"][1]["content"])
 
     def test_mailing_batch_schema_contains_event_decisions(self) -> None:
         schema = ollama_json_schema(MailingBatchResult)
@@ -135,3 +196,56 @@ class OllamaSchemaTests(TestCase):
 
         self.assertTrue(is_ollama_processing_error(unavailable))
         self.assertTrue(is_ollama_processing_error(configuration_error))
+
+
+class AssignmentPromptTests(IsolatedAsyncioTestCase):
+    async def test_task_extraction_receives_identity_and_namesake_context(self):
+        import json
+        from datetime import UTC, datetime
+        from unittest.mock import AsyncMock
+
+        from improver.config import AppConfig, IdentityConfig
+        from improver.models import CommunicationEvent
+        from improver.services.assignment import assignment_signals
+
+        config = AppConfig(
+            identity=IdentityConfig(names=["Иван Петров"], addresses=["ivan@example.test"])
+        )
+        event = CommunicationEvent(
+            body="Иван, подготовь договор",
+            author="sender@example.test",
+            participants=[
+                {"name": "Иван Петров", "address": "ivan@example.test"},
+                {"name": "Иван Сидоров", "address": "other@example.test"},
+            ],
+        )
+        context = [
+            {
+                "occurred_at": "2026-09-14",
+                "author": "ivan@example.test",
+                "body": "Я подготовлю договор",
+                "participants": event.participants,
+            }
+        ]
+        analyzer = OllamaAnalyzer(config)
+        analyzer._post_chat = AsyncMock(
+            return_value=httpx.Response(
+                200,
+                request=httpx.Request("POST", "http://synthetic/api/chat"),
+                json={"message": {"content": '{"tasks": []}'}},
+            )
+        )
+        await analyzer.extract_tasks(
+            event, [], context, assignment_signals(event, config.identity), datetime.now(UTC), "UTC"
+        )
+        payload = analyzer._post_chat.call_args.args[0]
+        body = json.loads(payload["messages"][1]["content"])
+        self.assertTrue(body["assignment_signals"]["name_ambiguous"])
+        self.assertEqual(body["user_identity"]["addresses"], ["ivan@example.test"])
+        self.assertEqual(body["previous_events_in_thread"], context)
+        self.assertIn("assignment_evidence", payload["messages"][0]["content"])
+        self.assertIn("Согласование X", payload["messages"][0]["content"])
+        self.assertIn("уже завершено", payload["messages"][0]["content"])
+        task_schema = payload["format"]["$defs"]["ExtractedTask"]["properties"]
+        self.assertIn("assignee_address", task_schema)
+        self.assertIn("assignment_evidence", task_schema)

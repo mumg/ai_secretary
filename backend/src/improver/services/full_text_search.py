@@ -17,6 +17,8 @@ def full_text_match(table_name: str, query: str) -> ColumnElement[bool]:
         "meeting_results",
         "meeting_result_children",
         "conversation_threads",
+        "communication_events",
+        "attachments",
     }:
         raise ValueError("Unsupported full-text search table")
     normalized = normalize_search_query(query)

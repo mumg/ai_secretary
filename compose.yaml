@@ -78,6 +78,34 @@ services:
       document-parser:
         condition: service_healthy
 
+  extensions:
+    image: improver-extensions:local
+    build:
+      context: ./extensions
+    environment:
+      EXTENSION_CONFIG: /run/secrets/tabs-extension/config.json
+    env_file:
+      - path: ./secrets/tasks_tabs_new_services/environment.env
+        required: false
+    volumes:
+      - extensions_data:/data
+      - ./secrets/tasks_tabs_new_services:/run/secrets/tabs-extension:ro
+    networks:
+      - egress_net
+    depends_on:
+      proxy:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    pids_limit: 32
+    restart: unless-stopped
+
   document-parser:
     build:
       context: ./document-parser
@@ -152,6 +180,7 @@ volumes:
   tls_certs:
   caddy_data:
   caddy_config:
+  extensions_data:
 
 networks:
   app_net:

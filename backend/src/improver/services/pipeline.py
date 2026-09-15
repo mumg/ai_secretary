@@ -15,6 +15,7 @@ from improver.enums import (
     AttachmentState,
     Direction,
     PrioritySource,
+    TaskPriority,
     TaskStatus,
 )
 from improver.models import (
@@ -30,12 +31,19 @@ from improver.services.analysis_filters import (
     filtered_state,
     match_analysis_filter,
 )
-from improver.services.assignment import AssignmentSignals, assignment_signals
+from improver.services.assignment import (
+    AssignmentSignals,
+    assignment_evidence_is_grounded,
+    assignment_signals,
+)
 from improver.services.calendar import BusinessCalendar
 from improver.services.documents import SUPPORTED_SUFFIXES, DocumentParserClient
+from improver.services.email_importance import email_has_high_importance
 from improver.services.meeting_results import (
     MEETING_TRANSCRIPT_EVENT_TYPE,
     MTS_TRANSCRIPT_ORIGIN,
+    attach_email_results_to_transcript,
+    link_result_to_calendar,
     record_email_meeting_result,
     update_meeting_result_analysis,
 )
@@ -118,9 +126,7 @@ def apply_mailing_classification(
 ) -> bool:
     if event.event_type != "email" or signal is None:
         return False
-    event.is_mailing = (
-        signal.detected and signal.confidence >= MAILING_CONFIDENCE_THRESHOLD
-    )
+    event.is_mailing = signal.detected and signal.confidence >= MAILING_CONFIDENCE_THRESHOLD
     event.mailing_confidence = signal.confidence
     event.mailing_kind = signal.kind
     event.mailing_version = MAILING_CLASSIFICATION_VERSION
@@ -170,10 +176,15 @@ class EventPipeline:
         event: CommunicationEvent,
         candidates: list[ExtractedTask],
         assignment: AssignmentSignals,
+        conversation_context: list[dict[str, object]] | None = None,
     ) -> list[tuple[str, str]]:
         pending_notifications: list[tuple[str, str]] = []
         for candidate in candidates:
             if not assignment.eligible or candidate.assignee == "other":
+                continue
+            if candidate.assignee_address and candidate.assignee_address.casefold().strip() not in {
+                address.casefold() for address in self.config.identity.addresses
+            }:
                 continue
             duplicate_query = select(Task.id).where(
                 func.lower(Task.title) == candidate.title.lower(),
@@ -191,13 +202,33 @@ class EventPipeline:
             auto_create = (
                 candidate.assignee == "user"
                 and candidate.confidence >= self.config.llm.auto_create_confidence
+                and (
+                    not assignment.name_ambiguous
+                    or assignment_evidence_is_grounded(
+                        candidate.assignment_evidence or candidate.evidence,
+                        assignment,
+                        self.config.identity,
+                        event,
+                        conversation_context or [],
+                    )
+                )
             )
             task = Task(
                 title=candidate.title,
                 description=candidate.description,
                 status=TaskStatus.NEW if auto_create else TaskStatus.NEEDS_CONFIRMATION,
-                priority=candidate.priority,
-                priority_source=PrioritySource.LLM,
+                priority=(
+                    TaskPriority.HIGH
+                    if event.event_type == "email"
+                    and email_has_high_importance(event.raw_headers)
+                    else candidate.priority
+                ),
+                priority_source=(
+                    PrioritySource.SOURCE
+                    if event.event_type == "email"
+                    and email_has_high_importance(event.raw_headers)
+                    else PrioritySource.LLM
+                ),
                 due_at=BusinessCalendar(self.config).normalize_due(candidate.due_at),
                 source_event_id=event.id,
                 evidence=candidate.evidence,
@@ -315,11 +346,11 @@ class EventPipeline:
 
     async def _thread_context(
         self, session: AsyncSession, event: CommunicationEvent
-    ) -> list[dict[str, str | None]]:
+    ) -> list[dict[str, object]]:
         if not event.thread_external_id:
             return []
-        existing_summary = await session.scalar(
-            select(ConversationThread.summary).where(
+        existing_thread = await session.scalar(
+            select(ConversationThread).where(
                 ConversationThread.source_id == event.source_id,
                 ConversationThread.thread_external_id == event.thread_external_id,
                 ConversationThread.last_event_at < event.occurred_at,
@@ -342,12 +373,18 @@ class EventPipeline:
                 "occurred_at": previous.occurred_at.isoformat(),
                 "author": previous.author,
                 "direction": previous.direction,
+                "participants": previous.participants,
                 "subject": previous.subject,
-                "body": bounded_text(previous.body, 500),
+                "body": bounded_text(
+                    clean_email_body(previous.body)
+                    if previous.event_type == "email"
+                    else previous.body,
+                    2_000,
+                ),
             }
             for previous in reversed(list(result.scalars()))
         ]
-        if existing_summary:
+        if existing_thread:
             context.insert(
                 0,
                 {
@@ -355,7 +392,8 @@ class EventPipeline:
                     "author": "Сводка предыдущей части цепочки",
                     "direction": None,
                     "subject": "Актуальное резюме цепочки",
-                    "body": bounded_text(existing_summary, 4_000),
+                    "body": bounded_text(existing_thread.summary or "", 4_000),
+                    "participants": existing_thread.participants,
                 },
             )
         return context
@@ -369,7 +407,7 @@ class EventPipeline:
             event.analysis_state = AnalysisState.PROCESSING
             await session.flush()
             try:
-                meeting = await upsert_meeting(session, event)
+                meeting = await upsert_meeting(session, event, self.analyzer)
                 event.semantic_summary = bounded_text(event.subject or "Встреча", 8_000)
                 event.semantic_categories = ["Встреча"]
                 event.semantic_keywords = []
@@ -468,7 +506,7 @@ class EventPipeline:
                 event.body = clean_email_body(event.body)
             character_budget = max(8_000, self.config.llm.context_length * 3)
             event.body = bounded_text(event.body, character_budget // 2)
-            assignment = assignment_signals(event, self.config.identity)
+            assignment = assignment_signals(event, self.config.identity, conversation_context)
             remaining = character_budget - len(event.body)
             attachment_limit = max(0, remaining // max(1, len(attachment_texts)))
             attachment_texts = [bounded_text(text, attachment_limit) for text in attachment_texts]
@@ -488,7 +526,6 @@ class EventPipeline:
             if (
                 not is_mailing
                 and event.event_type == "email"
-                and event.direction == Direction.INCOMING
                 and assignment.eligible
                 and not task_candidates
             ):
@@ -504,7 +541,7 @@ class EventPipeline:
                 analysis.tasks = task_candidates
             pending_notifications.extend(
                 await self._create_task_candidates(
-                    session, event, task_candidates, assignment
+                    session, event, task_candidates, assignment, conversation_context
                 )
             )
 
@@ -532,6 +569,17 @@ class EventPipeline:
             event.analyzed_at = now
             if event.event_type == MEETING_TRANSCRIPT_EVENT_TYPE:
                 await update_meeting_result_analysis(session, event, analysis, now)
+                meeting_result = await session.scalar(
+                    select(MeetingResult).where(MeetingResult.source_event_id == event.id)
+                )
+                if meeting_result is not None:
+                    await link_result_to_calendar(
+                        session,
+                        meeting_result,
+                        analysis=analysis,
+                        analyzer=self.analyzer,
+                    )
+                    await attach_email_results_to_transcript(session, meeting_result)
             else:
                 if is_mailing:
                     await rebuild_conversation_thread(
@@ -559,9 +607,7 @@ class EventPipeline:
                 if retryable:
                     event.analysis_attempts += 1
                     event.analysis_state = AnalysisState.PENDING
-                    event.next_analysis_at = now + analysis_retry_delay(
-                        event.analysis_attempts
-                    )
+                    event.next_analysis_at = now + analysis_retry_delay(event.analysis_attempts)
                 else:
                     event.analysis_state = AnalysisState.FAILED
                     event.next_analysis_at = None
@@ -600,9 +646,7 @@ class EventPipeline:
                     CommunicationEvent.next_analysis_at.is_(None),
                     CommunicationEvent.next_analysis_at <= now,
                 ),
-                ~exists(
-                    select(Task.id).where(Task.source_event_id == CommunicationEvent.id)
-                ),
+                ~exists(select(Task.id).where(Task.source_event_id == CommunicationEvent.id)),
             )
             .options(selectinload(CommunicationEvent.attachments))
             .order_by(CommunicationEvent.occurred_at.desc())
@@ -620,11 +664,11 @@ class EventPipeline:
                 clean_email_body(event.body),
                 max(8_000, self.config.llm.context_length * 3) // 2,
             )
-            assignment = assignment_signals(event, self.config.identity)
+            conversation_context = await self._thread_context(session, event)
+            assignment = assignment_signals(event, self.config.identity, conversation_context)
             candidates: list[ExtractedTask] = []
             if assignment.eligible:
                 attachment_texts = await self._extract_attachments(event.attachments)
-                conversation_context = await self._thread_context(session, event)
                 focused = await self.analyzer.extract_tasks(
                     event,
                     attachment_texts,
@@ -635,7 +679,7 @@ class EventPipeline:
                 )
                 candidates = focused.tasks
                 pending_notifications = await self._create_task_candidates(
-                    session, event, candidates, assignment
+                    session, event, candidates, assignment, conversation_context
                 )
             event.body = original_body
             existing_result = (
@@ -645,7 +689,9 @@ class EventPipeline:
             serialized_tasks = (
                 [item.model_dump(mode="json") for item in candidates]
                 if assignment.eligible
-                else stored_tasks if isinstance(stored_tasks, list) else []
+                else stored_tasks
+                if isinstance(stored_tasks, list)
+                else []
             )
             event.analysis_result = {
                 **existing_result,

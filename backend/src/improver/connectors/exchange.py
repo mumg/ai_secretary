@@ -28,6 +28,7 @@ from improver.connectors.imap import ParsedAttachment, ParsedMessage, _parse_mes
 from improver.enums import AnalysisState, Direction
 from improver.models import Attachment, CommunicationEvent, Meeting, SourceCursor
 from improver.services.calendar_events import reinterpret_utc_calendar_as_local
+from improver.services.email_importance import IMPORTANCE_HEADERS
 from improver.services.mts_link import find_mts_link_urls
 
 AUTH_TYPES = {
@@ -361,10 +362,18 @@ class ExchangeConnector(SourceConnector):
             )
             if existing:
                 calendar_event = message.headers.get("Calendar-Event")
-                if calendar_event and (
-                    existing.event_type != message.event_type
-                    or existing.raw_headers.get("Calendar-Event") != calendar_event
-                ):
+                calendar_changed = bool(
+                    calendar_event
+                    and (
+                        existing.event_type != message.event_type
+                        or existing.raw_headers.get("Calendar-Event") != calendar_event
+                    )
+                )
+                importance_changed = any(
+                    existing.raw_headers.get(name) != message.headers.get(name)
+                    for name in IMPORTANCE_HEADERS
+                )
+                if calendar_changed or importance_changed:
                     existing.event_type = message.event_type
                     existing.raw_headers = message.headers
                     existing.analysis_state = AnalysisState.PENDING

@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from improver.enums import TaskStatus
 from improver.models import DailyPlan, DailyPlanItem, Task
+from improver.services.meeting_context import enqueue_today_contexts
 from improver.services.ranking import rank_task, task_sort_key
 
 ACTIVE_PLAN_STATUSES = {
@@ -59,6 +60,7 @@ async def rebuild_plan(session: AsyncSession, now: datetime) -> DailyPlan:
         ]
     )
     await session.flush()
+    await enqueue_today_contexts(session, now)
     return plan
 
 
