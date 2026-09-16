@@ -90,6 +90,10 @@ def _read_result(
             or meeting_result.calendar_meeting_id is not None
         ),
         received_at=event.occurred_at,
+        time_basis=(
+            "transcript" if (event.raw_headers or {}).get("MTS-Link", {}).get("time_basis")
+            == "transcript" else "session"
+        ),
     )
 
 

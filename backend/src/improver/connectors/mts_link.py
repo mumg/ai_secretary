@@ -24,6 +24,7 @@ from improver.services.mts_link import (
     mts_link_reference_keys,
 )
 from improver.services.mts_link_auth import MtsLinkAuthError, refresh_source_tokens
+from improver.services.source_links import inject_source_link_rules
 
 log = structlog.get_logger()
 
@@ -77,6 +78,28 @@ def _data_items(payload: object) -> list[dict[str, Any]]:
         if isinstance(items, list):
             return [item for item in items if isinstance(item, dict)]
     return []
+
+
+def _published_transcript_interval(
+    session_data: dict[str, Any], state: dict[str, Any], utterances: list[dict[str, Any]]
+) -> tuple[datetime, datetime] | None:
+    # An endless room may stay START with no endsAt even for a published past
+    # occurrence. Keep the observed speech span, never a guessed meeting end.
+    activity_id = str(session_data.get("activitySessionId") or "")
+    if (not activity_id or activity_id != str(state.get("activitySessionId") or "")
+            or not state.get("isPublished") or state.get("isDisabled")):
+        return None
+    timestamps = []
+    for item in utterances:
+        try:
+            value = datetime.fromisoformat(str(item.get("dateTime") or "").replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if value.tzinfo is not None:
+            timestamps.append(value.astimezone(UTC))
+    if len(timestamps) < 2 or min(timestamps) >= max(timestamps):
+        return None
+    return min(timestamps), max(timestamps)
 
 
 def _session_from_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
@@ -288,6 +311,7 @@ class MtsLinkConnector(SourceConnector):
             details = {}
         return details, _data_items(transcript_payload)
 
+    @inject_source_link_rules
     async def _persist(
         self,
         session: AsyncSession,
@@ -309,6 +333,10 @@ class MtsLinkConnector(SourceConnector):
         if not body:
             return False
         interval = _meeting_interval(session_data)
+        time_basis = "session"
+        if interval is None:
+            interval = _published_transcript_interval(session_data, state, utterances)
+            time_basis = "transcript"
         if interval is None:
             log.info(
                 "mts_link_session_interval_not_ready",
@@ -361,6 +389,7 @@ class MtsLinkConnector(SourceConnector):
                     "visibility": str(state.get("visibility") or ""),
                     "is_published": bool(state.get("isPublished")),
                     "structured_utterances_only": True,
+                    "time_basis": time_basis,
                 }
             },
             content_hash=content_hash,

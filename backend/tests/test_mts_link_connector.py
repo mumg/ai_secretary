@@ -11,16 +11,37 @@ from improver.connectors.mts_link import (
     _data_items,
     _format_transcript,
     _meeting_interval,
+    _published_transcript_interval,
     _participants,
 )
 from improver.services.mts_link import (
     find_mts_link_url_in_payload,
     mts_link_reference_keys,
     references_overlap,
+    mts_link_join_url,
 )
 
 
 class MtsLinkParsingTests(TestCase):
+    def test_join_url_uses_room_path_and_ignores_image_urls(self) -> None:
+        self.assertEqual(mts_link_join_url("https://mts.mts-link.ru/j/MTC/700001/session/800002"),
+                         "https://mts.mts-link.ru/j/MTC/700001")
+        self.assertIsNone(find_mts_link_url_in_payload({"image": "https://my.mts-link.ru/images/event-default.png"}))
+
+    def test_published_occurrence_uses_speech_span_without_room_end(self) -> None:
+        session = {"activitySessionId": "occurrence", "endsAt": None}
+        state = {"activitySessionId": "occurrence", "isPublished": True}
+        utterances = [{"dateTime": "2026-09-15T16:58:15+03:00"},
+                      {"dateTime": "2026-09-15T16:00:29+03:00"}]
+        self.assertEqual(_published_transcript_interval(session, state, utterances), (
+            datetime(2026, 9, 15, 13, 0, 29, tzinfo=UTC),
+            datetime(2026, 9, 15, 13, 58, 15, tzinfo=UTC),
+        ))
+        for changed in [{**state, "activitySessionId": "other"},
+                        {**state, "isPublished": False}, {**state, "isDisabled": True}]:
+            self.assertIsNone(_published_transcript_interval(session, changed, utterances))
+        self.assertIsNone(_published_transcript_interval(session, state, utterances[:1]))
+
     def test_meeting_times_come_from_actual_api_session_interval(self) -> None:
         interval = _meeting_interval({
             "startsAt": "2026-09-14T16:30:01+03:00",
@@ -129,6 +150,28 @@ class MtsLinkParsingTests(TestCase):
 
 
 class MtsLinkHttpTests(IsolatedAsyncioTestCase):
+    async def test_persist_published_recurring_transcript_without_room_end(self) -> None:
+        connector = MtsLinkConnector(SourceConfig(
+            id="mts", type="mts_link", base_url="https://gw.mts-link.ru",
+            credential="synthetic-token"), AppConfig())
+        session = Mock(scalar=AsyncMock(return_value=None), flush=AsyncMock())
+        with (
+            patch("improver.connectors.mts_link.link_result_to_calendar", new=AsyncMock()),
+            patch("improver.connectors.mts_link.attach_email_results_to_transcript", new=AsyncMock()),
+        ):
+            created = await connector._persist(session,
+                {"id": "room", "activitySessionId": "past-occurrence", "endsAt": None},
+                {"transcriptId": "42", "activitySessionId": "past-occurrence", "isPublished": True},
+                {"transcriptName": "Recurring meeting"},
+                [{"text": "First", "dateTime": "2026-09-15T16:00:00+03:00"},
+                 {"text": "Last", "dateTime": "2026-09-15T16:58:00+03:00"}])
+        self.assertTrue(created)
+        event = session.add.call_args_list[0].args[0]
+        result = session.add.call_args_list[1].args[0]
+        self.assertEqual(event.raw_headers["MTS-Link"]["time_basis"], "transcript")
+        self.assertEqual(result.activity_session_id, "past-occurrence")
+        self.assertEqual(result.ends_at, datetime(2026, 9, 15, 13, 58, tzinfo=UTC))
+
     async def test_persist_defers_transcript_until_api_has_actual_end(self) -> None:
         connector = MtsLinkConnector(
             SourceConfig(

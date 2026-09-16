@@ -19,7 +19,7 @@ from improver.db import get_session
 from improver.models import CommunicationSource
 from improver.schemas import SourceRead
 from improver.services.mts_link_auth import MtsLinkAuthError, exchange_tokens
-from improver.services.settings import SecretCipher
+from improver.services.settings import SecretCipher, source_config_from_record
 from improver.services.source_credentials import pack_mts_tokens
 
 
@@ -109,6 +109,33 @@ async def organizations(
                     }
                 )
     return {"choices": choices}
+
+
+@router.get("/sources/{source_id}/mts-link/login-email")
+async def login_email(source_id: str, session: AsyncSession = Depends(get_session)):
+    row = await _source(session, source_id)
+    token = (source_config_from_record(row).credential or "").strip()
+    if token.casefold().startswith("bearer "):
+        token = token[7:].strip()
+    if not token:
+        return {"email": None}
+    try:
+        async with httpx.AsyncClient(
+            timeout=10, follow_redirects=False, cookies={"access": token}
+        ) as client:
+            response = await client.post(
+                GATEWAY + "/accountUcaas/AccountUcaas.GetLoginData",
+                headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                content=b"",
+            )
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("type") != "LoginData":
+            return {"email": None}
+        email = SsoEmail(email=payload["value"]["email"]).email
+        return {"email": email}
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+        return {"email": None}
 
 
 @router.post("/sources/{source_id}/mts-link/start")

@@ -1,0 +1,125 @@
+name: Docker Hub
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dockerhub
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Validate version
+        id: version
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, re
+          version = pathlib.Path('version').read_text().strip()
+          assert re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', version), 'Invalid version file'
+          ref = os.environ['RELEASE_REF']
+          assert ref == 'refs/heads/main' or ref == f'refs/tags/v{version}', 'Release tag must match version; manual builds must use main'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'version={version}\n')
+          PY
+      - name: Backend and updater tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@127.0.0.1/test
+          PYTHONPATH: backend/src
+        run: |
+          python -m pip install -r backend/requirements.txt pytest aiosqlite
+          python -m pytest backend/tests -q
+          python -m unittest discover -s tests -p 'test_*.py' -v
+          python -m pip install ./document-parser
+          python -m pytest document-parser/tests -q
+      - name: Web tests
+        working-directory: web
+        run: |
+          npm ci
+          npm test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: server
+            context: .
+            dockerfile: backend/Dockerfile
+            suffix: ''
+          - component: document-parser
+            context: document-parser
+            dockerfile: document-parser/Dockerfile
+            suffix: '-document-parser'
+          - component: cert-init
+            context: infra/certs
+            dockerfile: infra/certs/Dockerfile
+            suffix: '-cert-init'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: mumg/ai_secretary:sha-${{ github.sha }}${{ matrix.suffix }}
+          build-args: |
+            APP_VERSION=${{ needs.test.outputs.version }}
+            SOURCE_REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+
+  promote:
+    needs: [test, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish aliases after all component builds succeed
+        env:
+          VERSION: ${{ needs.test.outputs.version }}
+          REVISION: ${{ github.sha }}
+          RELEASE_REF: ${{ github.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for suffix in '' '-document-parser' '-cert-init'; do
+            source="mumg/ai_secretary:sha-${REVISION}${suffix}"
+            if [[ "$RELEASE_REF" == refs/tags/* ]]; then
+              docker buildx imagetools create --tag "mumg/ai_secretary:${VERSION}${suffix}" --tag "mumg/ai_secretary:latest${suffix}" "$source"
+            else
+              docker buildx imagetools create --tag "mumg/ai_secretary:edge${suffix}" "$source"
+            fi
+          done

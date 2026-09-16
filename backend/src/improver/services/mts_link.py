@@ -4,6 +4,8 @@ import re
 from collections.abc import Iterable
 from urllib.parse import parse_qsl, unquote, urlsplit, urlunsplit
 
+from improver.services.source_links import parse_source_link
+
 MTS_LINK_HOST_SUFFIX = "mts-link.ru"
 MTS_LINK_URL_RE = re.compile(
     r"https?://(?:[a-z0-9-]+\.)*mts-link\.ru/[^\s<>\"']*",
@@ -41,7 +43,7 @@ def find_mts_link_urls(*values: str | None) -> list[str]:
 
 def find_mts_link_url_in_payload(value: object) -> str | None:
     if isinstance(value, str):
-        urls = find_mts_link_urls(value)
+        urls = [url for url in find_mts_link_urls(value) if mts_link_reference_keys(url)]
         return urls[0] if urls else None
     if isinstance(value, dict):
         preferred = ("link", "url", "joinLink", "eventUrl", "roomUrl")
@@ -58,6 +60,17 @@ def find_mts_link_url_in_payload(value: object) -> str | None:
     return None
 
 
+def mts_link_join_url(url: str) -> str:
+    """Display the room join link while retaining session IDs in matching keys."""
+    parsed = urlsplit(url)
+    parts = parsed.path.strip("/").split("/")
+    if (is_mts_link_url(url) and len(parts) == 5 and parts[0].casefold() == "j"
+            and parts[3].casefold() == "session" and parts[2].isdigit()
+            and parts[4].isdigit()):
+        return urlunsplit((parsed.scheme, parsed.netloc, "/" + "/".join(parts[:3]), parsed.query, ""))
+    return url
+
+
 def mts_link_reference_keys(
     *values: str | None,
     known_ids: Iterable[str | int | None] = (),
@@ -68,6 +81,12 @@ def mts_link_reference_keys(
         if normalized_id:
             keys.add(f"id:{normalized_id}")
     for url in find_mts_link_urls(*values):
+        custom = [match for match in parse_source_link(url) if match["source_type"] == "mts_link"]
+        if custom:
+            meeting_ids = {match["meeting_id"].casefold() for match in custom}
+            if len(meeting_ids) == 1:
+                keys.add(f"id:{next(iter(meeting_ids))}")
+            continue
         parsed = urlsplit(url)
         host = (parsed.hostname or "").casefold()
         path = re.sub(r"/+", "/", unquote(parsed.path)).rstrip("/") or "/"

@@ -8,17 +8,25 @@ function mtsEmailKey(sourceId) {
 }
 function savedMtsEmail(sourceId) {
   if (mtsSavedEmails.has(sourceId)) return mtsSavedEmails.get(sourceId);
-  try { return (localStorage.getItem(mtsEmailKey(sourceId)) || "").slice(0, 320); }
-  catch { return ""; }
+  try { return localStorage.getItem(mtsEmailKey(sourceId))?.slice(0, 320) ?? null; }
+  catch { return null; }
 }
 function rememberMtsEmail() {
   if (!mtsLogin) return;
   const email = $("mtsSsoEmail").value.trim();
+  if (!email && !mtsLogin.emailEdited) return;
   mtsSavedEmails.set(mtsLogin.sourceId, email);
   try {
-    if (email) localStorage.setItem(mtsEmailKey(mtsLogin.sourceId), email);
-    else localStorage.removeItem(mtsEmailKey(mtsLogin.sourceId));
+    localStorage.setItem(mtsEmailKey(mtsLogin.sourceId), email);
   } catch { /* Keep the email in memory when browser storage is unavailable. */ }
+}
+async function restoreMtsEmail(login) {
+  try {
+    const data = await request(`/sources/${login.sourceId}/mts-link/login-email`);
+    if (mtsLogin !== login || login.emailEdited || $("mtsSsoEmail").value.trim() || !data.email) return;
+    $("mtsSsoEmail").value = data.email;
+    rememberMtsEmail();
+  } catch { /* Manual entry remains available if the saved login has expired. */ }
 }
 function renderMtsExtension(checking = false) {
   const ready = mtsExtensionReady;
@@ -59,7 +67,9 @@ function openMtsSso(source, enableSource = source.enabled) {
   cancelMtsLogin();
   mtsLogin = { sourceId: source.id, source, enableSource };
   $("mtsSsoTitle").textContent = `Вход МТС Линк — ${source.label}`;
-  $("mtsSsoEmail").value = savedMtsEmail(source.id);
+  const email = savedMtsEmail(source.id);
+  $("mtsSsoEmail").value = email ?? "";
+  if (email === null && source.credential_configured) void restoreMtsEmail(mtsLogin);
   $("mtsSsoChoices").replaceChildren();
   $("mtsSsoFind").disabled = !mtsExtensionReady;
   $("mtsSsoCancel").disabled = false;
@@ -197,7 +207,10 @@ window.addEventListener("message", async event => {
   }
 });
 $("mtsSsoForm").addEventListener("submit", findMtsOrganizations);
-$("mtsSsoEmail").addEventListener("input", rememberMtsEmail);
+$("mtsSsoEmail").addEventListener("input", () => {
+  if (mtsLogin) mtsLogin.emailEdited = true;
+  rememberMtsEmail();
+});
 $("mtsSsoCancel").addEventListener("click", () => $("mtsSsoDialog").close());
 $("mtsSsoDialog").addEventListener("cancel", event => {
   if (mtsLogin?.completing) event.preventDefault();

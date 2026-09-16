@@ -16,3 +16,9 @@ USER parser
 EXPOSE 8080
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 
+ARG APP_VERSION=unknown
+ARG SOURCE_REVISION=unknown
+LABEL org.opencontainers.image.title="AI Секретарь — парсер документов" \
+    org.opencontainers.image.source="https://github.com/mumg/ai_secretary" \
+    org.opencontainers.image.version="${APP_VERSION}" \
+    org.opencontainers.image.revision="${SOURCE_REVISION}"

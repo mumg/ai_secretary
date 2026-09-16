@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from improver.api.deps import get_runtime_config
@@ -11,8 +11,21 @@ from improver.db import get_session
 from improver.enums import ComponentHealthStatus
 from improver.schemas import ComponentStatusRead, ComponentStatusWrite, SystemStatusRead
 from improver.services.system_status import build_system_status, upsert_component_status
+from improver.services.updates import VersionStatus, update_checker
 
 router = APIRouter(prefix="/system", tags=["system-status"])
+
+
+@router.get("/version", response_model=VersionStatus)
+async def source_version(response: Response) -> VersionStatus:
+    response.headers["Cache-Control"] = "no-store"
+    return update_checker.status.model_copy()
+
+
+@router.post("/version/check", response_model=VersionStatus)
+async def check_source_version(response: Response) -> VersionStatus:
+    response.headers["Cache-Control"] = "no-store"
+    return await update_checker.check(manual=True)
 
 
 @router.put("/components/{component_id}", response_model=ComponentStatusRead)

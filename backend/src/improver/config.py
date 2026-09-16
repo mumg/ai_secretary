@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 from sqlalchemy.engine import make_url
 
+from improver.services.source_links import default_link_patterns
+
 
 def read_secret(path: str | Path | None, *, required: bool = True) -> str | None:
     if not path:
@@ -180,6 +182,15 @@ class SourceConfig(BaseModel):
     base_url: str | None = None
     content: list[str] = Field(default_factory=list)
     poll_interval_seconds: int | None = Field(default=None, ge=10)
+    link_patterns: list[str] = Field(
+        default_factory=lambda data: default_link_patterns(data.get("type")), max_length=20
+    )
+
+    @field_validator("link_patterns")
+    @classmethod
+    def valid_link_patterns(cls, value: list[str]) -> list[str]:
+        from improver.services.source_links import validate_patterns
+        return validate_patterns(value)
 
     @model_validator(mode="after")
     def validate_required_fields(self) -> SourceConfig:

@@ -24,6 +24,7 @@ build/
 
 # Runtime data and secrets
 /data/
+/.upgrade-backups/
 secrets/*
 !secrets/.gitkeep
 !secrets/README.md

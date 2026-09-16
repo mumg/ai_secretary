@@ -107,7 +107,9 @@
       ? `${date(x.starts_at, false)} · весь день`
       : `${date(x.starts_at)} – ${date(x.starts_at, false) === date(x.ends_at, false) ? clock(x.ends_at) : date(x.ends_at)}`;
   const resultTime = (x) =>
-    x.time_known === false
+    x.time_basis === "transcript"
+      ? `По временным отметкам расшифровки: ${interval(x)}`
+      : x.time_known === false
       ? `Время встречи неизвестно · письмо получено ${date(x.received_at)}`
       : interval(x);
   const link = (url, title) =>

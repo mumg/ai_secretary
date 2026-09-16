@@ -148,6 +148,7 @@ class MeetingResultRead(BaseModel):
     supplement_count: int = 0
     brief_summary: str
     time_known: bool = True
+    time_basis: Literal["session", "transcript"] = "session"
     received_at: datetime | None = None
 
 

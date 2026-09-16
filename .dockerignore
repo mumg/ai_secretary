@@ -1,4 +1,5 @@
 **
+!version
 !backend/
 !backend/Dockerfile
 !backend/pyproject.toml

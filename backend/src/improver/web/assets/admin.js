@@ -258,7 +258,15 @@ function sourceFields(type, values = {}) {
   return `<label>URL шлюза МТС Линк<input data-setting="base_url" type="url" value="${escapeAttr(values.base_url || "https://gw.mts-link.ru")}" required></label><label>Интервал опроса, секунд<input data-setting="poll_interval_seconds" type="number" min="10" value="${Number(values.poll_interval_seconds) || 900}" required></label><section class="mts-auth-options"><p id="sourceMtsExtensionStatus" role="status" aria-live="polite">Проверяем расширение «AI Секретарь»…</p><button type="button" id="sourceMtsSso" class="primary" disabled>Войти через SSO</button><p id="sourceMtsSsoHint" class="hint" hidden>SSO сохранит access token и refresh token для автоматического обновления. Перед входом настройки источника сохранятся.</p><div id="sourceMtsFallback" hidden><p>Введите access token ниже или установите расширение «AI Секретарь» для входа через корпоративный SSO.</p><details><summary>Установить расширение «AI Секретарь»</summary><p class="hint"><a href="/api/v1/admin/mts-link/extension.zip">Скачать расширение</a>. Распакуйте архив, откройте chrome://extensions или edge://extensions, включите режим разработчика и выберите «Загрузить распакованное расширение». Затем нажмите значок «AI Секретарь» на этой странице.</p></details><p class="hint">Если расширение уже установлено, нажмите его значок в панели браузера, чтобы подключить к странице.</p><button type="button" id="sourceMtsRecheck">Проверить ещё раз</button></div><p class="hint">Access token, введённый вручную, действует только 84 часа с момента выдачи, а не сохранения в админке. Затем его нужно заменить. Замена вручную отключает автоматическое обновление токенов.</p></section>`;
 }
 
+const MTS_LINK_DEFAULT_PATTERN = String.raw`^https://mts\.mts-link\.ru/j/MTC/(?P<meeting_id>\d+)(?:/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$`;
+let sourceLinkDrafts = {};
+let sourceLinkType = "imap";
+function defaultSourceLinkPatterns(type) {
+  return type === "mts_link" ? [MTS_LINK_DEFAULT_PATTERN] : [];
+}
+
 function openSourceDialog(source = null) {
+  sourceLinkCheckSerial++;
   editingSourceId = source?.id || null;
   setSourceFormError();
   $("sourceDialogTitle").textContent = source ? "Изменить источник" : "Подключить источник";
@@ -268,6 +276,13 @@ function openSourceDialog(source = null) {
   setValue("sourceLabel", source?.label || ""); $("sourceEnabled").checked = source?.enabled ?? true;
   renderSourceTagPicker(source?.tags || []);
   $("sourceCredential").value = "";
+  sourceLinkType = $("sourceType").value;
+  sourceLinkDrafts = {};
+  const patterns = source?.settings?.link_patterns ?? defaultSourceLinkPatterns(sourceLinkType);
+  $("sourceLinkPatterns").value = patterns.join("\n");
+  $("sourceLinkRules").open = Boolean(patterns.length);
+  $("sourceLinkTestUrl").value = "";
+  $("sourceLinkTestResult").textContent = "";
   $("credentialHint").textContent = source?.credential_configured ? "оставьте пустым, чтобы сохранить текущий" : "обязателен при первом подключении";
   $("sourceFields").innerHTML = sourceFields($("sourceType").value, source?.settings || {});
   const authType = document.querySelector('#sourceFields [data-setting="auth_type"]');
@@ -283,7 +298,30 @@ function readSourceSettings() {
     if (input.type === "number") value = Number(value);
     result[input.dataset.setting] = value;
   });
+  const patterns = listValuesByLine($("sourceLinkPatterns").value);
+  result.link_patterns = patterns;
   return result;
+}
+
+function listValuesByLine(value) {
+  return value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+}
+
+let sourceLinkCheckSerial = 0;
+async function testSourceLink() {
+  const serial = ++sourceLinkCheckSerial;
+  const url = $("sourceLinkTestUrl").value.trim();
+  if (!url) { $("sourceLinkTestResult").textContent = "Введите ссылку для проверки."; return; }
+  $("sourceLinkTestResult").textContent = "Проверяем…";
+  const body = { source_id: $("sourceId").value.trim() || "new_source", source_type: $("sourceType").value,
+    patterns: listValuesByLine($("sourceLinkPatterns").value), url };
+  try {
+    const data = await request("/source-link-preview", { method: "POST", body: JSON.stringify(body) });
+    if (serial !== sourceLinkCheckSerial) return;
+    $("sourceLinkTestResult").textContent = data.matches.length
+      ? data.matches.map(match => `Источник: ${$("sourceType").selectedOptions[0].textContent} (${match.source_id}); meeting_id: ${match.meeting_id}`).join("\n")
+      : "Ни одно правило не подошло к ссылке.";
+  } catch (error) { if (serial === sourceLinkCheckSerial) $("sourceLinkTestResult").textContent = error.message; }
 }
 
 async function saveSource(event) {
@@ -401,9 +439,27 @@ document.querySelectorAll(".save-settings").forEach((button) => button.addEventL
 $("addSource").addEventListener("click", () => openSourceDialog());
 $("closeDialog").addEventListener("click", () => $("sourceDialog").close());
 $("cancelDialog").addEventListener("click", () => $("sourceDialog").close());
-$("sourceType").addEventListener("change", (event) => { setSourceFormError(); $("sourceFields").innerHTML = sourceFields(event.target.value); checkMtsExtension(); });
+$("sourceType").addEventListener("change", (event) => {
+  sourceLinkCheckSerial++;
+  sourceLinkDrafts[sourceLinkType] = $("sourceLinkPatterns").value;
+  sourceLinkType = event.target.value;
+  $("sourceLinkPatterns").value = sourceLinkDrafts[sourceLinkType] ?? defaultSourceLinkPatterns(sourceLinkType).join("\n");
+  $("sourceLinkRules").open = Boolean($("sourceLinkPatterns").value);
+  $("sourceLinkTestResult").textContent = "";
+  setSourceFormError();
+  $("sourceFields").innerHTML = sourceFields(sourceLinkType);
+  checkMtsExtension();
+});
 $("sourceForm").addEventListener("input", () => setSourceFormError());
 $("sourceForm").addEventListener("submit", saveSource);
+$("sourceLinkTest").addEventListener("click", testSourceLink);
+$("sourceLinkPatterns").addEventListener("input", () => { sourceLinkCheckSerial++; $("sourceLinkTestResult").textContent = ""; });
+$("sourceLinkTestUrl").addEventListener("input", () => { sourceLinkCheckSerial++; $("sourceLinkTestResult").textContent = ""; });
+$("sourceLinkExample").addEventListener("click", () => {
+  sourceLinkCheckSerial++;
+  $("sourceLinkPatterns").value = MTS_LINK_DEFAULT_PATTERN;
+  $("sourceLinkTestResult").textContent = "Пример добавлен. Проверьте ссылку и сохраните источник.";
+});
 $("sourceList").addEventListener("click", sourceAction);
 $("tagCreateForm").addEventListener("submit", createTag);
 $("tagList").addEventListener("click", tagAction);

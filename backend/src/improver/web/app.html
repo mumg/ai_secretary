@@ -7,6 +7,8 @@
     <meta name="referrer" content="no-referrer" />
     <title>Секретарь</title>
     <link rel="stylesheet" href="/app/assets/app.css" />
+    <link rel="stylesheet" href="/app/assets/version.css?v=1" />
+    <script src="/app/assets/version.js?v=1" defer></script>
     <script src="/app/assets/markdown-it.min.js" defer></script>
     <script src="/app/assets/app-core.js" defer></script>
     <script src="/app/assets/realtime.js" defer></script>
@@ -38,6 +40,10 @@
         >
       </div>
     </header>
+    <div id="version-notice" class="version-notice" role="status" aria-live="polite" hidden>
+      <span id="version-notice-text"></span>
+      <a href="https://github.com/mumg/ai_secretary" target="_blank" rel="noopener noreferrer">Открыть новую версию на GitHub</a>
+    </div>
     <div id="connection" class="connection" role="status" hidden></div>
     <main class="workspace">
       <div class="layout">

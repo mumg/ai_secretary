@@ -1,0 +1,23 @@
+.version-notice {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 10px 24px;
+  background: #163c37;
+  color: #e4f5ed;
+  border-bottom: 1px solid #40897b;
+  font: 14px/1.5 system-ui, sans-serif;
+}
+.version-notice[hidden] { display: none !important; }
+.version-notice a { color: #a3ead9; }
+.version-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin: 22px 0;
+  font-size: 13px;
+}
+.version-settings p { flex: 1 1 280px; margin: 0; color: var(--muted); }

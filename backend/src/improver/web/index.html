@@ -6,6 +6,8 @@
   <meta name="description" content="Локальная панель настройки Improver">
   <title>Improver — управление сервером</title>
   <link rel="stylesheet" href="/admin/assets/admin.css">
+  <link rel="stylesheet" href="/admin/assets/version.css?v=1">
+  <script src="/admin/assets/version.js?v=1" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -13,7 +15,16 @@
     <div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div>
   </header>
 
+  <div id="version-notice" class="version-notice" role="status" aria-live="polite" hidden>
+    <span id="version-notice-text"></span>
+    <a href="https://github.com/mumg/ai_secretary" target="_blank" rel="noopener noreferrer">Открыть новую версию на GitHub</a>
+  </div>
+
   <main class="shell">
+    <div class="version-settings">
+      <p id="version-details" role="status" aria-live="polite">Получаем версию исходников…</p>
+      <button id="version-check" type="button" class="secondary">Проверить обновления</button>
+    </div>
     <section class="intro">
       <div>
         <p class="eyebrow">ПЕРСОНАЛЬНЫЙ КОНТУР</p>
@@ -120,6 +131,16 @@
         <label class="toggle"><input id="sourceEnabled" type="checkbox" checked><span>Адаптер включён</span></label>
         <fieldset class="source-tag-fieldset"><legend>Теги</legend><div id="sourceTagPicker" class="tag-picker"></div></fieldset>
         <div id="sourceFields"></div>
+        <details id="sourceLinkRules">
+          <summary>Правила разбора ссылок на источник</summary>
+          <p class="hint">По одному регулярному выражению на строку. Идентификатор встречи извлекается из группы <code>(?P&lt;meeting_id&gt;...)</code>. Тип и идентификатор источника берутся из этой формы. Применяется первое совпавшее правило.</p>
+          <label>Регулярные выражения<textarea id="sourceLinkPatterns" rows="4" spellcheck="false"></textarea></label>
+          <button id="sourceLinkExample" type="button">Пример МТС Линк</button>
+          <label>Ссылка для проверки<input id="sourceLinkTestUrl" type="text" inputmode="url" placeholder="https://mts.mts-link.ru/j/MTC/23854886808/sesssion/XXX"></label>
+          <button id="sourceLinkTest" type="button">Проверить разбор ссылки</button>
+          <p id="sourceLinkTestResult" class="hint" role="status" aria-live="polite"></p>
+          <p class="hint">Проверка использует введённые правила без сохранения. Чтобы применить их, сохраните источник.</p>
+        </details>
         <label><span id="credentialLabel">Пароль или токен</span> <small id="credentialHint">обязателен при первом подключении</small><input id="sourceCredential" type="password" autocomplete="new-password"></label>
       </div>
       <div id="sourceFormError" class="form-error" role="alert" aria-live="assertive" tabindex="-1" hidden></div>
@@ -145,7 +166,7 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="/admin/assets/admin.js" defer></script>
-  <script src="/admin/assets/mts-link-auth.js" defer></script>
+  <script src="/admin/assets/admin.js?v=20260916-default-link-rules" defer></script>
+  <script src="/admin/assets/mts-link-auth.js?v=20260916-email-profile" defer></script>
 </body>
 </html>

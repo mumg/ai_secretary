@@ -8,6 +8,7 @@ from pathlib import Path
 import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,6 +48,12 @@ from improver.services.settings import (
     source_config_from_record,
 )
 from improver.services.source_credentials import unpack_credential
+from improver.services.source_links import (
+    LinkSource,
+    default_link_patterns,
+    parse_source_link,
+    validate_patterns,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 log = structlog.get_logger()
@@ -72,7 +79,7 @@ def _source_read(row: CommunicationSource) -> SourceRead:
         label=row.label,
         source_type=row.source_type,
         enabled=row.enabled,
-        settings=row.settings,
+        settings={"link_patterns": default_link_patterns(row.source_type), **row.settings},
         tags=[TagReference(id=tag.id, name=tag.name) for tag in row.tags],
         credential_configured=bool(row.credential_encrypted),
         refresh_token_configured=bool(
@@ -89,8 +96,28 @@ def _source_read(row: CommunicationSource) -> SourceRead:
 
 
 def _clean_source_settings(source_type: str, settings: dict) -> dict:
-    allowed = SOURCE_FIELDS[source_type]
-    return {key: value for key, value in settings.items() if key in allowed}
+    allowed = SOURCE_FIELDS[source_type] | {"link_patterns"}
+    result = {key: value for key, value in settings.items() if key in allowed}
+    result.setdefault("link_patterns", default_link_patterns(source_type))
+    return result
+
+
+class SourceLinkPreview(BaseModel):
+    source_id: str = Field(min_length=1, max_length=128)
+    source_type: str = Field(pattern=r"^(imap|exchange|mts_link|external_tasks)$")
+    patterns: list[str] = Field(max_length=20)
+    url: str = Field(min_length=1, max_length=4096)
+
+
+@router.post("/source-link-preview")
+async def source_link_preview(payload: SourceLinkPreview):
+    try:
+        patterns = validate_patterns(payload.patterns)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    return {"matches": parse_source_link(payload.url, (
+        LinkSource(payload.source_id, payload.source_type, tuple(patterns)),
+    ))}
 
 
 @router.get("/settings", response_model=AdminSettingsRead)
@@ -164,7 +191,11 @@ async def _save_source(
     session: AsyncSession,
     existing: CommunicationSource | None,
 ) -> CommunicationSource:
-    settings = _clean_source_settings(payload.source_type, payload.settings)
+    incoming_settings = dict(payload.settings)
+    if (existing and existing.source_type == payload.source_type
+            and "link_patterns" not in incoming_settings and "link_patterns" in existing.settings):
+        incoming_settings["link_patterns"] = existing.settings["link_patterns"]
+    settings = _clean_source_settings(payload.source_type, incoming_settings)
     credential = payload.credential or (
         unpack_credential(existing.source_type, SecretCipher().decrypt(
             existing.credential_encrypted

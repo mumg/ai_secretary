@@ -34,6 +34,7 @@ from improver.config import get_config
 from improver.db import engine
 from improver.schema_version import get_database_schema_version, wait_for_compatible_database
 from improver.services.realtime import hub
+from improver.services.updates import update_checker
 
 
 def configure_logging() -> None:
@@ -53,12 +54,16 @@ async def lifespan(_: FastAPI):
     configure_logging()
     await wait_for_compatible_database()
     listener = asyncio.create_task(hub.run())
+    updates = asyncio.create_task(update_checker.run())
     try:
         yield
     finally:
         listener.cancel()
+        updates.cancel()
         with suppress(asyncio.CancelledError):
             await listener
+        with suppress(asyncio.CancelledError):
+            await updates
         await engine.dispose()
 
 
@@ -121,7 +126,7 @@ async def user_ui() -> FileResponse:
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)
 async def admin_ui() -> FileResponse:
-    return FileResponse(web_dir / "index.html")
+    return FileResponse(web_dir / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/health/live")

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from improver.models import CommunicationEvent, Meeting, MeetingResult
 from improver.services.mts_link import (
     find_mts_link_urls,
+    mts_link_join_url,
     mts_link_reference_keys,
     references_overlap,
 )
@@ -98,12 +99,11 @@ def matching_title(left: str | None, right: str | None) -> bool:
 def select_transcript_calendar(
     result: MeetingResult, candidates: list[tuple[Meeting, CommunicationEvent]]
 ) -> list[tuple[Meeting, CommunicationEvent, float]]:
-    """Return ID matches covering at least 80% of the MTS result duration."""
+    """Match the occurrence by IDs and time, allowing a same-title meeting to overrun."""
     matches: list[tuple[Meeting, CommunicationEvent, float]] = []
     for meeting, event in candidates:
-        keys = meeting.mts_link_keys or mts_link_reference_keys(
-            meeting.location, event.body, event.source_url
-        )
+        keys = mts_link_reference_keys(meeting.location, meeting.mts_link_url, event.body, event.source_url)
+        keys = keys or meeting.mts_link_keys or []
         duration = max(0.0, (result.ends_at - result.starts_at).total_seconds())
         overlap = max(
             0.0,
@@ -119,7 +119,10 @@ def select_transcript_calendar(
         if (
             meeting.status != "CANCELLED"
             and references_overlap(result.mts_link_keys or [], keys)
-            and ratio >= MEETING_WINDOW_OVERLAP
+            and (ratio >= MEETING_WINDOW_OVERLAP or (
+                overlap > 0 and matching_title(result.title, meeting.title)
+                and abs((result.starts_at - meeting.starts_at).total_seconds()) <= 300
+            ))
         ):
             matches.append((meeting, event, ratio))
     return sorted(matches, key=lambda item: (item[2], item[0].starts_at), reverse=True)
@@ -174,6 +177,16 @@ async def link_result_to_calendar(
 ) -> Meeting | None:
     if candidates is None:
         candidates = await _calendar_candidates(session)
+    join_urls = {
+        mts_link_join_url(url)
+        for candidate, invitation in candidates
+        for url in find_mts_link_urls(candidate.mts_link_url, candidate.location, invitation.body)
+        if references_overlap(meeting_result.mts_link_keys or [], mts_link_reference_keys(url))
+    }
+    if len(join_urls) == 1:
+        meeting_result.meeting_url = next(iter(join_urls))
+    elif meeting_result.meeting_url:
+        meeting_result.meeting_url = mts_link_join_url(meeting_result.meeting_url)
     if analysis is None or analyzer is None:
         meeting = None
         evaluations = []
@@ -184,6 +197,8 @@ async def link_result_to_calendar(
     meeting_result.calendar_meeting_id = meeting.id if meeting else None
     event = await session.get(CommunicationEvent, meeting_result.source_event_id)
     if event is not None:
+        if meeting_result.meeting_url:
+            event.source_url = meeting_result.meeting_url
         event.analysis_result = {
             **(event.analysis_result or {}),
             "calendar_topic_match": {
@@ -348,9 +363,9 @@ async def _find_calendar_for_email(
             matching_title(title, meeting.title) for title in titles
         ):
             continue
-        calendar_keys = meeting.mts_link_keys or mts_link_reference_keys(
-            meeting.location, calendar_event.body, calendar_event.source_url
-        )
+        calendar_keys = mts_link_reference_keys(
+            meeting.location, meeting.mts_link_url, calendar_event.body, calendar_event.source_url
+        ) or meeting.mts_link_keys or []
         if not references_overlap(keys, calendar_keys):
             continue
         matches.append(meeting)

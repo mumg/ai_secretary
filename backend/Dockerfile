@@ -14,6 +14,7 @@ RUN python -m pip install --upgrade pip==25.2 \
     && python -m pip install -r requirements.txt
 
 COPY backend/src ./src
+COPY version ./src/improver/version
 COPY backend/alembic.ini ./
 COPY backend/migrations ./migrations
 COPY browser-extension /extension
@@ -24,3 +25,10 @@ RUN mkdir -p /data/attachments && chown -R improver:improver /app /data
 USER improver
 
 ENV PATH="/app/.local/bin:${PATH}"
+
+ARG APP_VERSION=unknown
+ARG SOURCE_REVISION=unknown
+LABEL org.opencontainers.image.title="AI Секретарь" \
+    org.opencontainers.image.source="https://github.com/mumg/ai_secretary" \
+    org.opencontainers.image.version="${APP_VERSION}" \
+    org.opencontainers.image.revision="${SOURCE_REVISION}"

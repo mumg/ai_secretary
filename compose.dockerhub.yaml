@@ -1,0 +1,21 @@
+# Docker Compose >= 2.24.4. Add after compose.yaml and any deployment overrides.
+# Releases: 0.1.0, 0.1.0-document-parser, 0.1.0-cert-init.
+# Main branch builds: sha-<full Git SHA> with the same component suffixes.
+services:
+  api:
+    image: mumg/ai_secretary:${SECRETARY_IMAGE_TAG:-latest}
+    build: !reset null
+  worker:
+    image: mumg/ai_secretary:${SECRETARY_IMAGE_TAG:-latest}
+    build: !reset null
+  migrate:
+    image: mumg/ai_secretary:${SECRETARY_IMAGE_TAG:-latest}
+    build: !reset null
+  document-parser:
+    image: mumg/ai_secretary:${SECRETARY_IMAGE_TAG:-latest}-document-parser
+    build: !reset null
+  cert-init:
+    image: mumg/ai_secretary:${SECRETARY_IMAGE_TAG:-latest}-cert-init
+    build: !reset null
+  extensions:
+    profiles: [integrations]

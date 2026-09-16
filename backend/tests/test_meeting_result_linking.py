@@ -28,6 +28,17 @@ from improver.services.ollama import MeetingResultSignal, MeetingTopicMatch, Sem
 
 
 class LinkingRulesTests(TestCase):
+    def test_same_title_occurrence_can_overrun_calendar_end(self):
+        start = datetime(2026, 9, 15, 13, tzinfo=UTC)
+        current = Meeting(title="Weekly sync", status="CONFIRMED", starts_at=start,
+                          ends_at=start + timedelta(minutes=30), mts_link_keys=["id:700001"])
+        previous = Meeting(title="Weekly sync", status="CONFIRMED", starts_at=start-timedelta(days=14),
+                           ends_at=start-timedelta(days=14)+timedelta(minutes=30), mts_link_keys=["id:700001"])
+        result = MeetingResult(title="Weekly sync", starts_at=start+timedelta(seconds=29),
+                               ends_at=start+timedelta(minutes=58), mts_link_keys=["id:700001"])
+        matches = select_transcript_calendar(result, [(previous, CommunicationEvent()), (current, CommunicationEvent())])
+        self.assertEqual([item[0] for item in matches], [current])
+
     def test_shared_calendar_requires_matching_mts_id(self):
         now = datetime.now(UTC)
         calendar_id = uuid.uuid4()

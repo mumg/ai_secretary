@@ -58,6 +58,7 @@ from improver.services.ollama import (
     is_ollama_processing_error,
 )
 from improver.services.plans import rebuild_plan
+from improver.services.source_links import inject_source_link_rules, source_references
 from improver.services.text import bounded_text, clean_email_body
 from improver.services.threads import rebuild_conversation_thread, update_conversation_thread
 
@@ -404,10 +405,14 @@ class EventPipeline:
             )
         return context
 
+    @inject_source_link_rules
     async def _process_event(
         self, session: AsyncSession, event: CommunicationEvent, now: datetime
     ) -> None:
         event_id = event.id
+        event.raw_headers = {**(event.raw_headers or {}), "Source-Links": source_references(
+            event.subject, event.body, event.source_url
+        )}
         event.thread_external_id = event.thread_external_id or event.external_id
         if event.event_type == MEETING_EVENT_TYPE:
             event.analysis_state = AnalysisState.PROCESSING
@@ -740,6 +745,7 @@ class EventPipeline:
             log.exception("task_extraction_backfill_failed", event_id=str(event_id))
             return 1
 
+    @inject_source_link_rules
     async def process_semantic_backfill(
         self,
         session: AsyncSession,

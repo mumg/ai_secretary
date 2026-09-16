@@ -307,3 +307,25 @@ class SsoPersistenceTests(IsolatedAsyncioTestCase):
             self.assertEqual(manifest["manifest_version"], 3)
             self.assertNotIn("host_permissions", manifest)
             self.assertIn("background.js", archive.namelist())
+
+    async def test_login_email_uses_saved_connection_without_exposing_tokens(self):
+        from improver.api import mts_link_auth as api
+
+        await self.finish_login(await self.start_login())
+
+        def handle(request):
+            self.assertEqual(request.url.path, "/accountUcaas/AccountUcaas.GetLoginData")
+            self.assertIn("Bearer ", request.headers["Authorization"])
+            return httpx.Response(200, json={"type": "LoginData", "value": {"email": "work@example.test"}})
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handle))
+        with patch.object(api.httpx, "AsyncClient", return_value=client):
+            response = await self.client.get("/admin/sources/mts/mts-link/login-email")
+        self.assertEqual(response.json(), {"email": "work@example.test"})
+        self.assertEqual(response.headers["cache-control"], "no-store")
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda _: httpx.Response(401, text="private-upstream-data")))
+        with patch.object(api.httpx, "AsyncClient", return_value=client):
+            response = await self.client.get("/admin/sources/mts/mts-link/login-email")
+        self.assertEqual(response.json(), {"email": None})
