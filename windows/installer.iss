@@ -79,15 +79,13 @@ procedure InitializeWizard;
 begin
   ConnectionPage := CreateInputQueryPage(wpSelectDir, 'Сервер AI Секретаря',
     'Локальная база PostgreSQL и фоновые службы',
-    'Выберите свободные порты. Ollama и модель подключаются отдельно; их можно изменить в панели после установки.');
+    'Выберите свободные порты. Подключение к AI-провайдеру и модель настраиваются в админке после установки.');
   ConnectionPage.Add('Порт интерфейса:', False);
   ConnectionPage.Add('Порт парсера документов:', False);
   ConnectionPage.Add('Порт PostgreSQL:', False);
-  ConnectionPage.Add('Адрес Ollama:', False);
   ConnectionPage.Values[0] := ExpandConstant('{param:APIPORT|18000}');
   ConnectionPage.Values[1] := ExpandConstant('{param:PARSERPORT|18080}');
   ConnectionPage.Values[2] := ExpandConstant('{param:DBPORT|15432}');
-  ConnectionPage.Values[3] := ExpandConstant('{param:OLLAMAURL|http://127.0.0.1:11434}');
   AccessPage := CreateInputOptionPage(ConnectionPage.ID, 'Доступ к приложению',
     'На этом компьютере или по HTTPS',
     'Публичный доступ требует домена и перенаправления портов 80 и 443 на этот компьютер. Для доступа с телефона будет создан клиентский сертификат.', True, False);
@@ -111,7 +109,6 @@ end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
   I, P: Integer;
-  Value: String;
 begin
   Result := True;
   if CurPageID = ConnectionPage.ID then begin
@@ -122,10 +119,7 @@ begin
     if (ConnectionPage.Values[0] = ConnectionPage.Values[1]) or
        (ConnectionPage.Values[0] = ConnectionPage.Values[2]) or
        (ConnectionPage.Values[1] = ConnectionPage.Values[2]) then Result := False;
-    Value := ConnectionPage.Values[3];
-    if ((Pos('http://', Value) <> 1) and (Pos('https://', Value) <> 1)) or
-       (Pos('"', Value) > 0) or (Pos('\', Value) > 0) then Result := False;
-    if not Result then MsgBox('Укажите три разных порта 1024–65535 и корректный адрес Ollama.', mbError, MB_OK);
+    if not Result then MsgBox('Укажите три разных порта 1024–65535.', mbError, MB_OK);
   end;
   if CurPageID = HostPage.ID then begin
     Result := (Trim(HostPage.Values[0]) <> '') and (Pos('"', HostPage.Values[0]) = 0) and (Pos('\', HostPage.Values[0]) = 0);
@@ -164,7 +158,7 @@ begin
     if AccessPage.SelectedValueIndex = 1 then Host := HostPage.Values[0];
     Params := '-B ' + Q(Root + '\setup\manage.py') + ' configure --root ' + Q(Root) + ' --data ' + Q(DataRoot)
       + ' --api-port ' + Q(ConnectionPage.Values[0]) + ' --parser-port ' + Q(ConnectionPage.Values[1])
-      + ' --database-port ' + Q(ConnectionPage.Values[2]) + ' --llm-url ' + Q(ConnectionPage.Values[3]) + ' --public-host ' + Q(Host);
+      + ' --database-port ' + Q(ConnectionPage.Values[2]) + ' --public-host ' + Q(Host);
     if not Exec(Root + '\python\python.exe', Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
       RaiseException('Не удалось настроить службы. Данные сохранены. Проверьте ' + DataRoot + '\logs\installer.log' + #13#10 + 'После исправления ошибки запустите установщик повторно.');
   end;
