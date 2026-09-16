@@ -43,8 +43,8 @@ android {
         applicationId = "net.muratov.assistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.5.0"
+        versionCode = 14
+        versionName = "0.5.2"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

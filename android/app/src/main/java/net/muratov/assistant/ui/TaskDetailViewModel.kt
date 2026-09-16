@@ -27,6 +27,7 @@ class TaskDetailViewModel(
     val state: StateFlow<TaskDetailUiState> = _state.asStateFlow()
 
     private var loadJob: Job? = null
+    private var rejectJob: Job? = null
 
     init {
         observeRealtime("tasks", "events") { load(silent = true) }
@@ -46,6 +47,25 @@ class TaskDetailViewModel(
                         error = it.message ?: "Не удалось загрузить задачу",
                     )
                 }
+        }
+    }
+
+    fun reject() {
+        if (rejectJob?.isActive == true) return
+        loadJob?.cancel()
+        rejectJob = viewModelScope.launch {
+            _state.value = _state.value.copy(loading = true, error = null)
+            try {
+                repository.reject(taskId)
+                load()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _state.value = _state.value.copy(
+                    loading = false,
+                    error = exception.message ?: "Не удалось отказаться от задачи",
+                )
+            }
         }
     }
 

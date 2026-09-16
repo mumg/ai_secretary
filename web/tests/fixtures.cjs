@@ -296,7 +296,7 @@ function fixtures() {
       },
       {
         id: "ollama",
-        label: "Ollama / Qwen",
+        label: "LLM",
         component_type: "llm",
         status: "BUSY",
         message: "Готовится ответ по архиву",
@@ -316,7 +316,7 @@ function fixtures() {
       },
       {
         id: "ollama-semaphore",
-        label: "Семафор Ollama",
+        label: "Семафор LLM",
         component_type: "semaphore",
         status: "BUSY",
         message: "Ожидание очереди",

@@ -278,7 +278,7 @@ class OllamaAnalyzer:
         """Run every project request fully on GPU and keep the model resident."""
         options = payload.setdefault("options", {})
         if not isinstance(options, dict):
-            raise TypeError("Ollama request options must be an object")
+            raise TypeError("LLM request options must be an object")
         options["num_gpu"] = -1
         payload["keep_alive"] = -1
         return payload
@@ -476,7 +476,7 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )
@@ -485,7 +485,7 @@ class OllamaAnalyzer:
             content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.IGNORECASE)
             return AnalysisResult.model_validate_json(content)
         except (KeyError, TypeError, AttributeError, json.JSONDecodeError, ValidationError) as exc:
-            raise OllamaResponseError("Ollama returned an invalid analysis response") from exc
+            raise OllamaResponseError("LLM returned an invalid analysis response") from exc
 
     @retry(
         stop=stop_after_attempt(3),
@@ -550,7 +550,7 @@ class OllamaAnalyzer:
         response = await self._post_chat(payload)
         if response.is_error:
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}",
+                f"LLM returned HTTP {response.status_code}",
                 request=response.request,
                 response=response,
             )
@@ -559,7 +559,7 @@ class OllamaAnalyzer:
             content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.IGNORECASE)
             return MeetingTopicMatch.model_validate_json(content)
         except (KeyError, TypeError, AttributeError, json.JSONDecodeError, ValidationError) as exc:
-            raise OllamaResponseError("Ollama returned an invalid meeting topic match") from exc
+            raise OllamaResponseError("LLM returned an invalid meeting topic match") from exc
 
     async def extract_tasks(
         self,
@@ -642,7 +642,7 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )
@@ -652,7 +652,7 @@ class OllamaAnalyzer:
             return TaskExtractionResult.model_validate_json(content)
         except (KeyError, TypeError, AttributeError, json.JSONDecodeError, ValidationError) as exc:
             raise OllamaResponseError(
-                "Ollama returned an invalid task extraction response"
+                "LLM returned an invalid task extraction response"
             ) from exc
 
     @retry(
@@ -709,7 +709,7 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )
@@ -792,7 +792,7 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )
@@ -860,7 +860,7 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )
@@ -931,7 +931,7 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )
@@ -965,13 +965,13 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )
         content = response.json()["message"]["content"].strip()
         if not content:
-            raise ValueError("Ollama returned an empty chat answer")
+            raise ValueError("LLM returned an empty chat answer")
         sent = json.loads(payload["messages"][1]["content"])["archive_context"]
         available = {item["reference_id"] for item in sent}
         used_reference_ids = sorted(set(re.findall(r"\b[TE]\d+\b", content.upper())) & available)
@@ -1013,7 +1013,7 @@ class OllamaAnalyzer:
                             )
                         detail = detail[:2000]
                         raise httpx.HTTPStatusError(
-                            f"Ollama returned HTTP {response.status_code}: {detail}",
+                            f"LLM returned HTTP {response.status_code}: {detail}",
                             request=response.request,
                             response=response,
                         )
@@ -1100,7 +1100,7 @@ class OllamaAnalyzer:
         if response.is_error:
             detail = response.text[:2000]
             raise httpx.HTTPStatusError(
-                f"Ollama returned HTTP {response.status_code}: {detail}",
+                f"LLM returned HTTP {response.status_code}: {detail}",
                 request=response.request,
                 response=response,
             )

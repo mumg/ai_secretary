@@ -19,10 +19,10 @@ def validate_options(api_port=18000, parser_port=18080, database_port=15432, pub
                  or host.endswith((".local", ".localhost", ".invalid"))):
         raise ValueError("Для HTTPS нужен публичный DNS-домен без протокола и пути.")
     if any(ord(char) < 32 or char in '\\"' for char in llm_url):
-        raise ValueError("Адрес Ollama содержит недопустимые символы.")
+        raise ValueError("Адрес LLM содержит недопустимые символы.")
     url = urlsplit(llm_url)
     if url.scheme not in {"http", "https"} or not url.hostname or url.username or url.password or url.query or url.fragment:
-        raise ValueError("Адрес Ollama должен быть HTTP(S) URL без паролей и параметров.")
+        raise ValueError("Адрес LLM должен быть HTTP(S) URL без паролей и параметров.")
     return dict(api_port=ports[0], parser_port=ports[1], database_port=ports[2], public_host=host, llm_url=llm_url.rstrip("/"))
 
 

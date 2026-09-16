@@ -77,6 +77,34 @@ test("initial plan, task action, same reading pane and API-confirmed completion"
   assert.match(d.querySelector("#detail").textContent, /Завершена/);
   assert.ok(!d.querySelector('#list [data-open-id="task1"]'));
 });
+test("confirmed task can be rejected and disappears from active plan", async (t) => {
+  const { d, api } = setup(t);
+  await settle();
+  click(d, '[data-open-id="task1"]');
+  await settle();
+  assert.equal(d.querySelector('[data-action="reject"]').textContent, "Отказаться от задачи");
+  click(d, '[data-action="reject"]');
+  await settle();
+  assert.equal(api.data.tasks[0].status, "CANCELLED");
+  assert.ok(api.calls.some((c) => c.method === "POST" && c.path === "/tasks/task1/reject"));
+  assert.ok(!d.querySelector('#list [data-open-id="task1"]'));
+  assert.ok(!d.querySelector('[data-action="reject"]'));
+});
+test("failed rejection leaves task active and shows an error", async (t) => {
+  const api = createAPI(), original = api.handle;
+  api.handle = async (url, options) => url.endsWith("/reject")
+    ? { ok: false, status: 503, json: async () => ({ detail: "Попробуйте позже" }) }
+    : original(url, options);
+  const { d } = setup(t, api);
+  await settle();
+  click(d, '[data-open-id="task1"]');
+  await settle();
+  click(d, '[data-action="reject"]');
+  await settle();
+  assert.equal(api.data.tasks[0].status, "NEW");
+  assert.ok(d.querySelector('#list [data-open-id="task1"]'));
+  assert.match(d.querySelector("#toast").textContent, /Попробуйте позже/);
+});
 test("future meeting GET never requests generation; explicit button queues it", async (t) => {
   const { d, api } = setup(t);
   await settle();

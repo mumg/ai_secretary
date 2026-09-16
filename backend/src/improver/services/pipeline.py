@@ -36,6 +36,7 @@ from improver.services.assignment import (
     assignment_evidence_is_grounded,
     assignment_signals,
     task_assignment_verdict,
+    transcript_assignment_verdict,
 )
 from improver.services.calendar import BusinessCalendar
 from improver.services.documents import SUPPORTED_SUFFIXES, DocumentParserClient
@@ -193,9 +194,19 @@ class EventPipeline:
             )
             if owner in {"other", "stale"}:
                 continue
+            if event.event_type == MEETING_TRANSCRIPT_EVENT_TYPE:
+                owner = transcript_assignment_verdict(
+                    candidate.assignment_evidence or candidate.evidence,
+                    self.config.identity, event, assignment, candidate.evidence,
+                )
+                if owner in {"other", "unproven"}:
+                    continue
             duplicate_query = select(Task.id).where(
                 func.lower(Task.title) == candidate.title.lower(),
-                Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED]),
+                or_(
+                    Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED]),
+                    and_(Task.status == TaskStatus.CANCELLED, Task.source_event_id == event.id),
+                ),
             )
             if event.thread_external_id:
                 duplicate_query = duplicate_query.join(

@@ -81,7 +81,7 @@
           <label>Дополнительные рабочие даты <small>YYYY-MM-DD, через запятую</small><input id="workingDates"></label>
         </fieldset>
         <fieldset class="wide"><legend>Модель</legend>
-          <label>Тип API<select id="llmProvider"><option value="ollama">Ollama</option><option value="openai">OpenAI-совместимый (LLMOps / vLLM)</option></select></label>
+          <label>Тип API<select id="llmProvider"><option value="ollama">LLM</option><option value="openai">OpenAI-совместимый (LLMOps / vLLM)</option></select></label>
           <div class="two-columns"><label>URL API<input id="llmUrl" type="url"><small>Для LLMOps укажите базовый URL, например https://llm.example.com/v1</small></label><label>Модель<input id="llmModel"></label></div>
           <label>API_KEY <small id="llmKeyState">Ключ не настроен</small><input id="llmApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Оставьте пустым, чтобы сохранить текущий ключ"></label>
           <label class="toggle"><input id="clearLlmApiKey" type="checkbox">Удалить сохранённый API_KEY при сохранении</label>

@@ -1424,6 +1424,11 @@ private fun TaskCard(
                 } else if (task.status == "POSSIBLY_COMPLETED") {
                     Text("Возможно выполнена — подтвердите", color = priority.accent)
                 }
+                if (task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED")) {
+                    TextButton(onClick = onReject, modifier = Modifier.align(Alignment.End)) {
+                        Text("Отказаться от задачи")
+                    }
+                }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),

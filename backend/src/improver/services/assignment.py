@@ -30,6 +30,12 @@ ASSIGNMENT_PROMPT = (
     "Не переноси ответственного из соседнего пункта. previous_events_in_thread нужны для "
     "понимания контекста, а не повторного создания старых задач. Новое поручение или явное "
     "возобновление старого должно подтверждаться цитатой из текущего body или вложения. "
+    "В meeting_transcript участие пользователя во встрече не означает ответственность за "
+    "работы команды. Для каждой задачи обязательно заполни assignment_evidence дословной "
+    "цитатой текущей реплики: прямое поручение пользователю или его собственное обещание "
+    "выполнить именно эту работу. Сохраняй имя говорящего и таймкод, если они нужны для "
+    "различения реплик. Не склеивай и не пересказывай цитату. Обещания других участников "
+    "и коллективное «мы сделаем» без личного поручения пользователю относятся к other. "
 )
 
 
@@ -270,6 +276,12 @@ _PERSON = re.compile(
     r"(?:\s*<mailto:[^>]+>|\s*<[^>]+@[^>]+>)?"
 )
 _EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}")
+_TRANSCRIPT_TURN = re.compile(r"^(?:\d{2}:\d{2}:\d{2} · )(?P<speaker>[^\n]+)\n", re.MULTILINE)
+_COMMITMENT = re.compile(
+    r"\b(?:беру|возьму|сделаю|проверю|подготовлю|отправлю|проведу|завершу|приступлю|"
+    r"посмотрю|уточню|согласую|доработаю|организую|обсужу|займусь|отвечаю|"
+    r"я\s+буду)\b", re.IGNORECASE,
+)
 
 
 def _normalized_quote(value: str) -> str:
@@ -362,6 +374,57 @@ def _owner_identity(owner: str, identity: IdentityConfig, roster: list[dict]) ->
     if any(len(_tokens(full)) > 1 for full in user_names):
         return "other"
     return "uncertain"
+
+
+def transcript_assignment_verdict(
+    quote: str | None,
+    identity: IdentityConfig,
+    event: CommunicationEvent,
+    signals: AssignmentSignals,
+    evidence: str,
+) -> str:
+    """Require current, speaker-local evidence before accepting a transcript task.
+
+    The model still determines the action's meaning. Attendance, another speaker's
+    promise, and an identity mentioned elsewhere are not assignment evidence.
+    """
+    needle = _normalized_quote(quote or "")
+    if len(needle) < 8:
+        return "unproven"
+    body = event.body or ""
+    headers = list(_TRANSCRIPT_TURN.finditer(body))
+    matches: list[str] = []
+    roster = [p for p in event.participants or [] if isinstance(p, dict)]
+    for index, header in enumerate(headers):
+        end = headers[index + 1].start() if index + 1 < len(headers) else len(body)
+        turn = body[header.start():end]
+        if needle not in _normalized_quote(turn):
+            continue
+        task_quote = _normalized_quote(evidence)
+        if len(task_quote) < 8 or (
+            task_quote not in _normalized_quote(turn) and needle not in task_quote
+        ):
+            continue
+        # A speaker header identifies the author; it is not an instruction to them.
+        text_quote = _TRANSCRIPT_TURN.sub("", quote or "")
+        text = _normalized_quote(text_quote)
+        if any(_has_name(text, name) for name in signals.unambiguous_names):
+            matches.append("user")
+        elif set(_EMAIL.findall(text)) & {a.casefold() for a in identity.addresses}:
+            matches.append("user")
+        elif any(_has_name(text, name) for name in signals.ambiguous_names):
+            matches.append("uncertain")
+        elif _COMMITMENT.search(text) and not re.search(
+            r"\b(?:не|нет)\b", text, re.IGNORECASE
+        ):
+            matches.append(_owner_identity(header['speaker'], identity, roster))
+        else:
+            matches.append("other")
+    if not matches:
+        return "unproven"
+    if len(matches) > 1:
+        return "uncertain" if any(m != "other" for m in matches) else "other"
+    return matches[0]
 
 
 def _block_owner(block: str, identity: IdentityConfig, roster: list[dict]) -> str | None:

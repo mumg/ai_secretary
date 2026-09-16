@@ -67,6 +67,7 @@ class TaskDetailActivity : ComponentActivity() {
                     state = state,
                     onBack = ::finish,
                     onRetry = detailViewModel::load,
+                    onReject = detailViewModel::reject,
                 )
             }
         }
@@ -86,6 +87,7 @@ private fun TaskDetailScreen(
     state: TaskDetailUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onReject: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -124,13 +126,18 @@ private fun TaskDetailScreen(
             state.detail != null -> TaskDetailContent(
                 detail = state.detail,
                 modifier = Modifier.padding(padding),
+                onReject = onReject,
             )
         }
     }
 }
 
 @Composable
-private fun TaskDetailContent(detail: TaskDetailDto, modifier: Modifier = Modifier) {
+private fun TaskDetailContent(
+    detail: TaskDetailDto,
+    modifier: Modifier = Modifier,
+    onReject: () -> Unit,
+) {
     val source = detail.source
     val uriHandler = LocalUriHandler.current
     Column(
@@ -140,6 +147,11 @@ private fun TaskDetailContent(detail: TaskDetailDto, modifier: Modifier = Modifi
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        if (detail.task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED", "NEEDS_CONFIRMATION")) {
+            TextButton(onClick = onReject) { Text("Отказаться от задачи") }
+        } else if (detail.task.status == "CANCELLED") {
+            Text("Задача отменена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (source == null) {
             DetailField("Источник", "Задача добавлена вручную")
         } else {

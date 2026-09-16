@@ -149,7 +149,7 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
                 content = if (request.error.isNullOrBlank()) {
                     "В очереди…"
                 } else {
-                    "Ollama временно недоступна, запрос будет повторён автоматически…"
+                    "LLM временно недоступна, запрос будет повторён автоматически…"
                 },
                 pending = true,
                 requestId = request.id,

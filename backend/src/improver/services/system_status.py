@@ -149,7 +149,7 @@ async def _ollama_component(config: AppConfig, now: datetime) -> ComponentStatus
     started = monotonic()
     metrics: dict[str, float] = {}
     version: str | None = None
-    label = "LLMOps / OpenAI API" if config.llm.provider == "openai" else "Ollama"
+    label = "LLM"
     try:
         async with httpx.AsyncClient(timeout=3) as client:
             headers = config.llm.request_headers()
@@ -177,7 +177,7 @@ async def _ollama_component(config: AppConfig, now: datetime) -> ComponentStatus
         )
         status = ComponentHealthStatus.OK if available else ComponentHealthStatus.DEGRADED
         message = (
-            (f"Ollama {version}" if version else "API модели доступен")
+            (f"LLM · версия API {version}" if version else "API модели доступен")
             if available
             else f"Модель {expected} отсутствует в списке доступных моделей"
         )
@@ -314,7 +314,7 @@ async def _semaphore_component(session: AsyncSession, now: datetime) -> Componen
     status = ComponentHealthStatus.BUSY if holders or waiters else ComponentHealthStatus.OK
     return ComponentStatusRead(
         id="ollama-semaphore",
-        label="Семафор модели",
+        label="Семафор LLM",
         component_type="semaphore",
         status=status,
         message="Модель занята" if status == ComponentHealthStatus.BUSY else None,

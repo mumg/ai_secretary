@@ -230,9 +230,12 @@ async def reject_task(
     config: AppConfig = Depends(get_runtime_config),
 ) -> Task:
     task = await _get_task(session, task_id)
-    if task.status != TaskStatus.NEEDS_CONFIRMATION:
-        raise HTTPException(status_code=409, detail="Task does not require confirmation")
+    if task.status == TaskStatus.COMPLETED:
+        raise HTTPException(status_code=409, detail="Completed task cannot be rejected")
     task.status = TaskStatus.CANCELLED
+    task.completed_at = None
+    for reminder in task.reminders:
+        reminder.enabled = False
     await rebuild_plan(session, BusinessCalendar(config).now())
     await session.commit()
     return await _get_task(session, task.id)
