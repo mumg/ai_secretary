@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from improver.config import AppConfig, SourceConfig, get_config, read_secret
 from improver.models import CommunicationSource, SystemSetting
+from improver.services.source_credentials import unpack_credential
 
 RUNTIME_KEYS = {
     "analysis_filters",
@@ -117,7 +118,9 @@ async def load_runtime_config(session: AsyncSession) -> AppConfig:
             **row.settings,
         }
         if row.credential_encrypted and cipher:
-            source["credential"] = cipher.decrypt(row.credential_encrypted)
+            source.update(unpack_credential(
+                row.source_type, cipher.decrypt(row.credential_encrypted)
+            ))
         sources.append(source)
     base.setdefault("communication_sources", {})["items"] = sources
     base.setdefault("identity", {})["addresses"] = identity_addresses_from_sources(sources)
@@ -179,5 +182,7 @@ def source_config_from_record(row: CommunicationSource) -> SourceConfig:
         **row.settings,
     }
     if row.credential_encrypted:
-        payload["credential"] = SecretCipher().decrypt(row.credential_encrypted)
+        payload.update(unpack_credential(
+            row.source_type, SecretCipher().decrypt(row.credential_encrypted)
+        ))
     return SourceConfig.model_validate(payload)

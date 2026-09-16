@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "AI Секретарь",
+  "version": "1.0.1",
+  "minimum_chrome_version": "118",
+  "description": "Корпоративный вход в МТС Линк для AI Секретаря.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "debugger",
+    "storage",
+    "alarms"
+  ],
+  "action": {
+    "default_title": "AI Секретарь — подключить вход МТС Линк",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

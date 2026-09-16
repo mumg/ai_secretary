@@ -385,6 +385,7 @@ class SourceRead(BaseModel):
     settings: dict[str, Any]
     tags: list[TagReference]
     credential_configured: bool
+    refresh_token_configured: bool = False
     last_sync_at: datetime | None
     last_error: str | None
     created_at: datetime

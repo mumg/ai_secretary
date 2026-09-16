@@ -36,7 +36,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-improver = ["web/*.html", "web/assets/*.css", "web/assets/*.js", "web/assets/*.txt"]
+improver = ["web/*.html", "web/assets/*.css", "web/assets/*.js", "web/assets/*.txt", "web/downloads/*.zip"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

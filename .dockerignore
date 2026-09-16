@@ -1,0 +1,17 @@
+**
+!backend/
+!backend/Dockerfile
+!backend/pyproject.toml
+!backend/requirements.txt
+!backend/alembic.ini
+!backend/src/
+!backend/src/**
+!backend/migrations/
+!backend/migrations/**
+!browser-extension/
+!browser-extension/build.py
+!browser-extension/src/
+!browser-extension/src/**
+**/__pycache__/
+**/*.pyc
+backend/src/improver/web/downloads/

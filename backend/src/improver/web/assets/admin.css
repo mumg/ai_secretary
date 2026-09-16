@@ -95,12 +95,24 @@ textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, m
 .inline, .two-columns { grid-template-columns: 1fr 1fr; }
 .four-columns { grid-template-columns: repeat(4, 1fr); }
 .hint { font-size: 12px; color: var(--muted); }
+.mts-auth-options { margin-top: 16px; font-size: 14px; }
+.mts-auth-options summary { cursor: pointer; color: var(--accent-dark); }
+.mts-auth-options button:disabled { cursor: not-allowed; opacity: .5; box-shadow: none; }
 .bottom-actions { display: flex; justify-content: end; margin-top: 20px; }
 .credential-state { padding: 10px 12px; border-radius: 8px; background: #f0eee8; color: var(--muted); font-size: 13px; }
 .credential-state.ok { background: #e1f2ec; color: var(--accent-dark); }
 
 dialog { width: min(620px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 20px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 90px rgba(9,34,34,.32); }
 dialog::backdrop { background: rgba(8,30,31,.62); backdrop-filter: blur(4px); }
+#mtsSsoForm { padding: 28px; margin: 0; }
+#mtsSsoTitle { margin: 0 0 20px; font-family: Georgia, "Times New Roman", serif; font-size: 27px; font-weight: 500; }
+#mtsSsoForm details { margin-bottom: 20px; color: var(--muted); }
+#mtsSsoForm summary { cursor: pointer; }
+#mtsSsoChoices { display: grid; gap: 8px; margin: 16px 0; }
+#mtsSsoChoices button { padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); text-align: left; }
+#mtsSsoChoices button:hover { border-color: var(--accent); }
+#mtsSsoForm button:disabled { cursor: wait; opacity: .6; }
+#mtsSsoStatus { margin: 16px 0; }
 #sourceForm { padding: 28px; }
 .dialog-heading { display: flex; justify-content: space-between; }
 .icon-button { width: 36px; height: 36px; border: 0; border-radius: 9px; background: #e9ebe6; font-size: 24px; }

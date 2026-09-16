@@ -46,6 +46,7 @@ from improver.services.settings import (
     save_runtime_settings,
     source_config_from_record,
 )
+from improver.services.source_credentials import unpack_credential
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 log = structlog.get_logger()
@@ -74,6 +75,12 @@ def _source_read(row: CommunicationSource) -> SourceRead:
         settings=row.settings,
         tags=[TagReference(id=tag.id, name=tag.name) for tag in row.tags],
         credential_configured=bool(row.credential_encrypted),
+        refresh_token_configured=bool(
+            row.credential_encrypted and row.source_type == "mts_link"
+            and unpack_credential(row.source_type, SecretCipher().decrypt(
+                row.credential_encrypted
+            )).get("refresh_token")
+        ),
         last_sync_at=row.last_sync_at,
         last_error=row.last_error,
         created_at=row.created_at,
@@ -159,10 +166,16 @@ async def _save_source(
 ) -> CommunicationSource:
     settings = _clean_source_settings(payload.source_type, payload.settings)
     credential = payload.credential or (
-        SecretCipher().decrypt(existing.credential_encrypted)
+        unpack_credential(existing.source_type, SecretCipher().decrypt(
+            existing.credential_encrypted
+        ))["credential"]
         if existing and existing.credential_encrypted
         else None
     )
+    if (existing and existing.source_type == "mts_link" and existing.credential_encrypted
+            and existing.settings.get("base_url") != settings.get("base_url")
+            and not payload.credential):
+        raise HTTPException(status_code=422, detail="Для смены шлюза укажите новый access token")
     try:
         SourceConfig.model_validate(
             {
@@ -232,6 +245,7 @@ async def update_source(
         await session.execute(
             select(CommunicationSource)
             .where(CommunicationSource.id == source_id)
+            .with_for_update()
             .options(selectinload(CommunicationSource.tags))
         )
     ).scalar_one_or_none()

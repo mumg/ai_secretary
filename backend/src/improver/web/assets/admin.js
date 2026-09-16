@@ -163,8 +163,9 @@ function renderSources() {
       <div class="source-card-header"><div><h3>${escapeText(source.label)}</h3><p>${sourceKind[source.source_type] || source.source_type}</p></div><span class="badge ${source.enabled ? "" : "off"}">${source.enabled ? "ВКЛЮЧЁН" : "ВЫКЛЮЧЕН"}</span></div>
       ${source.tags.length ? `<div class="source-tags">${source.tags.map((tag) => `<span>${escapeText(tag.name)}</span>`).join("")}</div>` : ""}
       <div class="source-details"><div>Подключение<strong>${escapeText(sourceEndpoint(source))}</strong></div><div>Последняя синхронизация<strong>${source.last_sync_at ? new Date(source.last_sync_at).toLocaleString() : "ещё не запускалась"}</strong></div></div>
+      ${source.source_type === "mts_link" ? `<p class="credential-state">${source.refresh_token_configured ? "SSO подключён · токены обновляются автоматически" : "Автоматическое обновление токенов не настроено"}</p>` : ""}
       ${source.last_error ? `<div class="source-error">Последняя ошибка: ${escapeText(source.last_error)}</div>` : ""}
-      <div class="card-actions"><button data-action="test" data-id="${source.id}">Проверить</button><button data-action="edit" data-id="${source.id}">Изменить</button><button class="danger" data-action="delete" data-id="${source.id}">Удалить</button></div>
+      <div class="card-actions">${source.source_type === "mts_link" ? `<button data-action="mts-sso" data-id="${source.id}">Войти через SSO</button>` : ""}<button data-action="test" data-id="${source.id}">Проверить</button><button data-action="edit" data-id="${source.id}">Изменить</button><button class="danger" data-action="delete" data-id="${source.id}">Удалить</button></div>
     </article>`).join("");
 }
 
@@ -254,7 +255,7 @@ function sourceFields(type, values = {}) {
     <label>URL EWS<input data-setting="ews_url" type="url" value="${escapeAttr(values.ews_url || "")}" placeholder="https://mail.example.ru/EWS/Exchange.asmx" required></label>
     <label>Основной почтовый адрес<input data-setting="primary_smtp_address" type="email" value="${escapeAttr(values.primary_smtp_address || "")}" required></label>
     <div class="inline"><label>Имя пользователя<input data-setting="username" value="${escapeAttr(values.username || "")}" required></label><label>Аутентификация<select data-setting="auth_type"><option value="ntlm">NTLM</option><option value="basic">Basic</option><option value="digest">Digest</option></select></label></div>`;
-  return `<label>URL шлюза МТС Линк<input data-setting="base_url" type="url" value="${escapeAttr(values.base_url || "https://gw.mts-link.ru")}" required></label><label>Интервал опроса, секунд<input data-setting="poll_interval_seconds" type="number" min="10" value="${Number(values.poll_interval_seconds) || 900}" required></label><p class="hint">В поле «Пароль или токен» укажите access token МТС Линк. Источник периодически проверяет завершённые встречи, загружает только новые готовые расшифровки и не использует резюме МТС при анализе.</p>`;
+  return `<label>URL шлюза МТС Линк<input data-setting="base_url" type="url" value="${escapeAttr(values.base_url || "https://gw.mts-link.ru")}" required></label><label>Интервал опроса, секунд<input data-setting="poll_interval_seconds" type="number" min="10" value="${Number(values.poll_interval_seconds) || 900}" required></label><section class="mts-auth-options"><p id="sourceMtsExtensionStatus" role="status" aria-live="polite">Проверяем расширение «AI Секретарь»…</p><button type="button" id="sourceMtsSso" class="primary" disabled>Войти через SSO</button><p id="sourceMtsSsoHint" class="hint" hidden>SSO сохранит access token и refresh token для автоматического обновления. Перед входом настройки источника сохранятся.</p><div id="sourceMtsFallback" hidden><p>Введите access token ниже или установите расширение «AI Секретарь» для входа через корпоративный SSO.</p><details><summary>Установить расширение «AI Секретарь»</summary><p class="hint"><a href="/api/v1/admin/mts-link/extension.zip">Скачать расширение</a>. Распакуйте архив, откройте chrome://extensions или edge://extensions, включите режим разработчика и выберите «Загрузить распакованное расширение». Затем нажмите значок «AI Секретарь» на этой странице.</p></details><p class="hint">Если расширение уже установлено, нажмите его значок в панели браузера, чтобы подключить к странице.</p><button type="button" id="sourceMtsRecheck">Проверить ещё раз</button></div><p class="hint">Access token, введённый вручную, действует только 84 часа с момента выдачи, а не сохранения в админке. Затем его нужно заменить. Замена вручную отключает автоматическое обновление токенов.</p></section>`;
 }
 
 function openSourceDialog(source = null) {
@@ -272,6 +273,7 @@ function openSourceDialog(source = null) {
   const authType = document.querySelector('#sourceFields [data-setting="auth_type"]');
   if (authType) authType.value = source?.settings?.auth_type || "ntlm";
   $("sourceDialog").showModal();
+  checkMtsExtension();
 }
 
 function readSourceSettings() {
@@ -307,6 +309,7 @@ async function sourceAction(event) {
   const button = event.target.closest("button[data-action]"); if (!button) return;
   const source = sourcesState.find((item) => item.id === button.dataset.id); if (!source) return;
   if (button.dataset.action === "edit") return openSourceDialog(source);
+  if (button.dataset.action === "mts-sso") return openMtsSso(source);
   if (button.dataset.action === "delete") {
     if (!confirm(`Удалить источник «${source.label}» вместе со всеми его переписками, задачами и вложениями? Ручные задачи сохранятся.`)) return;
     try { await request(`/sources/${source.id}`, { method: "DELETE" }); toast("Источник и связанные данные удалены"); await loadSources(); loadStatus(); } catch (error) { toast(error.message, true); }
@@ -398,7 +401,7 @@ document.querySelectorAll(".save-settings").forEach((button) => button.addEventL
 $("addSource").addEventListener("click", () => openSourceDialog());
 $("closeDialog").addEventListener("click", () => $("sourceDialog").close());
 $("cancelDialog").addEventListener("click", () => $("sourceDialog").close());
-$("sourceType").addEventListener("change", (event) => { setSourceFormError(); $("sourceFields").innerHTML = sourceFields(event.target.value); });
+$("sourceType").addEventListener("change", (event) => { setSourceFormError(); $("sourceFields").innerHTML = sourceFields(event.target.value); checkMtsExtension(); });
 $("sourceForm").addEventListener("input", () => setSourceFormError());
 $("sourceForm").addEventListener("submit", saveSource);
 $("sourceList").addEventListener("click", sourceAction);

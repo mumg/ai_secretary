@@ -170,7 +170,8 @@ class SourceConfig(BaseModel):
     port: int | None = Field(default=None, ge=1, le=65_535)
     tls: bool = True
     username: str | None = None
-    credential: str | None = Field(default=None, exclude=True)
+    credential: str | None = Field(default=None, exclude=True, repr=False)
+    refresh_token: str | None = Field(default=None, exclude=True, repr=False)
     inbox_folder: str = "INBOX"
     sent_folder: str = "Sent"
     ews_url: str | None = None

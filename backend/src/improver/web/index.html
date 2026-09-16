@@ -120,14 +120,32 @@
         <label class="toggle"><input id="sourceEnabled" type="checkbox" checked><span>Адаптер включён</span></label>
         <fieldset class="source-tag-fieldset"><legend>Теги</legend><div id="sourceTagPicker" class="tag-picker"></div></fieldset>
         <div id="sourceFields"></div>
-        <label>Пароль или токен <small id="credentialHint">обязателен при первом подключении</small><input id="sourceCredential" type="password" autocomplete="new-password"></label>
+        <label><span id="credentialLabel">Пароль или токен</span> <small id="credentialHint">обязателен при первом подключении</small><input id="sourceCredential" type="password" autocomplete="new-password"></label>
       </div>
       <div id="sourceFormError" class="form-error" role="alert" aria-live="assertive" tabindex="-1" hidden></div>
       <div class="dialog-actions"><button type="button" class="secondary" id="cancelDialog">Отмена</button><button type="submit" class="primary" id="sourceSubmit">Сохранить источник</button></div>
     </form>
   </dialog>
 
+  <dialog id="mtsSsoDialog">
+    <form id="mtsSsoForm" class="form-stack">
+      <h2 id="mtsSsoTitle">Вход МТС Линк</h2>
+      <details>
+        <summary>Установить расширение «AI Секретарь» для Chrome/Edge</summary>
+        <p class="hint"><a href="/api/v1/admin/mts-link/extension.zip">Скачайте расширение</a> и распакуйте архив. На странице chrome://extensions (или edge://extensions) включите режим разработчика и выберите «Загрузить распакованное расширение».</p>
+        <p class="hint">Нажмите значок расширения на этой странице админки. Повторяйте это после её перезагрузки. Браузер покажет панель отладки окна SSO — она нужна для получения результата входа.</p>
+      </details>
+      <div id="mtsSsoFallback" hidden><p>Расширение «AI Секретарь» не обнаружено на этой странице. Установите его по инструкции выше или нажмите его значок, если оно уже установлено.</p><p class="hint">Можно ввести access token вручную. Он действует только 84 часа с момента выдачи, затем потребуется замена.</p><button id="mtsSsoManual" type="button">Ввести access token</button></div>
+      <label>Рабочий email<input id="mtsSsoEmail" type="email" autocomplete="username" required maxlength="320"></label>
+      <button id="mtsSsoFind" type="submit" class="primary">Найти организацию</button>
+      <div id="mtsSsoChoices" class="form-stack"></div>
+      <p id="mtsSsoStatus" class="credential-state" role="status" aria-live="polite"></p>
+      <p class="hint">Токены сохраняются зашифрованно на сервере. Если вход отменён, новый источник останется выключенным.</p>
+      <button id="mtsSsoCancel" type="button" class="secondary">Закрыть</button>
+    </form>
+  </dialog>
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/admin/assets/admin.js" defer></script>
+  <script src="/admin/assets/mts-link-auth.js" defer></script>
 </body>
 </html>

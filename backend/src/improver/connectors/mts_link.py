@@ -23,12 +23,9 @@ from improver.services.mts_link import (
     find_mts_link_url_in_payload,
     mts_link_reference_keys,
 )
+from improver.services.mts_link_auth import MtsLinkAuthError, refresh_source_tokens
 
 log = structlog.get_logger()
-
-
-class MtsLinkAuthError(RuntimeError):
-    pass
 
 
 class MtsLinkApiError(RuntimeError):
@@ -142,12 +139,19 @@ class MtsLinkConnector(SourceConnector):
             follow_redirects=False,
         )
 
-    @staticmethod
-    async def _json(client: httpx.AsyncClient, path: str, **kwargs: object) -> object:
+    async def _json(self, client: httpx.AsyncClient, path: str, **kwargs: object) -> object:
         response = await client.get(path, **kwargs)
+        if response.status_code in {401, 403} and self.source.refresh_token:
+            tokens = await refresh_source_tokens(self.source, self.source.credential or "")
+            self.source.credential = tokens.access_token
+            self.source.refresh_token = tokens.refresh_token or None
+            client.headers["Authorization"] = f"Bearer {tokens.access_token}"
+            client.cookies.clear()
+            client.cookies.set("access", tokens.access_token)
+            response = await client.get(path, **kwargs)
         if response.status_code in {401, 403}:
             raise MtsLinkAuthError(
-                "MTS Link rejected the access token; update it in the source settings"
+                "МТС Линк отклонил access token. Выполните SSO-вход в настройках источника."
             )
         if response.is_error:
             raise MtsLinkApiError(path, response.status_code)

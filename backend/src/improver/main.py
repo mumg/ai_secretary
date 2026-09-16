@@ -22,6 +22,7 @@ from improver.api import (
     external_tasks,
     meeting_results,
     meetings,
+    mts_link_auth,
     plans,
     realtime,
     system_status,
@@ -96,6 +97,7 @@ app.include_router(events.router, prefix="/api/v1")
 app.include_router(external_tasks.router, prefix="/api/v1")
 app.include_router(devices.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(mts_link_auth.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(threads.router, prefix="/api/v1")
 app.include_router(meetings.router, prefix="/api/v1")
