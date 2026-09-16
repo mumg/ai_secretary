@@ -82,7 +82,7 @@ test("confirmed task can be rejected and disappears from active plan", async (t)
   await settle();
   click(d, '[data-open-id="task1"]');
   await settle();
-  assert.equal(d.querySelector('[data-action="reject"]').textContent, "Отказаться от задачи");
+  assert.equal(d.querySelector('[data-action="reject"]').getAttribute("aria-label"), "Отказаться от задачи");
   click(d, '[data-action="reject"]');
   await settle();
   assert.equal(api.data.tasks[0].status, "CANCELLED");

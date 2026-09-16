@@ -106,6 +106,7 @@ import net.muratov.assistant.data.remote.MeetingDto
 import net.muratov.assistant.data.remote.MeetingResultDto
 import net.muratov.assistant.data.remote.ComponentStatusDto
 import net.muratov.assistant.ui.ImproverTheme
+import net.muratov.assistant.ui.RejectTaskButton
 import net.muratov.assistant.ui.MeetingResultsViewModel
 import net.muratov.assistant.ui.MeetingsViewModel
 import net.muratov.assistant.ui.TaskViewModel
@@ -1419,15 +1420,10 @@ private fun TaskCard(
                         horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(onClick = onConfirm) { Text("Добавить") }
-                        TextButton(onClick = onReject) { Text("Отклонить") }
+                        RejectTaskButton(onClick = onReject)
                     }
                 } else if (task.status == "POSSIBLY_COMPLETED") {
                     Text("Возможно выполнена — подтвердите", color = priority.accent)
-                }
-                if (task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED")) {
-                    TextButton(onClick = onReject, modifier = Modifier.align(Alignment.End)) {
-                        Text("Отказаться от задачи")
-                    }
                 }
             }
             Row(
@@ -1451,6 +1447,9 @@ private fun TaskCard(
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
+                }
+                if (task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED")) {
+                    RejectTaskButton(onClick = onReject)
                 }
                 FilledTonalIconButton(
                     onClick = onAddReminder,

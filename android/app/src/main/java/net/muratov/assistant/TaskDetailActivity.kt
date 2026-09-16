@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.muratov.assistant.data.remote.TaskDetailDto
 import net.muratov.assistant.ui.ImproverTheme
+import net.muratov.assistant.ui.RejectTaskButton
 import net.muratov.assistant.ui.LinkedMessageText
 import net.muratov.assistant.ui.TaskDetailUiState
 import net.muratov.assistant.ui.TaskDetailViewModel
@@ -148,7 +149,7 @@ private fun TaskDetailContent(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (detail.task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED", "NEEDS_CONFIRMATION")) {
-            TextButton(onClick = onReject) { Text("Отказаться от задачи") }
+            RejectTaskButton(onClick = onReject, modifier = Modifier.align(Alignment.End))
         } else if (detail.task.status == "CANCELLED") {
             Text("Задача отменена", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

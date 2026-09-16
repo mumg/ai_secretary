@@ -128,6 +128,14 @@ select:focus {
 .icon-button {
   text-decoration: none;
 }
+.task-reject {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px;
+}
 .health {
   font-size: 12px;
 }
