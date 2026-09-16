@@ -73,7 +73,7 @@ def source_copy(destination):
 def build():
     if os.name != "nt" or sys.version_info[:2] != (3, 13):
         raise RuntimeError("Build the installer on Windows x64 with Python 3.13 (GitHub Actions).")
-    entries = json.loads((ROOT / "windows/vendor.json").read_text())
+    entries = json.loads((ROOT / "windows/vendor.json").read_text(encoding="utf-8"))
     vendors = {name: verified_download(entry, OUT / "vendor") for name, entry in entries.items()}
     payload = OUT / "payload"
     if payload.exists():
@@ -95,10 +95,11 @@ def build():
                     "-r", str(ROOT / "backend/requirements.txt"), str(ROOT / "document-parser"), "tzdata==2026.4"], check=True)
     inventory = subprocess.check_output([sys.executable, "-m", "pip", "freeze", "--path", str(packages)], text=True)
     (payload / "python-packages.txt").write_text(inventory, encoding="utf-8")
-    (payload / "python/python313._pth").write_text("python313.zip\n.\nLib/site-packages\n../backend/src\n../parser\n../setup\nimport site\n")
+    (payload / "python/python313._pth").write_text("python313.zip\n.\nLib/site-packages\n../backend/src\n../parser\n../setup\nimport site\n", encoding="utf-8")
     subprocess.run([str(payload / "python/python.exe"), "-B", "-c", "import asyncpg, cryptography, secretary_document_parser; from zoneinfo import ZoneInfo; ZoneInfo('Europe/Moscow')"], check=True)
     print("Offline payload ready:", payload)
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(errors="backslashreplace")
     build()

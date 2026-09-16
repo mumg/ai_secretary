@@ -43,7 +43,7 @@ jobs:
       - name: Install compiler
         shell: pwsh
         run: |
-          python -c "import sys,json; from pathlib import Path; sys.path.insert(0,'windows'); import build; build.verified_download(json.loads(Path('windows/vendor.json').read_text())['innosetup'],Path('dist/windows/vendor'))"
+          python -c "import sys,json; from pathlib import Path; sys.path.insert(0,'windows'); import build; build.verified_download(json.loads(Path('windows/vendor.json').read_text(encoding='utf-8'))['innosetup'],Path('dist/windows/vendor'))"
           if ($LASTEXITCODE -ne 0) { throw 'Compiler checksum verification failed' }
           $Install = Start-Process -FilePath dist/windows/vendor/innosetup.exe -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ALLUSERS' -Wait -PassThru
           if ($Install.ExitCode -notin @(0, 3010)) { throw 'Inno Setup installation failed' }
