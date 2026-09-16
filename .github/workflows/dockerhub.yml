@@ -48,6 +48,7 @@ jobs:
           PYTHONPATH: backend/src
         run: |
           python -m pip install -r backend/requirements.txt pytest aiosqlite
+          python browser-extension/build.py
           python -m pytest backend/tests -q
           python -m unittest discover -s tests -p 'test_*.py' -v
           python -m pip install ./document-parser

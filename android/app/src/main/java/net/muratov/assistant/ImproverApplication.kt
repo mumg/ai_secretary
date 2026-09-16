@@ -11,5 +11,6 @@ class ImproverApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.realtime.install()
+        container.updates.schedule()
     }
 }

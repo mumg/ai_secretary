@@ -16,6 +16,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +79,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import net.muratov.assistant.setup.SetupWizard
+import net.muratov.assistant.updates.UpdatePanel
+import net.muratov.assistant.updates.UpdatePrompt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -115,12 +120,22 @@ import java.time.format.DateTimeFormatter
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        val application = application as ImproverApplication
+        if (application.container.settings.isConfigured && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 10)
         }
-        val application = application as ImproverApplication
         setContent {
             ImproverTheme {
+                var showSetup by rememberSaveable { mutableStateOf(!application.container.settings.isConfigured) }
+                UpdatePrompt(application.container.updates)
+                if (showSetup) {
+                    SetupWizard(application.container.settings, onComplete = {
+                        application.container.realtime.connectionSettingsChanged()
+                        showSetup = false
+                        recreate()
+                    }, onCancel = if (application.container.settings.isConfigured) ({ showSetup = false }) else null)
+                    return@ImproverTheme
+                }
                 val taskViewModel: TaskViewModel = viewModel(
                     factory = TaskViewModel.Factory(application.container.repository),
                 )
@@ -142,7 +157,7 @@ class MainActivity : ComponentActivity() {
                     meetingsViewModel = meetingsViewModel,
                     meetingResultsViewModel = meetingResultsViewModel,
                     systemStatusViewModel = systemStatusViewModel,
-                    serverUrl = application.container.settings.serverUrl,
+                    onSetup = { showSetup = true },
                     onOpenTask = { taskId ->
                         startActivity(TaskDetailActivity.intent(this, taskId))
                     },
@@ -156,32 +171,7 @@ class MainActivity : ComponentActivity() {
                     onOpenThread = { threadId ->
                         startActivity(ConversationThreadDetailActivity.intent(this, threadId))
                     },
-                    onSaveServer = {
-                        application.container.settings.serverUrl = it
-                        application.container.realtime.connectionSettingsChanged()
-                    },
-                    onChooseCertificate = {
-                        KeyChain.choosePrivateKeyAlias(
-                            this,
-                            { alias ->
-                                if (alias != null) {
-                                    application.container.settings.certificateAlias = alias
-                                    application.container.realtime.connectionSettingsChanged()
-                                    taskViewModel.refresh()
-                                    threadsViewModel.refresh()
-                                    meetingsViewModel.refresh()
-                                    meetingResultsViewModel.refresh()
-                                    systemStatusViewModel.refresh()
-                                    taskViewModel.registerDevice()
-                                }
-                            },
-                            arrayOf("RSA", "EC"),
-                            null,
-                            null,
-                            -1,
-                            application.container.settings.certificateAlias,
-                        )
-                    },
+
                 )
             }
         }
@@ -196,14 +186,12 @@ private fun ImproverScreen(
     meetingsViewModel: MeetingsViewModel,
     meetingResultsViewModel: MeetingResultsViewModel,
     systemStatusViewModel: SystemStatusViewModel,
-    serverUrl: String,
+    onSetup: () -> Unit,
     onOpenTask: (String) -> Unit,
     onOpenChat: () -> Unit,
     onOpenMeeting: (String) -> Unit,
     onOpenMeetingResult: (String) -> Unit,
     onOpenThread: (String) -> Unit,
-    onSaveServer: (String) -> Unit,
-    onChooseCertificate: () -> Unit,
 ) {
     val tasks by viewModel.tasks.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -551,18 +539,8 @@ private fun ImproverScreen(
     }
     if (showSettings) {
         SettingsDialog(
-            initialServerUrl = serverUrl,
             onDismiss = { showSettings = false },
-            onSave = {
-                onSaveServer(it)
-                showSettings = false
-                viewModel.refresh()
-                threadsViewModel.refresh()
-                meetingsViewModel.refresh()
-                meetingResultsViewModel.refresh()
-                systemStatusViewModel.refresh()
-            },
-            onChooseCertificate = onChooseCertificate,
+            onSetup = { showSettings = false; onSetup() },
         )
     }
     reminderTask?.let { task ->
@@ -1647,24 +1625,19 @@ private fun DateTimeField(
 }
 
 @Composable
-private fun SettingsDialog(
-    initialServerUrl: String,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
-    onChooseCertificate: () -> Unit,
-) {
-    var url by remember { mutableStateOf(initialServerUrl) }
+private fun SettingsDialog(onDismiss: () -> Unit, onSetup: () -> Unit) {
+    val application = LocalContext.current.applicationContext as ImproverApplication
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Подключение") },
+        title = { Text("Настройки") },
         text = {
-            Column {
-                OutlinedTextField(url, { url = it }, label = { Text("URL сервера") })
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = onChooseCertificate) { Text("Выбрать сертификат") }
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                Text(application.container.settings.serverUrl)
+                Button(onClick = onSetup) { Text("Мастер подключения") }
+                Spacer(Modifier.height(16.dp))
+                UpdatePanel(application.container.updates)
             }
         },
-        confirmButton = { Button(onClick = { onSave(url) }) { Text("Сохранить") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
     )
 }

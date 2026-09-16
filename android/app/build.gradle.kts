@@ -14,9 +14,6 @@ val secretaryLocalProperties = Properties().apply {
         file.inputStream().use(::load)
     }
 }
-val secretaryServerUrl = providers.gradleProperty("secretaryServerUrl").orNull
-    ?: secretaryLocalProperties.getProperty("serverUrl")
-    ?: "https://localhost"
 val secretaryClientCertificateResource =
     secretaryLocalProperties.getProperty("clientCertificateResource") ?: ""
 val secretaryClientCertificatePassword =
@@ -46,8 +43,8 @@ android {
         applicationId = "net.muratov.assistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.4.6"
+        versionCode = 12
+        versionName = "0.5.0"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -67,7 +64,7 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "DEFAULT_SERVER_URL", "\"$secretaryServerUrl\"")
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"\"")
             buildConfigField(
                 "String",
                 "CLIENT_CERT_RESOURCE",
@@ -81,7 +78,7 @@ android {
             manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
         release {
-            buildConfigField("String", "DEFAULT_SERVER_URL", "\"$secretaryServerUrl\"")
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"\"")
             buildConfigField("String", "CLIENT_CERT_RESOURCE", "\"\"")
             buildConfigField("String", "CLIENT_CERT_PASSWORD", "\"\"")
             signingConfig = signingConfigs.findByName("release")
@@ -119,6 +116,7 @@ dependencies {
 
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.3")
     implementation("androidx.compose.material3:material3")

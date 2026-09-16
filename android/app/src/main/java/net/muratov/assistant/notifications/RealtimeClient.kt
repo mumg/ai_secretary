@@ -72,6 +72,7 @@ class RealtimeClient(
     }
 
     private fun registerPushToken() {
+        if (!settings.isConfigured) return
         registrationJob?.cancel()
         registrationJob = registrationScope.launch {
             while (RealtimeState.active.value) {
@@ -111,7 +112,7 @@ class RealtimeClient(
     }
 
     private fun connect() {
-        if (!RealtimeState.active.value || socket != null) return
+        if (!settings.isConfigured || !RealtimeState.active.value || socket != null) return
         val current = ++generation
         try {
             val base = settings.serverUrl.trimEnd('/')

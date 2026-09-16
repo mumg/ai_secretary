@@ -136,6 +136,7 @@ class TaskRepository(
     }
 
     suspend fun registerFcmToken(tokenOverride: String? = null) {
+        if (!settings.isConfigured) return
         val token = tokenOverride ?: FirebaseMessaging.getInstance().token.await()
         api().registerDevice(DeviceRequest(label = Build.MODEL, fcmToken = token))
     }
