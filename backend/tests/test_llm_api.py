@@ -160,7 +160,7 @@ class LlmTransportTests(IsolatedAsyncioTestCase):
         with self.client_patch(handler):
             result = await _ollama_component(config, datetime.now(UTC))
         self.assertEqual(result.status, "OK")
-        self.assertEqual(result.label, "LLMOps / OpenAI API")
+        self.assertEqual(result.label, "LLM")
 
 
 @skipUnless(os.getenv("WEB_TEST_DATABASE_URL"), "isolated PostgreSQL URL not set")
