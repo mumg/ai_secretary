@@ -282,6 +282,14 @@ def load_config() -> AppConfig:
     if os.getenv("LOCAL_WEB_ONLY", "false").lower() in {"true", "1", "yes"}:
         raw["server"]["local_web_only"] = True
         raw["server"]["public_url"] = "http://127.0.0.1:8000"
+    if public_url := os.getenv("PUBLIC_URL"):
+        if raw["server"].get("local_web_only") and urlparse(public_url).hostname not in {"localhost", "127.0.0.1"}:
+            raise ValueError("LOCAL_WEB_ONLY requires a loopback PUBLIC_URL")
+        raw["server"]["public_url"] = public_url
+    if parser_url := os.getenv("DOCUMENT_PARSER_URL"):
+        raw["document_parser"] = {"base_url": parser_url}
+    if llm_url := os.getenv("OLLAMA_BASE_URL"):
+        raw["llm"] = {"base_url": llm_url}
     if data_dir := os.getenv("DATA_DIR"):
         raw["server"]["data_dir"] = data_dir
     if log_level := os.getenv("LOG_LEVEL"):

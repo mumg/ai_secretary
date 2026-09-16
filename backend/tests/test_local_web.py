@@ -85,3 +85,14 @@ class LocalWebRuntimeTests(IsolatedAsyncioTestCase):
         with patch.object(service, "_initialize", side_effect=AssertionError("FCM attempted")):
             self.assertEqual(await service.send(session, "NEW_TASK", "task-id"), 0)
         session.execute.assert_not_called()
+
+    async def test_native_local_port_cannot_be_replaced_by_saved_settings(self):
+        config = AppConfig(server={"local_web_only": True, "public_url": "http://127.0.0.1:18000"})
+        session = Mock()
+        session.get = AsyncMock(return_value=SystemSetting(payload={"server": {"public_url": "https://elsewhere.example.test"}}))
+        rows = Mock()
+        rows.scalars.return_value = []
+        session.execute = AsyncMock(return_value=rows)
+        with patch("improver.services.settings.get_config", return_value=config):
+            loaded = await load_runtime_config(session)
+        self.assertEqual(loaded.server.public_url, "http://127.0.0.1:18000")

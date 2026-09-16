@@ -7,6 +7,7 @@ from copy import deepcopy
 from email.utils import getaddresses
 from hashlib import sha256
 from typing import Any
+from urllib.parse import urlsplit
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pydantic import SecretStr
@@ -127,7 +128,12 @@ async def load_runtime_config(session: AsyncSession) -> AppConfig:
     # Deployment mode is controlled by the launcher, never by stored/UI settings.
     base["server"]["local_web_only"] = get_config().server.local_web_only
     if base["server"]["local_web_only"]:
-        base["server"]["public_url"] = "http://127.0.0.1:8000"
+        launcher_url = get_config().server.public_url
+        parsed = urlsplit(launcher_url)
+        base["server"]["public_url"] = (
+            launcher_url if parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost"}
+            else "http://127.0.0.1:8000"
+        )
     return AppConfig.model_validate(base)
 
 
