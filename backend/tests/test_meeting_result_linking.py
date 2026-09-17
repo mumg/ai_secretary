@@ -14,6 +14,7 @@ from improver.models import (
     Meeting,
     MeetingResult,
 )
+from improver.services.llm import MeetingResultSignal, MeetingTopicMatch, SemanticAnalysis
 from improver.services.meeting_results import (
     MTS_TRANSCRIPT_ORIGIN,
     attach_email_results_to_transcript,
@@ -24,7 +25,6 @@ from improver.services.meeting_results import (
     select_transcript_calendar,
 )
 from improver.services.mts_link import mts_link_reference_keys
-from improver.services.ollama import MeetingResultSignal, MeetingTopicMatch, SemanticAnalysis
 
 
 class LinkingRulesTests(TestCase):

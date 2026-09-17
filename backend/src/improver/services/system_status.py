@@ -18,7 +18,7 @@ from improver.models import (
     Task,
 )
 from improver.schemas import ComponentStatusRead, SystemStatusRead
-from improver.services.ollama import OLLAMA_ADVISORY_LOCK_ID
+from improver.services.llm import OLLAMA_ADVISORY_LOCK_ID
 
 STATUS_SEVERITY = {
     ComponentHealthStatus.OK: 0,

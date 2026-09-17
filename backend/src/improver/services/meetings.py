@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from improver.models import CommunicationEvent, Meeting
 from improver.schemas import MeetingRead
+from improver.services.llm import OllamaAnalyzer
 from improver.services.meeting_results import link_results_to_calendar_meeting
 from improver.services.mts_link import find_mts_link_urls, mts_link_reference_keys
-from improver.services.ollama import OllamaAnalyzer
 
 MEETING_EVENT_TYPE = "meeting_invitation"
 

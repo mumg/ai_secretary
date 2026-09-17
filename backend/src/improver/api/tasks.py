@@ -24,8 +24,8 @@ from improver.schemas import (
 )
 from improver.services.calendar import BusinessCalendar
 from improver.services.full_text_search import full_text_match, normalize_search_query
+from improver.services.llm import OllamaAnalyzer
 from improver.services.notifications import NotificationService
-from improver.services.ollama import OllamaAnalyzer
 from improver.services.plans import rebuild_plan, rerank_active_tasks
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])

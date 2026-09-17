@@ -6,8 +6,8 @@ from dataclasses import dataclass
 import structlog
 from sqlalchemy import text
 
-MIN_DATABASE_SCHEMA_VERSION = 21
-MIN_DATABASE_SCHEMA_REVISION = "0021"
+MIN_DATABASE_SCHEMA_VERSION = 22
+MIN_DATABASE_SCHEMA_REVISION = "0022"
 
 log = structlog.get_logger()
 

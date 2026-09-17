@@ -28,7 +28,7 @@ from improver.schemas import ChatHistoryMessage, ChatReference
 from improver.services.calendar import BusinessCalendar
 from improver.services.chat_context import excerpt
 from improver.services.full_text_search import full_text_match
-from improver.services.ollama import OllamaAnalyzer, ollama_request_slot
+from improver.services.llm import OllamaAnalyzer, ollama_request_slot
 
 STOP_WORDS = {
     "the",

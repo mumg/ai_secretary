@@ -1,18 +1,35 @@
 # Run only on an isolated Windows CI runner. Never run on a real installation.
+#requires -Version 5.0
+#requires -RunAsAdministrator
+param(
+    [string]$InstallerPath = '',
+    [int]$ExpectedWindowsBuild = 0
+)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Root = Split-Path $PSScriptRoot -Parent
-$Version = (Get-Content "$Root/version" -Raw).Trim()
-$Installer = "$Root\dist\windows\AI-Secretary-Setup-$Version-windows-x64.exe"
+$WindowsBuild = [int](Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentBuildNumber
+if (-not [Environment]::Is64BitOperatingSystem -or $WindowsBuild -lt 14393) { throw 'Requires Windows 10 1607 x64 or newer' }
+if ($ExpectedWindowsBuild -and $WindowsBuild -ne $ExpectedWindowsBuild) { throw "Expected Windows build $ExpectedWindowsBuild, got $WindowsBuild" }
+Write-Host "Testing Windows build $WindowsBuild"
+if ($InstallerPath) {
+    $Installer = (Resolve-Path $InstallerPath).Path
+} else {
+    $Version = (Get-Content "$Root/version" -Raw).Trim()
+    $Installer = "$Root\dist\windows\AI-Secretary-Setup-$Version-windows-x64.exe"
+}
 $InstallRoot = "$env:ProgramFiles\AI Secretary CI"
 $DataRoot = "$env:ProgramData\AI Secretary"
 if (Test-Path "$DataRoot\connection.json") { throw 'Smoke test requires a clean disposable machine' }
+if (Get-Service 'AISecretary*' -ErrorAction SilentlyContinue) { throw 'Smoke test requires no existing AI Secretary services' }
 function Run-Installer {
     $Process = Start-Process -FilePath $Installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$InstallRoot`"") -Wait -PassThru
     if ($Process.ExitCode -notin @(0, 3010)) { throw "Installer exit code $($Process.ExitCode)" }
     $Ready = Invoke-RestMethod 'http://127.0.0.1:18000/health/ready' -TimeoutSec 15
     if ($Ready.status -ne 'ready') { throw 'API not ready' }
     $Parser = Invoke-RestMethod 'http://127.0.0.1:18080/health' -TimeoutSec 15
+    & "$InstallRoot\python\python.exe" -B "$InstallRoot\setup\check_runtime.py" --root $InstallRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Bundled native runtime check failed' }
     foreach ($Name in @('AISecretaryDatabase', 'AISecretaryParser', 'AISecretaryApi', 'AISecretaryWorker')) {
         $Service = Get-CimInstance Win32_Service -Filter "Name='$Name'"
         if ($Service.State -ne 'Running' -or $Service.StartMode -ne 'Auto') { throw "Service not running automatically: $Name" }

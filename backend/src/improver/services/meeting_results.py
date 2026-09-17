@@ -7,17 +7,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from improver.models import CommunicationEvent, Meeting, MeetingResult
+from improver.services.email_subjects import provider_thread_key
+from improver.services.llm import (
+    MeetingResultSignal,
+    MeetingTopicMatch,
+    OllamaAnalyzer,
+    SemanticAnalysis,
+)
 from improver.services.mts_link import (
     find_mts_link_urls,
     mts_link_join_url,
     mts_link_reference_keys,
     references_overlap,
-)
-from improver.services.ollama import (
-    MeetingResultSignal,
-    MeetingTopicMatch,
-    OllamaAnalyzer,
-    SemanticAnalysis,
 )
 from improver.services.text import bounded_text
 
@@ -381,9 +382,9 @@ async def _find_calendar_for_email(
         meeting
         for meeting, calendar_event in candidates
         if meeting in matches
-        and event.thread_external_id
+        and provider_thread_key(event)
         and calendar_event.source_id == event.source_id
-        and calendar_event.thread_external_id == event.thread_external_id
+        and provider_thread_key(calendar_event) == provider_thread_key(event)
     ]
     if thread_matches:
         matches = thread_matches

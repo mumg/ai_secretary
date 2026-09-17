@@ -23,6 +23,7 @@ from improver.models import (
     MeetingContext,
     MeetingResult,
 )
+from improver.services.llm import GroundedChatAnswer
 from improver.services.meeting_context import (
     collect_materials,
     ensure_context,
@@ -31,7 +32,6 @@ from improver.services.meeting_context import (
     prepare_next_meeting_context,
     topic_terms,
 )
-from improver.services.ollama import GroundedChatAnswer
 
 
 @asynccontextmanager

@@ -149,6 +149,8 @@ def create_certificates(data):
 
 
 def configure(root, data, args):
+    # Fail before creating a database or changing services if the OS cannot load a dependency.
+    run(root / "python/python.exe", "-B", root / "setup/check_runtime.py", "--root", root)
     secure_directory(data)
     fresh = not (data / "connection.json").exists()
     options = validate_options(args.api_port, args.parser_port, args.database_port, args.public_host, args.llm_url) if fresh else read_options(data)

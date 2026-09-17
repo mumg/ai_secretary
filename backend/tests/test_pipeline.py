@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
 
 from improver.models import CommunicationEvent
-from improver.services.ollama import MailingSignal
+from improver.services.llm import MailingSignal
 from improver.services.pipeline import (
     apply_mailing_classification,
     missing_meeting_result_signal_condition,
@@ -85,7 +85,7 @@ class ContextualTaskAssignmentTests(IsolatedAsyncioTestCase):
 
     async def create(self, **values):
         from improver.services.assignment import assignment_signals
-        from improver.services.ollama import ExtractedTask
+        from improver.services.llm import ExtractedTask
 
         context = values.pop("context", [])
         candidate = ExtractedTask(
@@ -170,7 +170,7 @@ class ContextualTaskAssignmentTests(IsolatedAsyncioTestCase):
 
     async def test_uncertain_candidate_with_foreign_owner_is_excluded(self):
         from improver.services.assignment import assignment_signals
-        from improver.services.ollama import ExtractedTask
+        from improver.services.llm import ExtractedTask
 
         self.event.body = "Подготовить договор — отв. Сидоров А."
         notifications = await self.pipeline._create_task_candidates(

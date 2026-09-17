@@ -11,6 +11,10 @@ from datetime import UTC, datetime, timedelta
 from unittest import IsolatedAsyncioTestCase, TestCase, skipUnless
 from unittest.mock import AsyncMock, patch
 
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import Session
+
 from improver.config import AppConfig
 from improver.models import (
     Attachment,
@@ -25,10 +29,7 @@ from improver.models import (
 from improver.schemas import ChatHistoryMessage
 from improver.services.archive_chat import ArchiveChatService, resolve_query, search_intent
 from improver.services.chat_context import excerpt, fit_records, serialized_size
-from improver.services.ollama import OllamaAnalyzer
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Session
+from improver.services.llm import OllamaAnalyzer
 
 NOW = datetime(2026, 9, 14, 12, tzinfo=UTC)
 
@@ -416,7 +417,7 @@ class OllamaSlotTests(IsolatedAsyncioTestCase):
     async def test_slot_is_released_on_cancellation_and_supports_nested_calls(self):
         import asyncio
 
-        from improver.services.ollama import ollama_request_slot
+        from improver.services.llm import ollama_request_slot
 
         entered = asyncio.Event()
 
@@ -440,9 +441,10 @@ class OllamaSlotTests(IsolatedAsyncioTestCase):
     async def test_ready_chat_gets_slot_before_background(self):
         import asyncio
 
-        from improver.models import ChatRequest
-        from improver.services.ollama import ollama_request_slot
         from sqlalchemy import delete
+
+        from improver.models import ChatRequest
+        from improver.services.llm import ollama_request_slot
 
         request_id = uuid.uuid4()
         async with AsyncSession(self.engine) as session:
@@ -472,11 +474,12 @@ class OllamaSlotTests(IsolatedAsyncioTestCase):
         self.assertTrue(background_entered.is_set())
 
     async def test_oversized_question_is_failed_without_endless_retries(self):
+        from sqlalchemy import delete
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+
         from improver.models import ChatRequest
         from improver.services.chat_context import ChatContextError
         from improver.services.chat_queue import process_next_chat_request
-        from sqlalchemy import delete
-        from sqlalchemy.ext.asyncio import async_sessionmaker
 
         request_id = uuid.uuid4()
         async with AsyncSession(self.engine) as session:

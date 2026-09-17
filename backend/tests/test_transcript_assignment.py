@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, Mock
 from improver.config import AppConfig, IdentityConfig
 from improver.models import CommunicationEvent
 from improver.services.assignment import assignment_signals, transcript_assignment_verdict
-from improver.services.ollama import ExtractedTask
+from improver.services.llm import ExtractedTask
 from improver.services.pipeline import EventPipeline
 
 

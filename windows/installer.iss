@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.4"
+  #define AppVersion "0.1.9"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -17,7 +17,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-MinVersion=10.0.20348
+MinVersion=10.0.14393
 OutputDir=..\dist\windows
 OutputBaseFilename=AI-Secretary-Setup-{#AppVersion}-windows-x64
 Compression=lzma2/normal

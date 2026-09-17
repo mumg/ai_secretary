@@ -25,6 +25,7 @@ from improver.enums import AnalysisState, Direction
 from improver.models import Attachment, CommunicationEvent, SourceCursor
 from improver.services.calendar_events import calendar_event_from_message
 from improver.services.email_importance import IMPORTANCE_HEADERS
+from improver.services.email_subjects import email_thread_headers, subject_key, subject_tokens
 
 
 @dataclass(slots=True)
@@ -337,7 +338,10 @@ class ImapConnector(SourceConnector):
                 )
                 if calendar_changed or importance_changed:
                     existing.event_type = message.event_type
-                    existing.raw_headers = message.headers
+                    existing.raw_headers = (
+                        email_thread_headers(existing.subject, message.headers, existing.raw_headers)
+                        if message.event_type == "email" else message.headers
+                    )
                     existing.analysis_state = AnalysisState.PENDING
                     existing.analysis_error = None
                     inserted += 1
@@ -360,11 +364,16 @@ class ImapConnector(SourceConnector):
                 direction=direction,
                 thread_external_id=message.thread_id,
                 subject=message.subject,
+                subject_key=subject_key(message.subject) if message.event_type == "email" else None,
+                subject_tokens=subject_tokens(message.subject) if message.event_type == "email" else [],
                 author=message.author,
                 participants=message.participants,
                 occurred_at=message.occurred_at,
                 body=message.body,
-                raw_headers=message.headers,
+                raw_headers=(
+                    email_thread_headers(message.subject, message.headers)
+                    if message.event_type == "email" else message.headers
+                ),
                 content_hash=content_hash,
             )
             session.add(event)

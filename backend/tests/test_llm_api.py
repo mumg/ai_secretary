@@ -14,7 +14,7 @@ from improver.config import AppConfig
 from improver.db import get_session
 from improver.main import app
 from improver.models import SystemSetting
-from improver.services.ollama import OllamaAnalyzer, OllamaResponseError
+from improver.services.llm import OllamaAnalyzer, OllamaResponseError
 from improver.services.settings import load_runtime_config
 from improver.services.system_status import _ollama_component
 
@@ -66,7 +66,7 @@ class LlmTransportTests(IsolatedAsyncioTestCase):
 
             with (
                 self.client_patch(handler),
-                patch("improver.services.ollama.ollama_request_slot", no_slot),
+                patch("improver.services.llm.ollama_request_slot", no_slot),
             ):
                 result = await OllamaAnalyzer(config)._post_chat(
                     {
@@ -97,7 +97,7 @@ class LlmTransportTests(IsolatedAsyncioTestCase):
 
             with (
                 self.client_patch(handler),
-                patch("improver.services.ollama.ollama_request_slot", no_slot),
+                patch("improver.services.llm.ollama_request_slot", no_slot),
             ):
                 result = await OllamaAnalyzer(config)._post_chat({"model": "qwen", "messages": []})
                 self.assertEqual(result.json()["message"]["content"], "OK")
@@ -117,7 +117,7 @@ class LlmTransportTests(IsolatedAsyncioTestCase):
 
         with (
             self.client_patch(handler),
-            patch("improver.services.ollama.ollama_request_slot", no_slot),
+            patch("improver.services.llm.ollama_request_slot", no_slot),
         ):
             chunks = [
                 chunk
@@ -133,7 +133,7 @@ class LlmTransportTests(IsolatedAsyncioTestCase):
 
         with (
             self.client_patch(handler),
-            patch("improver.services.ollama.ollama_request_slot", no_slot),
+            patch("improver.services.llm.ollama_request_slot", no_slot),
         ):
             result = await OllamaAnalyzer(self.config())._post_chat(
                 {"model": "qwen", "messages": []}
@@ -144,7 +144,7 @@ class LlmTransportTests(IsolatedAsyncioTestCase):
     async def test_invalid_success_response_is_not_an_empty_answer(self):
         with (
             self.client_patch(lambda request: httpx.Response(200, json={"choices": []})),
-            patch("improver.services.ollama.ollama_request_slot", no_slot),
+            patch("improver.services.llm.ollama_request_slot", no_slot),
         ):
             with self.assertRaises(OllamaResponseError):
                 await OllamaAnalyzer(self.config())._post_chat({"model": "qwen", "messages": []})

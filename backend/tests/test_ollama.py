@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import httpx
 from pydantic import ValidationError
 
-from improver.services.ollama import (
+from improver.services.llm import (
     OLLAMA_UNSUPPORTED_SCHEMA_KEYS,
     AnalysisResult,
     ArchiveAnalysis,
@@ -282,3 +282,32 @@ class AssignmentPromptTests(IsolatedAsyncioTestCase):
             self.assertTrue(payload["body"].startswith("Текущий статус"))
             self.assertLessEqual(len(payload["body"]), config.llm.context_length * 3 // 2 + 40)
             self.assertEqual(event.body, original)
+
+
+class EmailThreadMatchTests(IsolatedAsyncioTestCase):
+    async def test_match_sends_both_subjects_bounded_bodies_and_structured_schema(self):
+        import json
+        from datetime import UTC, datetime
+
+        from improver.config import AppConfig
+        from improver.models import CommunicationEvent
+
+        analyzer = OllamaAnalyzer(AppConfig())
+        analyzer._post_chat = AsyncMock(return_value=httpx.Response(
+            200, request=httpx.Request("POST", "https://model.test/api/chat"),
+            json={"message": {"content": '{"matches":true,"confidence":0.95,"evidence":"Уточнение запроса"}'}},
+        ))
+        first = CommunicationEvent(subject="Согласование договора", body="A" * 10000,
+                                   occurred_at=datetime.now(UTC))
+        second = CommunicationEvent(subject="Re: Уточнение договора", body="Новая редакция",
+                                    occurred_at=datetime.now(UTC))
+        result = await analyzer.match_email_thread(first, second)
+        self.assertTrue(result.matches)
+        payload = analyzer._post_chat.await_args.args[0]
+        messages = json.loads(payload["messages"][1]["content"])
+        self.assertEqual(messages[0]["subject"], first.subject)
+        self.assertEqual(messages[1]["subject"], second.subject)
+        self.assertIn("tokens", messages[0]["subject_token_classification"])
+        self.assertLessEqual(len(messages[0]["body"]), 2000)
+        self.assertEqual(payload["options"]["temperature"], 0)
+        self.assertIn("matches", payload["format"]["required"])

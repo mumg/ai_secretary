@@ -62,6 +62,7 @@ class CommunicationEvent(Base, TimestampMixin):
         UniqueConstraint("source_id", "external_id", name="uq_event_source_external"),
         Index("ix_events_analysis", "analysis_state", "occurred_at"),
         Index("ix_events_thread", "source_id", "thread_external_id"),
+        Index("ix_events_subject", "source_id", "subject_key"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -74,6 +75,8 @@ class CommunicationEvent(Base, TimestampMixin):
     direction: Mapped[str] = mapped_column(String(16), default=Direction.INCOMING, nullable=False)
     thread_external_id: Mapped[str | None] = mapped_column(String(512))
     subject: Mapped[str | None] = mapped_column(Text)
+    subject_key: Mapped[str | None] = mapped_column(String(80))
+    subject_tokens: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     author: Mapped[str | None] = mapped_column(String(512))
     participants: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

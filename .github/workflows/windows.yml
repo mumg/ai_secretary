@@ -50,7 +50,7 @@ jobs:
       - name: Build offline EXE
         shell: pwsh
         run: ./windows/build.ps1
-      - name: Verify install, upgrade and uninstall
+      - name: Verify install, upgrade and uninstall (Server 2022, not Windows 10 1607)
         shell: pwsh
         run: ./windows/smoke-test.ps1
       - uses: actions/upload-artifact@v7

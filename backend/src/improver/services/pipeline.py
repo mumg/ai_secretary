@@ -41,6 +41,14 @@ from improver.services.assignment import (
 from improver.services.calendar import BusinessCalendar
 from improver.services.documents import SUPPORTED_SUFFIXES, DocumentParserClient
 from improver.services.email_importance import email_has_high_importance
+from improver.services.email_subjects import provider_thread_expression
+from improver.services.llm import (
+    ExtractedTask,
+    MailingSignal,
+    OllamaAnalyzer,
+    SemanticAnalysis,
+    is_ollama_processing_error,
+)
 from improver.services.meeting_results import (
     MEETING_TRANSCRIPT_EVENT_TYPE,
     MTS_TRANSCRIPT_ORIGIN,
@@ -51,17 +59,14 @@ from improver.services.meeting_results import (
 )
 from improver.services.meetings import MEETING_EVENT_TYPE, upsert_meeting
 from improver.services.notifications import NotificationService
-from improver.services.ollama import (
-    ExtractedTask,
-    MailingSignal,
-    OllamaAnalyzer,
-    SemanticAnalysis,
-    is_ollama_processing_error,
-)
 from improver.services.plans import rebuild_plan
 from improver.services.source_links import inject_source_link_rules, source_references
 from improver.services.text import bounded_text, clean_email_body
-from improver.services.threads import rebuild_conversation_thread, update_conversation_thread
+from improver.services.threads import (
+    rebuild_conversation_thread,
+    reconcile_email_thread,
+    update_conversation_thread,
+)
 
 log = structlog.get_logger()
 SEMANTIC_INDEX_VERSION = 2
@@ -158,7 +163,7 @@ def missing_meeting_result_signal_condition():
             MeetingResult.origin_type == MTS_TRANSCRIPT_ORIGIN,
             MeetingResult.parent_result_id.is_(None),
             calendar_event.source_id == CommunicationEvent.source_id,
-            calendar_event.thread_external_id == CommunicationEvent.thread_external_id,
+            provider_thread_expression(calendar_event) == provider_thread_expression(),
             CommunicationEvent.occurred_at >= Meeting.starts_at - timedelta(hours=2),
             CommunicationEvent.occurred_at <= Meeting.starts_at + timedelta(days=30),
         )
@@ -201,7 +206,7 @@ class EventPipeline:
                 )
                 if owner in {"other", "unproven"}:
                     continue
-            duplicate_query = select(Task.id).where(
+            duplicate_query = select(Task).where(
                 func.lower(Task.title) == candidate.title.lower(),
                 or_(
                     Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED]),
@@ -212,10 +217,34 @@ class EventPipeline:
                 duplicate_query = duplicate_query.join(
                     CommunicationEvent,
                     Task.source_event_id == CommunicationEvent.id,
-                ).where(CommunicationEvent.thread_external_id == event.thread_external_id)
+                ).where(
+                    CommunicationEvent.source_id == event.source_id,
+                    CommunicationEvent.thread_external_id == event.thread_external_id,
+                )
             else:
                 duplicate_query = duplicate_query.where(Task.source_event_id == event.id)
-            if await session.scalar(duplicate_query):
+            existing_task = await session.scalar(duplicate_query.order_by(Task.created_at, Task.id))
+            if existing_task is not None:
+                if (
+                    event.event_type == "email"
+                    and event.direction == Direction.INCOMING
+                    and existing_task.status != TaskStatus.CANCELLED
+                    and not existing_task.manually_created
+                ):
+                    previous = await session.get(CommunicationEvent, existing_task.source_event_id)
+                    if previous is not None and event.occurred_at > previous.occurred_at:
+                        # Keep the task identity, user status, priority and deadline. A repeated
+                        # relative deadline must not silently postpone an existing commitment.
+                        existing_task.source_event_id = event.id
+                        existing_task.evidence = candidate.evidence
+                        existing_task.confidence = candidate.confidence
+                        if candidate.description:
+                            existing_task.description = candidate.description
+                        if existing_task.due_at is None:
+                            existing_task.due_at = BusinessCalendar(self.config).normalize_due(
+                                candidate.due_at
+                            )
+                        await session.flush()
                 continue
             auto_create = (
                 candidate.assignee == "user"
@@ -484,6 +513,7 @@ class EventPipeline:
                 filter_kind=filter_match.kind,
             )
             return
+        await reconcile_email_thread(session, event, now, self.analyzer)
         duplicate_event = await session.scalar(
             select(CommunicationEvent).where(
                 CommunicationEvent.id != event.id,
@@ -682,6 +712,7 @@ class EventPipeline:
         pending_notifications: list[tuple[str, str]] = []
         try:
             original_body = event.body
+            await reconcile_email_thread(session, event, now, self.analyzer)
             event.body = bounded_text(
                 clean_email_body(event.body),
                 max(8_000, self.config.llm.context_length * 3) // 2,

@@ -22,8 +22,9 @@ from improver.schemas import MeetingContextReference
 from improver.services.archive_chat import ArchiveChatService, expand_search_terms, search_tokens
 from improver.services.calendar import BusinessCalendar
 from improver.services.chat_context import excerpt
+from improver.services.email_subjects import provider_thread_expression, provider_thread_key
+from improver.services.llm import OllamaAnalyzer, ollama_request_slot
 from improver.services.notifications import NotificationService
-from improver.services.ollama import OllamaAnalyzer, ollama_request_slot
 
 log = structlog.get_logger()
 
@@ -263,13 +264,13 @@ async def collect_materials(session, config: AppConfig, meeting: Meeting, now: d
             seen.add(ref.id)
     # A generic title can still have a directly linked email conversation.
     invitation = await session.get(CommunicationEvent, meeting.source_event_id)
-    if invitation and invitation.thread_external_id:
+    if invitation and provider_thread_key(invitation):
         statement = (
             select(CommunicationEvent, CommunicationSource.label)
             .outerjoin(CommunicationSource, CommunicationSource.id == CommunicationEvent.source_id)
             .where(
                 CommunicationEvent.source_id == invitation.source_id,
-                CommunicationEvent.thread_external_id == invitation.thread_external_id,
+                provider_thread_expression() == provider_thread_key(invitation),
                 CommunicationEvent.id != invitation.id,
                 CommunicationEvent.occurred_at < cutoff,
                 CommunicationEvent.analysis_state != "IGNORED",

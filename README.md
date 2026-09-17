@@ -809,8 +809,10 @@ Debug APK создаётся в `android/app/build/outputs/apk/debug/`. Инст
 
 ### Нативный установщик Windows
 
-Добавлена сборка `AI-Secretary-Setup-<version>-windows-x64.exe` для Windows 11 x64
-и Windows Server 2022/2025. Включает Python, локальный PostgreSQL, фоновые службы
+Добавлена сборка `AI-Secretary-Setup-<version>-windows-x64.exe` для Windows 10 x64
+начиная с 1607 (14393), Windows 11 и Windows Server 2016/2019/2022/2025.
+Прогон на Windows 10 1607 пока не выполнен; CI проверяет Windows Server 2022.
+Включает Python, локальный PostgreSQL, фоновые службы
 и мастер настройки; Docker не требуется. Доступ по умолчанию локальный,
 публичный HTTPS с mTLS и автоматическим HTTP-01 продлением настраивается в мастере.
 
