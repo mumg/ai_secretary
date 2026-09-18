@@ -32,7 +32,7 @@ http
             ? "text/javascript"
             : "text/html",
         "Content-Security-Policy":
-          "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'",
+          "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
       });
       res.end(fs.readFileSync(file));
     } catch {

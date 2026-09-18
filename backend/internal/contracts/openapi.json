@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Improver API",
-    "version": "0.1.28"
+    "version": "0.1.29"
   },
   "paths": {
     "/api/v1/tasks": {

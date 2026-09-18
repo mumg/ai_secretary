@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.28"
+  #define AppVersion "0.1.29"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
