@@ -228,7 +228,8 @@
     "author",
     "occurred_at",
     "preview",
-    "source_url"
+    "source_url",
+    "analysis_error"
   ],
   "ConversationThreadDetail": [
     "id",

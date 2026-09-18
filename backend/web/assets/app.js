@@ -538,7 +538,7 @@
   function threadHTML(x) {
     return (
       head("Переписка") +
-      `<h2>${e(x.title || "Без темы")}</h2><p class="muted">${e(x.source_label)} · ${x.event_count} сообщений · ${e(date(x.first_event_at))} — ${e(date(x.last_event_at))}</p>${people(x.participants)}<h3>Резюме Qwen</h3>${x.summary ? markdown(x.summary) : '<p class="muted">Резюме ещё не сформировано.</p>'}<h3>Сообщения · сначала новые</h3>${x.events.map((ev) => `<article class="source"><strong>${e(ev.subject || "Без темы")}</strong><p class="muted">${e(ev.author || "Автор не указан")} · ${e(date(ev.occurred_at))}</p><div class="text-body">${e(ev.preview)}</div>${openButton("event", ev.id, "Читать полное сообщение")}</article>`).join("")}<p class="muted">Показано ${x.events.length} из ${x.event_count}</p>${x.has_more_events ? '<button data-action="more-events">Загрузить следующие сообщения</button>' : ""}`
+      `<h2>${e(x.title || "Без темы")}</h2><p class="muted">${e(x.source_label)} · ${x.event_count} сообщений · ${e(date(x.first_event_at))} — ${e(date(x.last_event_at))}</p>${people(x.participants)}<h3>Резюме Qwen</h3>${x.summary ? markdown(x.summary) : '<p class="muted">Резюме ещё не сформировано.</p>'}<h3>Сообщения · сначала новые</h3>${x.events.map((ev) => `<article class="source"><strong>${e(ev.subject || "Без темы")}</strong><p class="muted">${e(ev.author || "Автор не указан")} · ${e(date(ev.occurred_at))}</p>${ev.analysis_error ? `<p class="inline-error" role="alert">${e(ev.analysis_error)}</p>` : ""}<div class="text-body">${e(ev.preview)}</div>${openButton("event", ev.id, "Читать полное сообщение")}</article>`).join("")}<p class="muted">Показано ${x.events.length} из ${x.event_count}</p>${x.has_more_events ? '<button data-action="more-events">Загрузить следующие сообщения</button>' : ""}`
     );
   }
   function formatMetric(value) {
@@ -546,8 +546,11 @@
       ? value.toLocaleString("ru-RU", { maximumFractionDigits: 2 })
       : value;
   }
+  function statusMetrics(metrics) {
+    return Object.entries(metrics || {}).filter(([key]) => !["events_failed", "chat_failed", "contexts_failed"].includes(key));
+  }
   function metricsHTML(metrics) {
-    return `<div class="metrics">${Object.entries(metrics || {})
+    return `<div class="metrics">${statusMetrics(metrics)
       .map(
         ([key, value]) =>
           `<div class="metric"><strong class="numbers">${e(formatMetric(value))}</strong><span>${e(key)}</span></div>`,
@@ -572,7 +575,7 @@
       <div class="queue-cards">${cards.map(([title, value, cls]) => `<div class="queue-card ${cls}"><span>${title}</span><strong class="numbers">${value}</strong></div>`).join("")}</div>
       <div class="queue-progress-label"><span>${total ? `Разобрано ${fmt(done)} из ${fmt(total)}` : "Очередь пуста"}</span><strong>${fmt(percent, 1)}%</strong></div>
       <progress class="queue-progress" max="${total || 1}" value="${Math.min(done, total)}" aria-label="Доля разобранных событий"></progress>
-      <div class="queue-legend"><span>Исключено фильтрами: ${fmt(excluded)}</span><span>Ожидают повтора: ${fmt(n("events_retry_waiting"))}</span><span class="${n("events_failed") ? "error" : ""}">Ошибки: ${fmt(n("events_failed"))}</span></div>
+      <div class="queue-legend"><span>Исключено фильтрами: ${fmt(excluded)}</span><span>Ожидают повтора: ${fmt(n("events_retry_waiting"))}</span></div>
       <p class="queue-note muted">Скорость за последние 15 минут: завершено ${fmt(n("events_completed_last_15m"))} событий. ${n("events_rate_per_minute") ? "Неудачные попытки и исключённые события в скорость не входят." : "За это время завершений не было; текущий анализ ещё может выполняться."}</p>
     </section>`;
   }
@@ -593,9 +596,7 @@
       `<h2>${["OK", "BUSY"].includes(system.overall_status) ? "Система работает штатно" : "Есть компоненты, требующие внимания"}</h2><p class="muted">Обновлено ${e(date(system.generated_at))}. Занятость Qwen не означает сбой.</p>${queueHTML(system.components.find((c) => c.id === "processing")?.metrics)}<div class="table-wrap"><table><thead><tr><th>Компонент</th><th>Состояние</th><th>Обновлено</th><th>Показатели</th></tr></thead><tbody>${system.components
         .map(
           (c) =>
-            `<tr><td>${openButton("component", c.id, c.label)}</td><td class="${C.healthClass(c.status)}"><span class="dot"></span>${e(label(c.status))}<p class="muted">${e(c.message || "")}</p></td><td>${e(date(c.observed_at))}</td><td class="numbers">${Object.entries(
-              c.metrics,
-            )
+            `<tr><td>${openButton("component", c.id, c.label)}</td><td class="${C.healthClass(c.status)}"><span class="dot"></span>${e(label(c.status))}<p class="muted">${e(c.message || "")}</p></td><td>${e(date(c.observed_at))}</td><td class="numbers">${statusMetrics(c.metrics)
               .map(([k, v]) => `${e(k)}: ${e(formatMetric(v))}`)
               .join("<br>")}</td></tr>`,
         )

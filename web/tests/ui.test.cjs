@@ -379,3 +379,25 @@ test("failed event displays analysis failure reason as text", async (t) => {
   assert.equal(error.textContent, api.data.source.analysis_error);
   assert.equal(error.querySelector("script"), null);
 });
+
+test("failed analysis is shown on its thread message, not system monitoring", async (t) => {
+  const api = createAPI();
+  const reason = "Анализ не будет выполнен: лимит токенов <script>unsafe()</script>";
+  api.data.threads[0].events[0].analysis_error = reason;
+  const processing = api.data.system.components.find(c => c.id === "processing");
+  processing.status = "OK";
+  processing.message = null;
+  processing.metrics = { events_total: 10, events_completed: 9, events_failed: 1, chat_failed: 2, contexts_failed: 3 };
+  const { d } = setup(t, api, "#tab=threads&kind=thread&id=thread1");
+  await settle();
+  const error = d.querySelector("#detail .inline-error");
+  assert.equal(error?.textContent, reason);
+  assert.equal(error.querySelector("script"), null);
+  assert.equal(d.querySelectorAll("#detail .inline-error").length, 1);
+  click(d, '[data-tab="status"]');
+  await settle();
+  assert.doesNotMatch(d.querySelector("#detail").textContent, /events_failed|chat_failed|contexts_failed|Ошибки:|Анализ не будет выполнен/);
+  click(d, '#detail [data-open-id="processing"]');
+  await settle();
+  assert.doesNotMatch(d.querySelector("#detail").textContent, /events_failed|chat_failed|contexts_failed|Ошибки:/);
+});

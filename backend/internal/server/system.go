@@ -465,7 +465,7 @@ func (s *Server) statusSnapshot(ctx context.Context) (M, error) {
 
 func (q *request) processingStatus() M {
 	metrics := M{}
-	queued, failed, stuck := 0.0, 0.0, 0.0
+	queued, stuck := 0.0, 0.0
 	for _, spec := range [][3]string{{"events", "communication_events", "analysis_state"}, {"chat", "chat_requests", "status"}, {"contexts", "meeting_contexts", "status"}} {
 		counts := q.rows("SELECT " + spec[2] + " AS status,count(*) AS count FROM " + spec[1] + " GROUP BY " + spec[2])
 		for _, state := range []string{"PENDING", "PROCESSING", "FAILED"} {
@@ -476,9 +476,7 @@ func (q *request) processingStatus() M {
 				}
 			}
 			metrics[spec[0]+"_"+strings.ToLower(state)] = count
-			if state == "FAILED" {
-				failed += count
-			} else {
+			if state != "FAILED" {
 				queued += count
 			}
 		}
@@ -505,9 +503,6 @@ func (q *request) processingStatus() M {
 	if stuck > 0 {
 		status = "ERROR"
 		message = "Есть обработчики без прогресса более 15 минут"
-	} else if failed > 0 {
-		status = "DEGRADED"
-		message = "Есть завершившиеся с ошибкой операции"
 	} else if queued > 0 {
 		status = "BUSY"
 		message = "Очереди обрабатываются"

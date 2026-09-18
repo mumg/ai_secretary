@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Improver API",
-    "version": "0.1.25"
+    "version": "0.1.26"
   },
   "paths": {
     "/api/v1/tasks": {
@@ -2848,6 +2848,17 @@
               }
             ],
             "title": "Source Url"
+          },
+          "analysis_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Error"
           }
         },
         "type": "object",
