@@ -1,5 +1,5 @@
 # Release metadata retained for Docker/Windows version tooling. This is not a Python server package.
 [project]
 name = "improver-server"
-version = "0.1.20"
+version = "0.1.21"
 description = "Go server release metadata"

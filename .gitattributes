@@ -1,0 +1,5 @@
+# Document formats contain byte offsets or compressed streams. Never convert line endings,
+# even when a small PDF looks like text to Git (for example testdata/blank.pdf).
+*.pdf binary
+*.docx binary
+*.xlsx binary

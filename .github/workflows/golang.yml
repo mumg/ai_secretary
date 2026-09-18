@@ -2,9 +2,9 @@ name: Go server
 on:
   push:
     branches: [golang, main]
-    paths: ['backend/**', 'document-parser/**', 'windows/**', 'version', '.github/workflows/golang.yml']
+    paths: ['backend/**', 'document-parser/**', 'windows/**', 'version', '.gitattributes', '.github/workflows/golang.yml']
   pull_request:
-    paths: ['backend/**', 'document-parser/**', 'windows/**', 'version', '.github/workflows/golang.yml']
+    paths: ['backend/**', 'document-parser/**', 'windows/**', 'version', '.gitattributes', '.github/workflows/golang.yml']
 permissions:
   contents: read
 jobs:

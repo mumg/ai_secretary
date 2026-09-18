@@ -3,7 +3,7 @@ name: Windows installer
 on:
   push:
     branches: [main]
-    paths: ['windows/**', 'backend/**', 'browser-extension/**', 'document-parser/**', 'version', '.github/workflows/windows.yml']
+    paths: ['windows/**', 'backend/**', 'browser-extension/**', 'document-parser/**', 'version', '.gitattributes', '.github/workflows/windows.yml']
     tags: ['windows-v*']
   workflow_dispatch:
     inputs:
