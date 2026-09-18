@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Improver API",
-    "version": "0.1.27"
+    "version": "0.1.28"
   },
   "paths": {
     "/api/v1/tasks": {
@@ -2291,6 +2291,74 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/mobile-identity": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Issue an app-private Android client identity as a QR image",
+        "operationId": "issue_mobile_identity",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "label"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Secret QR image; must not be cached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "qr_image",
+                    "server_url",
+                    "expires_at"
+                  ],
+                  "properties": {
+                    "qr_image": {
+                      "type": "string"
+                    },
+                    "server_url": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Local web mode"
+          },
+          "422": {
+            "description": "Invalid label or HTTPS origin"
+          },
+          "503": {
+            "description": "Client issuer unavailable"
           }
         }
       }

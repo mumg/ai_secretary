@@ -45,6 +45,8 @@ function populateSettings(data) {
   settingsState = data.settings;
   const s = data.settings;
   const localWeb = Boolean(data.local_web_only);
+  $("mobileTab").hidden = localWeb;
+  $("createMobileIdentity").disabled = localWeb;
   $("deploymentHint").textContent = localWeb
     ? "Локальный WEB-режим. Работа в браузере на этом компьютере, без мобильного приложения и сертификатов."
     : "Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён клиентским сертификатом.";
@@ -431,7 +433,43 @@ function registerModelContextTools() {
   });
 }
 
+let mobileQRSerial = 0;
+let mobileQRTimer = null;
+function hideMobileIdentity() {
+  mobileQRSerial++;
+  clearTimeout(mobileQRTimer);
+  $("mobileIdentityQR").removeAttribute("src");
+  $("mobileIdentityInfo").textContent = "";
+  $("mobileIdentityResult").hidden = true;
+}
+async function createMobileIdentity(event) {
+  event.preventDefault();
+  hideMobileIdentity();
+  const serial = mobileQRSerial;
+  const button = $("createMobileIdentity");
+  button.disabled = true;
+  $("mobileIdentityError").textContent = "";
+  try {
+    const result = await request("/mobile-identity", {
+      method: "POST", cache: "no-store",
+      body: JSON.stringify({ label: $("mobileDeviceLabel").value.trim() }),
+    });
+    if (serial !== mobileQRSerial || document.hidden) return;
+    $("mobileIdentityQR").src = result.qr_image;
+    $("mobileIdentityInfo").textContent = `${result.server_url} · Сертификат действует до ${new Date(result.expires_at).toLocaleDateString("ru-RU")}`;
+    $("mobileIdentityResult").hidden = false;
+    mobileQRTimer = setTimeout(hideMobileIdentity, 120_000);
+  } catch (error) {
+    if (serial === mobileQRSerial) $("mobileIdentityError").textContent = error.message;
+  } finally { button.disabled = false; }
+}
+$("mobileIdentityForm").addEventListener("submit", createMobileIdentity);
+$("hideMobileIdentity").addEventListener("click", hideMobileIdentity);
+window.addEventListener("pagehide", hideMobileIdentity);
+document.addEventListener("visibilitychange", () => { if (document.hidden) hideMobileIdentity(); });
+
 document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
+  hideMobileIdentity();
   document.querySelectorAll(".tab, .panel").forEach((node) => node.classList.remove("active"));
   tab.classList.add("active"); $(tab.dataset.panel).classList.add("active");
 }));

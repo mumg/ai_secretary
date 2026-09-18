@@ -1,10 +1,8 @@
 package net.muratov.assistant.setup
 
 import android.app.Activity
-import android.security.KeyChain
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +19,9 @@ import kotlinx.coroutines.withContext
 import net.muratov.assistant.data.ApiFactory
 import net.muratov.assistant.data.SettingsStore
 import java.util.concurrent.TimeUnit
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import net.muratov.assistant.security.AppClientIdentity
 
 @Composable
 fun SetupWizard(
@@ -37,8 +38,34 @@ fun SetupWizard(
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val normalized = normalizeServerUrl(url)
-    val importCertificate = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        error = null
+    val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        val payload = result.contents
+        if (payload != null) {
+            busy = true
+            error = null
+            scope.launch {
+                try {
+                    val imported = withContext(Dispatchers.IO) { AppClientIdentity.importQR(activity, payload) }
+                    url = imported.server
+                    alias = imported.alias
+                    step = 2
+                } catch (cancelled: CancellationException) { throw cancelled
+                } catch (_: Exception) {
+                    error = "Не удалось прочитать ключ. Используйте QR-код из настроек AI Секретаря с действующим сертификатом."
+                } finally { busy = false }
+            }
+        }
+    }
+    val scan: () -> Unit = {
+        scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setPrompt("Наведите камеру на QR-код в настройках AI Секретаря")
+            .setBeepEnabled(false).setBarcodeImageEnabled(false).setOrientationLocked(false)
+            .setCaptureActivity(IdentityCaptureActivity::class.java))
+    }
+    val certificateLabel = when {
+        AppClientIdentity.isAppAlias(alias) -> "Ключ сохранён в приложении"
+        alias != null -> "Ранее выбранный сертификат Android"
+        else -> "Без клиентского сертификата"
     }
     BackHandler(enabled = step > 0 && !busy) { step--; error = null }
     Surface(Modifier.fillMaxSize()) {
@@ -49,6 +76,7 @@ fun SetupWizard(
             when (step) {
                 0 -> {
                     Text("Подключите свой сервер")
+                    Button(enabled = !busy, onClick = scan) { Text("Сканировать QR-код") }
                     Text("Введите HTTPS-адрес вашей установки. Его можно получить у администратора AI Секретаря.")
                     OutlinedTextField(url, { url = it; error = null }, modifier = Modifier.fillMaxWidth(),
                         label = { Text("Адрес сервера") }, placeholder = { Text("https://assistant.example.org") },
@@ -56,24 +84,16 @@ fun SetupWizard(
                         supportingText = { Text("HTTPS, без пути, логина и параметров. Допускается порт.") })
                 }
                 1 -> {
-                    Text("Сертификат доступа")
-                    Text("Если сервер защищён клиентским сертификатом (mTLS), установите выданный администратором сертификат и выберите его. Для сервера без mTLS этот шаг можно пропустить.")
-                    Text(alias?.let { "Выбран: $it" } ?: "Сертификат не выбран")
-                    OutlinedButton(onClick = {
-                        runCatching { importCertificate.launch(KeyChain.createInstallIntent()) }
-                            .onFailure { error = "Откройте настройки Android → Безопасность → Установить сертификат." }
-                    }) { Text("Установить сертификат") }
-                    Button(onClick = {
-                        KeyChain.choosePrivateKeyAlias(activity, { selected ->
-                            activity.runOnUiThread { if (selected != null) { alias = selected; error = null } }
-                        }, arrayOf("RSA", "EC"), null, java.net.URI(normalized!!).host, -1, alias)
-                    }) { Text("Выбрать сертификат") }
-                    if (alias != null) TextButton(onClick = { alias = null }) { Text("Подключаться без сертификата") }
+                    Text("Ключ доступа")
+                    Text("Отсканируйте QR-код из раздела «Мобильное приложение» в настройках сервера. Ключ останется в закрытом каталоге приложения и не будет установлен в систему. Для сервера без mTLS этот шаг можно пропустить.")
+                    Text(certificateLabel)
+                    Button(enabled = !busy, onClick = scan) { Text("Сканировать QR-код") }
+                    if (alias != null) TextButton(enabled = !busy, onClick = { alias = null }) { Text("Подключаться без сертификата") }
                 }
                 2 -> {
                     Text("Проверка подключения")
                     Text(normalized.orEmpty())
-                    Text(alias?.let { "Сертификат: $it" } ?: "Без клиентского сертификата")
+                    Text(certificateLabel)
                     Text("Проверим доступ к API сервера, затем сохраним настройки и откроем приложение.")
                 }
             }
@@ -86,7 +106,10 @@ fun SetupWizard(
                         try {
                             if (checkConnection != null) checkConnection(normalized!!, alias)
                             else checkServerConnection(activity, normalized!!, alias)
-                            settings.saveConnection(normalized!!, alias)
+                            withContext(Dispatchers.IO) {
+                                settings.saveConnection(normalized!!, alias)
+                                runCatching { AppClientIdentity.retainOnly(activity, alias) }
+                            }
                             onComplete()
                         } catch (cancelled: CancellationException) { throw cancelled
                         } catch (failure: Exception) {

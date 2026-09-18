@@ -64,8 +64,10 @@ func Environment(data string, o Options) map[string]string {
 		public = "https://" + o.PublicHost
 	}
 	return map[string]string{
-		"DATABASE_URL":           fmt.Sprintf("postgresql://improver@127.0.0.1:%d/improver", o.DatabasePort),
-		"DATABASE_PASSWORD_FILE": filepath.Join(data, "secrets", "database-password"), "APP_MASTER_KEY_FILE": filepath.Join(data, "secrets", "master-key"),
+		"CLIENT_ISSUER_CERT_FILE": filepath.Join(data, "certificates", "client-ca.pem"),
+		"CLIENT_ISSUER_KEY_FILE":  filepath.Join(data, "certificates", "client-ca.key"),
+		"DATABASE_URL":            fmt.Sprintf("postgresql://improver@127.0.0.1:%d/improver", o.DatabasePort),
+		"DATABASE_PASSWORD_FILE":  filepath.Join(data, "secrets", "database-password"), "APP_MASTER_KEY_FILE": filepath.Join(data, "secrets", "master-key"),
 		"DATA_DIR": filepath.Join(data, "data"), "PUBLIC_URL": public, "LOCAL_WEB_ONLY": strconv.FormatBool(o.PublicHost == ""),
 		"DOCUMENT_PARSER_URL": fmt.Sprintf("http://127.0.0.1:%d", o.ParserPort), "OLLAMA_BASE_URL": o.LLMURL,
 	}

@@ -76,3 +76,44 @@ test('model settings save, preserve and remove API key without echoing it', asyn
   assert.equal(el('firebaseSettings').hidden, false);
   assert.equal(el('publicUrl').disabled, false);
 });
+
+test('mobile QR is requested explicitly, never persisted, and erased on leaving the tab', async t => {
+  const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {
+    url: 'https://example.test/admin', runScripts: 'outside-only', pretendToBeVisual: true,
+  });
+  t.after(() => dom.window.close());
+  const w = dom.window;
+  let issueCount = 0;
+  w.fetch = async (url, options = {}) => {
+    if (url.endsWith('/mobile-identity')) {
+      issueCount++;
+      assert.equal(options.method, 'POST');
+      assert.equal(options.cache, 'no-store');
+      assert.equal(JSON.parse(options.body).label, 'My phone');
+      return { ok: true, json: async () => ({ qr_image: 'data:image/png;base64,dGVzdA==', server_url: 'https://example.test', expires_at: '2027-09-18T12:00:00Z' }) };
+    }
+    return { ok: true, json: async () => url.endsWith('/settings') ? {settings: {}} : [] };
+  };
+  w.eval(fs.readFileSync(path.join(root, 'assets/admin.js'), 'utf8'));
+  const el = id => w.document.getElementById(id);
+  await settle();
+  assert.equal(issueCount, 0);
+  el('mobileTab').click();
+  el('mobileDeviceLabel').value = 'My phone';
+  await w.createMobileIdentity({ preventDefault() {} });
+  assert.equal(issueCount, 1);
+  assert.equal(el('mobileIdentityResult').hidden, false);
+  assert.ok(el('mobileIdentityQR').src.startsWith('data:image/png;base64,'));
+  assert.equal(w.localStorage.length, 0);
+  assert.equal(w.sessionStorage.length, 0);
+  w.document.querySelector('[data-panel="sources"]').click();
+  assert.equal(el('mobileIdentityResult').hidden, true);
+  assert.equal(el('mobileIdentityQR').getAttribute('src'), null);
+  assert.equal(el('mobileIdentityInfo').textContent, '');
+  // A response arriving after the user hides the QR must never display the key.
+  el('mobileTab').click();
+  const pending = w.createMobileIdentity({ preventDefault() {} });
+  w.hideMobileIdentity();
+  await pending;
+  assert.equal(el('mobileIdentityResult').hidden, true);
+});

@@ -15,8 +15,8 @@ class SettingsStore(context: Context) {
 
     fun saveConnection(url: String, alias: String?) {
         require(normalizeServerUrl(url) != null)
-        preferences.edit().putString("server_url", normalizeServerUrl(url))
-            .putString("certificate_alias", alias).apply()
+        check(preferences.edit().putString("server_url", normalizeServerUrl(url))
+            .putString("certificate_alias", alias).commit()) { "Не удалось сохранить настройки подключения" }
     }
 
     var certificateAlias: String?

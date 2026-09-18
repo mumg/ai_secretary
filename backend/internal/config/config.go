@@ -18,15 +18,17 @@ import (
 
 type Object map[string]any
 type Config struct {
-	DatabaseURL   string
-	MasterKeyFile string
-	DataDir       string
-	LocalOnly     bool
-	PublicURL     string
-	ParserURL     string
-	LLMURL        string
-	Listen        string
-	WebDir        string
+	ClientCAFile    string
+	ClientCAKeyFile string
+	DatabaseURL     string
+	MasterKeyFile   string
+	DataDir         string
+	LocalOnly       bool
+	PublicURL       string
+	ParserURL       string
+	LLMURL          string
+	Listen          string
+	WebDir          string
 }
 
 func Env(k, d string) string {
@@ -47,7 +49,7 @@ func Secret(path string) (string, error) {
 	return s, nil
 }
 func Load() (Config, error) {
-	c := Config{MasterKeyFile: Env("APP_MASTER_KEY_FILE", "/run/secrets/app_master_key"), DataDir: Env("DATA_DIR", "/data"), ParserURL: Env("DOCUMENT_PARSER_URL", "http://document-parser:8080"), LLMURL: Env("OLLAMA_BASE_URL", "http://ollama:11434"), Listen: Env("LISTEN_ADDR", "0.0.0.0:8000"), WebDir: Env("WEB_DIR", "web")}
+	c := Config{ClientCAFile: Env("CLIENT_ISSUER_CERT_FILE", "/run/client-issuer/client-ca.crt"), ClientCAKeyFile: Env("CLIENT_ISSUER_KEY_FILE", "/run/client-issuer/client-ca.key"), MasterKeyFile: Env("APP_MASTER_KEY_FILE", "/run/secrets/app_master_key"), DataDir: Env("DATA_DIR", "/data"), ParserURL: Env("DOCUMENT_PARSER_URL", "http://document-parser:8080"), LLMURL: Env("OLLAMA_BASE_URL", "http://ollama:11434"), Listen: Env("LISTEN_ADDR", "0.0.0.0:8000"), WebDir: Env("WEB_DIR", "web")}
 	switch strings.ToLower(os.Getenv("LOCAL_WEB_ONLY")) {
 	case "1", "true", "yes":
 		c.LocalOnly = true

@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import net.muratov.assistant.data.remote.ImproverApi
+import net.muratov.assistant.security.AppClientIdentity
 import net.muratov.assistant.security.AliasKeyManager
 import net.muratov.assistant.security.BundledClientIdentity
 import java.security.KeyStore
@@ -31,7 +32,10 @@ object ApiFactory {
                         .single()
                     val sslContext = SSLContext.getInstance("TLS")
                     val keyManagers: Array<KeyManager>? = certificateAlias?.let {
-                        arrayOf(AliasKeyManager(context, it))
+                        if (AppClientIdentity.isAppAlias(it)) {
+                            followRedirects(false)
+                            AppClientIdentity.keyManagers(context, baseUrl, it)
+                        } else arrayOf(AliasKeyManager(context, it))
                     } ?: BundledClientIdentity.keyManagers(context)
                     sslContext.init(keyManagers, arrayOf(trustManager), null)
                     sslSocketFactory(sslContext.socketFactory, trustManager)

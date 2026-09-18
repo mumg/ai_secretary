@@ -42,3 +42,12 @@ if [ ! -s /certs/dev-client.key ] || [ ! -s /certs/dev-client.crt ]; then
 fi
 
 chmod 0600 /certs/*.key /certs/*.p12
+
+# Only the API receives the signing CA; server TLS keys and development client
+# identities remain in the separate TLS volume. The worker cannot read this.
+mkdir -p /client-issuer
+cp /certs/client-ca.crt /client-issuer/client-ca.crt
+cp /certs/client-ca.key /client-issuer/client-ca.key
+chown -R 10001:10001 /client-issuer
+chmod 0700 /client-issuer
+chmod 0400 /client-issuer/*

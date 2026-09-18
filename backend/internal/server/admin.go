@@ -172,6 +172,7 @@ func (q *request) settingsRead() M {
 	return M{"settings": settings, "local_web_only": q.server.Config.LocalOnly, "firebase_configured": firebase, "llm_api_key_configured": key, "filter_reconciliation": nil, "identity_requeued": nil}
 }
 func (s *Server) adminRoutes() {
+	s.mobileIdentityRoutes()
 	s.route("GET /api/v1/admin/settings", false, func(q *request) any { return q.settingsRead() })
 	s.route("PUT /api/v1/admin/settings", true, func(q *request) any {
 		m := q.body()

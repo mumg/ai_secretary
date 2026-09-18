@@ -45,7 +45,25 @@
       <button class="tab" data-panel="tags">Теги</button>
       <button class="tab" data-panel="analysis">Анализ и календарь</button>
       <button class="tab" data-panel="notifications">Уведомления</button>
+      <button id="mobileTab" class="tab" data-panel="mobile">Мобильное приложение</button>
     </nav>
+
+    <section id="mobile" class="panel">
+      <div class="section-heading"><div><h2>Подключить Android-приложение</h2><p>Создайте отдельный ключ для телефона и отсканируйте QR-код в настройках приложения.</p></div></div>
+      <form id="mobileIdentityForm" class="tag-create-form">
+        <label>Название устройства<input id="mobileDeviceLabel" maxlength="64" required placeholder="Например, Мой телефон" autocomplete="off"></label>
+        <button id="createMobileIdentity" class="primary" type="submit">Создать QR-код</button>
+      </form>
+      <p>Ключ хранится только в закрытом каталоге приложения. Установка сертификата в Android не требуется.</p>
+      <p id="mobileIdentityError" role="alert"></p>
+      <div id="mobileIdentityResult" hidden>
+        <p><strong>QR-код содержит секретный ключ доступа. Не отправляйте его другим людям и не сохраняйте снимок экрана.</strong></p>
+        <img id="mobileIdentityQR" class="mobile-identity-qr" alt="QR-код подключения к AI Секретарю" width="768" height="768">
+        <p id="mobileIdentityInfo"></p>
+        <p>В приложении откройте настройки подключения → «Сканировать QR-код». Код автоматически скроется через 2 минуты. Это не отзывает выданный ключ.</p>
+        <button id="hideMobileIdentity" type="button" class="secondary">Скрыть QR-код</button>
+      </div>
+    </section>
 
     <section id="sources" class="panel active">
       <div class="section-heading">
