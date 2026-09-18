@@ -4,7 +4,7 @@ const http = require("node:http"),
   path = require("node:path");
 const { createAPI } = require("./tests/fixtures.cjs");
 const api = createAPI();
-const root = path.resolve(__dirname, "../backend/src/improver/web");
+const root = path.resolve(__dirname, "../backend/web");
 http
   .createServer(async (req, res) => {
     try {

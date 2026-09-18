@@ -20,7 +20,7 @@ __pycache__/
 node_modules/
 dist/
 build/
-/backend/src/improver/web/downloads/
+/backend/web/downloads/
 
 # Runtime data and secrets
 /data/
@@ -50,3 +50,6 @@ google-services.json
 /android/.kotlin/
 /dataPack*.json
 /extensions/
+
+# Embedded Go migrations are source code.
+!/backend/internal/store/migrations/*.sql

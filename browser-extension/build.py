@@ -39,6 +39,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=root / "dist/ai-secretary-extension.zip")
     parser.add_argument("--backend-web", type=Path,
-                        default=root / "backend/src/improver/web")
+                        default=root / "backend/web")
     args = parser.parse_args()
     build(args.output, args.backend_web)

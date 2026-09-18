@@ -25,6 +25,13 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: |
+            backend/go.sum
+            document-parser/go.sum
+            windows/go.sum
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13.7'
@@ -34,10 +41,25 @@ jobs:
           $Version = (Get-Content version -Raw).Trim()
           if ($env:GITHUB_REF.StartsWith('refs/tags/') -and $env:GITHUB_REF -ne "refs/tags/windows-v$Version") { throw 'Windows tag must match root version' }
           if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:GITHUB_REF -ne 'refs/heads/main') { throw 'Publish only from main' }
-      - name: Unit tests
+      - name: Go document parser tests on Windows
+        working-directory: document-parser
         shell: pwsh
         run: |
-          python -m pip install cryptography==50.0.1
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Go parser vet failed' }
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Go parser tests failed' }
+      - name: Go setup helper tests
+        working-directory: windows
+        shell: pwsh
+        run: |
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Setup helper vet failed' }
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Setup helper tests failed' }
+      - name: Build tooling tests
+        shell: pwsh
+        run: |
           python -m unittest discover -s windows/tests -v
           if ($LASTEXITCODE -ne 0) { throw 'Installer tests failed' }
       - name: Install compiler
@@ -80,4 +102,4 @@ jobs:
           set -euo pipefail
           version="$(cat version | tr -d '\r\n')"
           tag="windows-v$version"
-          gh release create "$tag" dist/windows/* --target "$GITHUB_SHA" --title "Windows $version" --notes "Установщик AI Секретаря для Windows x64. Включает Python, PostgreSQL и службы Windows. Настройка через мастер; Docker не требуется. См. windows/README.md. EXE пока не подписан сертификатом Authenticode." --latest=false
+          gh release create "$tag" dist/windows/* --target "$GITHUB_SHA" --title "Windows $version" --notes "Установщик AI Секретаря для Windows x64. Включает Go-бинарники, PostgreSQL и службы Windows; Python не требуется. Настройка через мастер; Docker не требуется. См. windows/README.md. EXE пока не подписан сертификатом Authenticode." --latest=false

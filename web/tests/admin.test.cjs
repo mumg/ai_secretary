@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const root = path.resolve(__dirname, '../../backend/src/improver/web');
+const root = path.resolve(__dirname, '../../backend/web');
 const settle = () => new Promise(resolve => setTimeout(resolve, 20));
 
 test('model settings save, preserve and remove API key without echoing it', async t => {

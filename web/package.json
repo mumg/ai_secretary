@@ -4,7 +4,7 @@
   "scripts": {
     "vendor": "node vendor.cjs",
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check ../backend/src/improver/web/assets/app.js"
+    "check": "node --check ../backend/web/assets/app.js"
   },
   "devDependencies": {
     "jsdom": "30.0.1",

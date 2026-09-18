@@ -1,0 +1,266 @@
+[
+  {
+    "event": {
+      "body": "12:18:35 · Евгения Овчинникова\nМаксим Муратов, проверь контракт.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Максим Муратов, проверь контракт.",
+    "evidence": "Максим Муратов, проверь контракт.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Евгения Овчинникова\nЯ проведу нагрузочное тестирование.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Я проведу нагрузочное тестирование.",
+    "evidence": "Я проведу нагрузочное тестирование.",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Евгения Овчинникова\nЯ проверю контракт.\n\n12:19:35 · Максим Муратов\nЯ проверю контракт.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Я проверю контракт.",
+    "evidence": "Я проверю контракт.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Евгения Овчинникова\nЯ проверю контракт.\n\n12:19:35 · Максим Муратов\nЯ проверю контракт.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "12:19:35 · Максим Муратов\nЯ проверю контракт.",
+    "evidence": "12:19:35 · Максим Муратов\nЯ проверю контракт.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Евгения Овчинникова\nЯ проведу тестирование.\n\n12:19:35 · Максим Муратов\nЯ проверю контракт.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Я проверю контракт.",
+    "evidence": "Я проведу тестирование.",
+    "expected": "unproven"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Евгения Овчинникова\nМаксим, проверь контракт.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        },
+        {
+          "name": "Максим Сидоров",
+          "role": "speaker"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Максим, проверь контракт.",
+    "evidence": "Максим, проверь контракт.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Евгения Овчинникова\nБудем стараться, будем нагружать.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Евгения: 'будем нагружать'",
+    "evidence": "Евгения: 'будем нагружать'",
+    "expected": "unproven"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Максим Муратов\nСтоимость доставки зависит от маршрута.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "12:18:35 · Максим Муратов\nСтоимость доставки зависит от маршрута.",
+    "evidence": "12:18:35 · Максим Муратов\nСтоимость доставки зависит от маршрута.",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Максим Муратов\nЯ проверю контракт.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Я проверю контракт.",
+    "evidence": "Я проверю контракт.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "12:18:35 · Максим Муратов\nЯ не буду проводить тестирование.",
+      "event_type": "meeting_transcript",
+      "participants": [
+        {
+          "name": "Максим Муратов",
+          "role": "speaker",
+          "external_id": "1"
+        },
+        {
+          "name": "Евгения Овчинникова",
+          "role": "speaker",
+          "external_id": "2"
+        }
+      ]
+    },
+    "names": [
+      "Максим Муратов",
+      "Максим"
+    ],
+    "addresses": [],
+    "quote": "Я не буду проводить тестирование.",
+    "evidence": "Я не буду проводить тестирование.",
+    "expected": "other"
+  }
+]

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.9"
+  #define AppVersion "0.1.20"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -36,6 +36,7 @@ Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
+Source: "{#PayloadDir}\setup\secretary-setup.exe"; Flags: dontcopy
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -46,6 +47,22 @@ Name: "{group}\Удалить AI Секретарь"; Filename: "{uninstallexe}"
 
 [Run]
 Filename: "{app}\Settings.url"; Description: "Открыть настройку источников и модели"; Flags: shellexec postinstall skipifsilent runasoriginaluser
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\python"
+Type: filesandordirs; Name: "{app}\setup\__pycache__"
+Type: files; Name: "{app}\setup\manage.py"
+Type: files; Name: "{app}\setup\layout.py"
+Type: files; Name: "{app}\setup\check_runtime.py"
+Type: filesandordirs; Name: "{app}\backend\src"
+Type: filesandordirs; Name: "{app}\backend\migrations"
+Type: files; Name: "{app}\backend\alembic.ini"
+Type: files; Name: "{app}\backend\requirements.txt"
+Type: files; Name: "{app}\backend\pyproject.toml"
+Type: files; Name: "{app}\parser\main.py"
+Type: filesandordirs; Name: "{app}\parser\__pycache__"
+Type: files; Name: "{app}\parser\pyproject.toml"
+Type: files; Name: "{app}\python-packages.txt"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\services"
@@ -130,14 +147,16 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
-  Root, Python, Params: String;
+  Root, Helper, Params: String;
 begin
   Result := '';
   Root := ExpandConstant('{app}');
-  Python := Root + '\python\python.exe';
-  if ExistingInstallation and FileExists(Python) then begin
-    Params := '-B ' + Q(Root + '\setup\manage.py') + ' prepare --root ' + Q(Root) + ' --data ' + Q(DataRoot) + ' --target-version {#AppVersion}';
-    if not Exec(Python, Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+  if ExistingInstallation then begin
+    { Use the new native helper before overwriting any old installation files. }
+    ExtractTemporaryFile('secretary-setup.exe');
+    Helper := ExpandConstant('{tmp}\secretary-setup.exe');
+    Params := 'prepare --root ' + Q(Root) + ' --data ' + Q(DataRoot) + ' --target-version {#AppVersion}';
+    if not Exec(Helper, Params, ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
       Result := 'Резервное копирование не завершено. Установка остановлена до замены файлов. Проверьте ' + DataRoot + '\logs\installer.log';
   end;
 end;
@@ -156,10 +175,10 @@ begin
     RuntimeNeedsRestart := Code = 3010;
     Host := '';
     if AccessPage.SelectedValueIndex = 1 then Host := HostPage.Values[0];
-    Params := '-B ' + Q(Root + '\setup\manage.py') + ' configure --root ' + Q(Root) + ' --data ' + Q(DataRoot)
+    Params := 'configure --root ' + Q(Root) + ' --data ' + Q(DataRoot)
       + ' --api-port ' + Q(ConnectionPage.Values[0]) + ' --parser-port ' + Q(ConnectionPage.Values[1])
       + ' --database-port ' + Q(ConnectionPage.Values[2]) + ' --public-host ' + Q(Host);
-    if not Exec(Root + '\python\python.exe', Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+    if not Exec(Root + '\setup\secretary-setup.exe', Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
       RaiseException('Не удалось настроить службы. Данные сохранены. Проверьте ' + DataRoot + '\logs\installer.log' + #13#10 + 'После исправления ошибки запустите установщик повторно.');
   end;
 end;
@@ -176,8 +195,8 @@ var
 begin
   if CurUninstallStep = usUninstall then begin
     Root := ExpandConstant('{app}');
-    Params := '-B ' + Q(Root + '\setup\manage.py') + ' remove --root ' + Q(Root) + ' --data ' + Q(DataRoot);
-    if not Exec(Root + '\python\python.exe', Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+    Params := 'remove --root ' + Q(Root) + ' --data ' + Q(DataRoot);
+    if not Exec(Root + '\setup\secretary-setup.exe', Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
       RaiseException('Не удалось остановить и удалить службы. Файлы программы сохраняются. Проверьте журнал installer.log.');
   end;
 end;

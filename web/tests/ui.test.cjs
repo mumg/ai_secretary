@@ -4,7 +4,7 @@ const { test } = require("node:test"),
   path = require("node:path");
 const { JSDOM } = require("jsdom"),
   { createAPI } = require("./fixtures.cjs");
-const root = path.resolve(__dirname, "../../backend/src/improver/web");
+const root = path.resolve(__dirname, "../../backend/web");
 const wait = () => new Promise((resolve) => setTimeout(resolve, 15));
 async function settle() {
   for (let i = 0; i < 4; i++) await wait();
@@ -26,6 +26,7 @@ function setup(t, api = createAPI(), hash = "") {
       this.url = String(url);
       this.readyState = 0;
       sockets.push(this);
+      queueMicrotask(() => { this.open(); this.message({ type: "status", data: api.data.system }); });
     }
     open() {
       this.readyState = 1;
@@ -268,7 +269,7 @@ test("direct record URL restores list and selected task", async (t) => {
 test("websocket invalidation updates list and reading pane, preserving draft and scroll", async (t) => {
   const { w, d, api, sockets } = setup(t);
   await settle();
-  assert.match(sockets[0].url, /^ws:\/\/localhost\/api\/v1\/realtime$/);
+  assert.match(sockets[0].url, /^ws:\/\/localhost\/api\/v1\/realtime\?status=1$/);
   const socket = sockets[0];
   socket.open();
   click(d, '[data-open-id="task1"]');
@@ -329,3 +330,40 @@ test("websocket closes in hidden tab; return reconnects and resyncs missed data"
     /Не должно появиться/,
   );
 });
+
+ test("queue snapshots render rate and progress over WebSocket without status HTTP requests", async (t) => {
+  const {d, api, sockets} = setup(t);
+  await settle();
+  click(d, '[data-tab="status"]');
+  await settle();
+  const socket=sockets[0];
+  const snapshot=structuredClone(api.data.system);
+  const processing=snapshot.components.find(c=>c.id==="processing");
+  processing.metrics={events_total:100,events_pending:78,events_processing:1,events_completed:20,events_excluded:1,events_failed:0,events_retry_waiting:2,events_completed_last_15m:15,events_rate_per_minute:1};
+  socket.message({type:"status",data:snapshot});
+  assert.equal(d.querySelector(".queue-waiting strong").textContent,"78");
+  assert.equal(d.querySelector(".queue-rate strong").textContent,"1");
+  assert.equal(d.querySelector(".queue-progress").value,21);
+  assert.match(d.querySelector(".queue-panel").textContent,/В реальном времени/);
+  d.querySelector("#detail").scrollTop=90;
+  processing.metrics.events_pending=77;
+  processing.metrics.events_completed=21;
+  socket.message({type:"status",data:snapshot});
+  assert.equal(d.querySelector(".queue-waiting strong").textContent,"77");
+  assert.equal(d.querySelector("#detail").scrollTop,90);
+  socket.close();
+  assert.match(d.querySelector(".queue-panel").textContent,/данные устарели/);
+  assert.equal(d.querySelector(".queue-waiting strong").textContent,"77");
+  assert.ok(!api.calls.some(c=>c.path==="/system/status"));
+ });
+ test("empty queue and zero rate never show invalid progress", async(t)=>{
+  const {d, api, sockets}=setup(t);
+  await settle(); click(d,'[data-tab="status"]'); await settle();
+  const snapshot=structuredClone(api.data.system);
+  snapshot.components.find(c=>c.id==="processing").metrics={events_total:0,events_rate_per_minute:0};
+  sockets[0].message({type:"status",data:snapshot});
+  assert.match(d.querySelector(".queue-panel").textContent,/Очередь пуста/);
+  assert.match(d.querySelector(".queue-panel").textContent,/завершений не было/);
+  assert.equal(d.querySelector(".queue-progress").value,0);
+  assert.doesNotMatch(d.querySelector(".queue-panel").textContent,/NaN|Infinity/);
+ });

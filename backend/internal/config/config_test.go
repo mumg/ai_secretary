@@ -1,0 +1,47 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestPythonEncryptedSecretCompatibility(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "master")
+	if err := os.WriteFile(path, []byte("compatibility-fixture-master-key-32\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := Config{MasterKeyFile: path}
+	fixture := "AAECAwQFBgcICQoLV63yPmC2P-wcdDu3YZgU3wd_eSMWt15NccEhzqe3FlwF3EMG_Q=="
+	plain, err := c.Decrypt(fixture)
+	if err != nil || plain != "Пароль: +/&🙂" {
+		t.Fatal(plain, err)
+	}
+	first, err := c.Encrypt(plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := c.Encrypt(plain)
+	if err != nil || first == second {
+		t.Fatal("nonce reused", err)
+	}
+	if _, err = c.Decrypt(first[:len(first)-4] + "AAAA"); err == nil {
+		t.Fatal("tampered ciphertext accepted")
+	}
+}
+func TestDatabasePasswordURLQuoting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "password")
+	os.WriteFile(path, []byte("a@:/? &+"), 0600)
+	t.Setenv("DATABASE_URL", "postgresql+asyncpg://improver@localhost/db")
+	t.Setenv("DATABASE_PASSWORD_FILE", path)
+	t.Setenv("PUBLIC_URL", "http://127.0.0.1:8000")
+	t.Setenv("LOCAL_WEB_ONLY", "true")
+	t.Setenv("LISTEN_ADDR", "")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Listen != "127.0.0.1:8000" || c.DatabaseURL != "postgresql://improver:a%40%3A%2F%3F%20&+@localhost/db" {
+		t.Fatal(c.DatabaseURL, c.Listen)
+	}
+}

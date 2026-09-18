@@ -1,0 +1,78 @@
+# Сервер Go
+
+API, обработчик очередей, коннекторы IMAP/Exchange/MTS Link и миграции выполняются
+одним бинарным файлом `improver`. Для серверного процесса Python не нужен.
+Веб-интерфейс и Android используют прежний `/api/v1`; PostgreSQL сохраняет схему,
+идентификаторы и зашифрованные учётные данные. Сервис `document-parser` для
+PDF/DOCX/XLSX также работает на Go: [описание и запуск](../document-parser/README.md).
+
+## Разработка
+
+Нужны Go 1.26 и PostgreSQL 17. Из корня репозитория:
+
+```sh
+python3 browser-extension/build.py
+cd backend
+go build -trimpath -o /tmp/improver ./cmd/improver
+export DATABASE_URL='postgresql://improver:password@127.0.0.1:5432/improver'
+export APP_MASTER_KEY_FILE='/absolute/path/to/existing/master-key'
+export DATA_DIR='/absolute/path/to/data'
+export LOCAL_WEB_ONLY=true
+/tmp/improver migrate
+/tmp/improver serve
+# В другом терминале с теми же переменными:
+/tmp/improver worker
+```
+
+`DATABASE_PASSWORD_FILE`, `APP_MASTER_KEY_FILE`, `PUBLIC_URL`, `LOCAL_WEB_ONLY`,
+`OLLAMA_BASE_URL`, `DOCUMENT_PARSER_URL` и `DATA_DIR` сохраняют прежнее назначение.
+`LISTEN_ADDR` и `WEB_DIR` можно переопределить флагами `--listen` и `--web-dir`.
+`healthcheck --ready --expected-version <версия>` проверяет готовность БД и версию
+запущенного API. Версия выпуска встраивается через `-ldflags '-X main.version=…'`.
+
+## Сборка и проверки
+
+```sh
+./build-images.sh                    # из корня; читает version, не публикует
+cd backend
+go vet ./...
+TEST_DATABASE_URL='postgresql://test:test@127.0.0.1:5432/test?sslmode=disable' go test -race ./...
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./cmd/improver
+```
+
+Интеграционные тесты создают и удаляют собственные схемы `go_test_*`.
+Без `TEST_DATABASE_URL` они пропускаются; модульные тесты выполняются всегда.
+Используйте отдельную тестовую БД. Windows-установщик собирается на Windows,
+как описано в `windows/README.md`; кросс-компиляция бинарника не проверяет службы.
+
+Миграции `internal/store/migrations` — SQL-снимки ревизий `0001`–`0022`.
+Команда `migrate` принимает существующий `alembic_version`, сериализуется
+блокировкой PostgreSQL и применяет только недостающие ревизии в транзакции.
+Не запускайте прежний и новый worker одновременно на одной базе.
+
+## Совместимость и сопровождение
+
+Python-реализация сервера, Alembic-скрипты и зависимости старого runtime удалены.
+Веб-ресурсы находятся в `web`, серверный код — в `cmd` и `internal`.
+`pyproject.toml` оставлен только для единой версии выпуска и конфигурации
+архивных проверок; Python-пакет сервера больше не собирается.
+
+`internal/contracts/openapi.json` задаёт контракт проверки JSON-запросов.
+Шаблоны LLM, поля ответов и словари поиска хранятся в JSON внутри `internal`
+и сопровождаются непосредственно вместе с Go-кодом. Одноразовые экспортёры
+из Python удалены. Контракт LLM проверяется до записи результатов; сбои
+обрабатываются повторными попытками без сохранения частичных изменений.
+
+Календарь использует снимок `holidays==0.104` для 1970–2100 годов. При изменении
+официальных праздников установите `tools/requirements-calendar.txt`,
+выполните `tools/export_holidays.py` и проверьте обновлённый снимок; заданные
+пользователем рабочие/нерабочие даты имеют приоритет. Автоматического скачивания
+новых календарных правил в Go нет.
+
+Тестовые коннекторы и HTTP-серверы проверяют протокол и обработку данных, но не
+заменяют проверку с конкретным Exchange, IMAP, MTS Link, Firebase и LLM перед
+обновлением рабочей установки. Тесты Go выполняются в `internal`, в том числе
+сравнительные примеры идентификаторов, исполнителей и стенограмм.
+
+Лицензии зависимостей бинарника и источника календарных данных находятся в
+`third_party`; после изменения `go.mod` выполните `tools/export_licenses.py`.

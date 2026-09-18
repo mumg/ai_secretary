@@ -1,0 +1,1092 @@
+{
+  "INC000021715420 - Дополните сведения": [
+    {
+      "token": "INC000021715420",
+      "normalized": "inc000021715420",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "inc",
+      "object_type": "incident"
+    },
+    {
+      "token": "Дополните",
+      "normalized": "дополните",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "сведения",
+      "normalized": "сведения",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "Продукт BI_2638": [
+    {
+      "token": "Продукт",
+      "normalized": "продукт",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "BI_2638",
+      "normalized": "bi_2638",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "bi",
+      "object_type": "product"
+    }
+  ],
+  "Капабилити CPB.039": [
+    {
+      "token": "Капабилити",
+      "normalized": "капабилити",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "CPB.039",
+      "normalized": "cpb.039",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "cpb",
+      "object_type": "capability"
+    }
+  ],
+  "550e8400-e29b-41d4-a716-446655440000": [
+    {
+      "token": "550e8400-e29b-41d4-a716-446655440000",
+      "normalized": "550e8400-e29b-41d4-a716-446655440000",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "uuid",
+      "object_type": "object"
+    }
+  ],
+  "задача №00149053": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "00149053",
+      "normalized": "00149053",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    }
+  ],
+  "по договору 145700": [
+    {
+      "token": "по",
+      "normalized": "по",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "договору",
+      "normalized": "договору",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "145700",
+      "normalized": "145700",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "contract"
+    }
+  ],
+  "договор №17/09/2026": [
+    {
+      "token": "договор",
+      "normalized": "договор",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "17/09/2026",
+      "normalized": "17/09/2026",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "contract"
+    }
+  ],
+  "срок договора 17/09/2026": [
+    {
+      "token": "срок",
+      "normalized": "срок",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "договора",
+      "normalized": "договора",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "17/09/2026",
+      "normalized": "17/09/2026",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "дополнение к задаче 143227": [
+    {
+      "token": "дополнение",
+      "normalized": "дополнение",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "к",
+      "normalized": "к",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "задаче",
+      "normalized": "задаче",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "143227",
+      "normalized": "143227",
+      "kind": "identifier",
+      "role": "related",
+      "namespace": "number",
+      "object_type": "task"
+    }
+  ],
+  "ссылка на INC000021715420": [
+    {
+      "token": "ссылка",
+      "normalized": "ссылка",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "на",
+      "normalized": "на",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "INC000021715420",
+      "normalized": "inc000021715420",
+      "kind": "identifier",
+      "role": "related",
+      "namespace": "inc",
+      "object_type": "incident"
+    }
+  ],
+  "149053": [
+    {
+      "token": "149053",
+      "normalized": "149053",
+      "kind": "unknown",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "145700 Перенос файлов": [
+    {
+      "token": "145700",
+      "normalized": "145700",
+      "kind": "unknown",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "Перенос",
+      "normalized": "перенос",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "файлов",
+      "normalized": "файлов",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "17.09.2026": [
+    {
+      "token": "17.09.2026",
+      "normalized": "17.09.2026",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "2026-09-17": [
+    {
+      "token": "2026-09-17",
+      "normalized": "2026-09-17",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "2026/09/17": [
+    {
+      "token": "2026/09/17",
+      "normalized": "2026/09/17",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "17/09/2026": [
+    {
+      "token": "17/09/2026",
+      "normalized": "17/09/2026",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "14:30": [
+    {
+      "token": "14:30",
+      "normalized": "14:30",
+      "kind": "time",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "v0.1.7": [
+    {
+      "token": "v0.1.7",
+      "normalized": "v0.1.7",
+      "kind": "version",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "релиз 2.4": [
+    {
+      "token": "релиз",
+      "normalized": "релиз",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "2.4",
+      "normalized": "2.4",
+      "kind": "version",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "сентябрь 2026": [
+    {
+      "token": "сентябрь",
+      "normalized": "сентябрь",
+      "kind": "period",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "2026",
+      "normalized": "2026",
+      "kind": "period",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "отчёт за 2026 г.": [
+    {
+      "token": "отчёт",
+      "normalized": "отчёт",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "за",
+      "normalized": "за",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "2026",
+      "normalized": "2026",
+      "kind": "period",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "г",
+      "normalized": "г",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "3 вопроса": [
+    {
+      "token": "3",
+      "normalized": "3",
+      "kind": "quantity",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "вопроса",
+      "normalized": "вопроса",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "этап 2": [
+    {
+      "token": "этап",
+      "normalized": "этап",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "2",
+      "normalized": "2",
+      "kind": "quantity",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "SAP": [
+    {
+      "token": "SAP",
+      "normalized": "sap",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "B2B": [
+    {
+      "token": "B2B",
+      "normalized": "b2b",
+      "kind": "unknown",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "SAP4HANA": [
+    {
+      "token": "SAP4HANA",
+      "normalized": "sap4hana",
+      "kind": "unknown",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "Re: Заявка №000123 по BI_2638": [
+    {
+      "token": "Заявка",
+      "normalized": "заявка",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "000123",
+      "normalized": "000123",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "request"
+    },
+    {
+      "token": "по",
+      "normalized": "по",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "BI_2638",
+      "normalized": "bi_2638",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "bi",
+      "object_type": "product"
+    }
+  ],
+  "Согласование договора поставки оборудования 17.09.2026": [
+    {
+      "token": "Согласование",
+      "normalized": "согласование",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "договора",
+      "normalized": "договора",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "поставки",
+      "normalized": "поставки",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "оборудования",
+      "normalized": "оборудования",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "17.09.2026",
+      "normalized": "17.09.2026",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "Согласование договора поставки оборудования 18.09.2026": [
+    {
+      "token": "Согласование",
+      "normalized": "согласование",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "договора",
+      "normalized": "договора",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "поставки",
+      "normalized": "поставки",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "оборудования",
+      "normalized": "оборудования",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "18.09.2026",
+      "normalized": "18.09.2026",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "План тестирования сервиса версия 0.1.7": [
+    {
+      "token": "План",
+      "normalized": "план",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "тестирования",
+      "normalized": "тестирования",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "сервиса",
+      "normalized": "сервиса",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "версия",
+      "normalized": "версия",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "0.1.7",
+      "normalized": "0.1.7",
+      "kind": "version",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "План тестирования сервиса версия 0.1.8": [
+    {
+      "token": "План",
+      "normalized": "план",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "тестирования",
+      "normalized": "тестирования",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "сервиса",
+      "normalized": "сервиса",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "версия",
+      "normalized": "версия",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "0.1.8",
+      "normalized": "0.1.8",
+      "kind": "version",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "задача 145700 перенос файлов дополнение к 143227": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "145700",
+      "normalized": "145700",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    },
+    {
+      "token": "перенос",
+      "normalized": "перенос",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "файлов",
+      "normalized": "файлов",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "дополнение",
+      "normalized": "дополнение",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "к",
+      "normalized": "к",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "143227",
+      "normalized": "143227",
+      "kind": "identifier",
+      "role": "related",
+      "namespace": "number",
+      "object_type": "object"
+    }
+  ],
+  "задача 145700 перенос файлов дополнение к 143228": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "145700",
+      "normalized": "145700",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    },
+    {
+      "token": "перенос",
+      "normalized": "перенос",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "файлов",
+      "normalized": "файлов",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "дополнение",
+      "normalized": "дополнение",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "к",
+      "normalized": "к",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "143228",
+      "normalized": "143228",
+      "kind": "identifier",
+      "role": "related",
+      "namespace": "number",
+      "object_type": "object"
+    }
+  ],
+  "задача №123456": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123456",
+      "normalized": "123456",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    }
+  ],
+  "задача №123457": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123457",
+      "normalized": "123457",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    }
+  ],
+  "INC000021715420": [
+    {
+      "token": "INC000021715420",
+      "normalized": "inc000021715420",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "inc",
+      "object_type": "incident"
+    }
+  ],
+  "inc000021715421": [
+    {
+      "token": "inc000021715421",
+      "normalized": "inc000021715421",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "inc",
+      "object_type": "incident"
+    }
+  ],
+  "Продукт BI_2639": [
+    {
+      "token": "Продукт",
+      "normalized": "продукт",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "BI_2639",
+      "normalized": "bi_2639",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "bi",
+      "object_type": "product"
+    }
+  ],
+  "договор 123456": [
+    {
+      "token": "договор",
+      "normalized": "договор",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123456",
+      "normalized": "123456",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "contract"
+    }
+  ],
+  "задача 123457": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123457",
+      "normalized": "123457",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    }
+  ],
+  "задача 123456 дополнение к 111111": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123456",
+      "normalized": "123456",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    },
+    {
+      "token": "дополнение",
+      "normalized": "дополнение",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "к",
+      "normalized": "к",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "111111",
+      "normalized": "111111",
+      "kind": "identifier",
+      "role": "related",
+      "namespace": "number",
+      "object_type": "object"
+    }
+  ],
+  "задача 123456 дополнение к 222222": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123456",
+      "normalized": "123456",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    },
+    {
+      "token": "дополнение",
+      "normalized": "дополнение",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "к",
+      "normalized": "к",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "222222",
+      "normalized": "222222",
+      "kind": "identifier",
+      "role": "related",
+      "namespace": "number",
+      "object_type": "object"
+    }
+  ],
+  "задача 123456": [
+    {
+      "token": "задача",
+      "normalized": "задача",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123456",
+      "normalized": "123456",
+      "kind": "identifier",
+      "role": "primary",
+      "namespace": "number",
+      "object_type": "task"
+    }
+  ],
+  "дополнение к задаче 123457": [
+    {
+      "token": "дополнение",
+      "normalized": "дополнение",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "к",
+      "normalized": "к",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "задаче",
+      "normalized": "задаче",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "123457",
+      "normalized": "123457",
+      "kind": "identifier",
+      "role": "related",
+      "namespace": "number",
+      "object_type": "task"
+    }
+  ],
+  "149054": [
+    {
+      "token": "149054",
+      "normalized": "149054",
+      "kind": "unknown",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "версия 2.4": [
+    {
+      "token": "версия",
+      "normalized": "версия",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "2.4",
+      "normalized": "2.4",
+      "kind": "version",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "версия 2.5": [
+    {
+      "token": "версия",
+      "normalized": "версия",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "2.5",
+      "normalized": "2.5",
+      "kind": "version",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "18.09.2026": [
+    {
+      "token": "18.09.2026",
+      "normalized": "18.09.2026",
+      "kind": "date",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ],
+  "этап 3": [
+    {
+      "token": "этап",
+      "normalized": "этап",
+      "kind": "word",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    },
+    {
+      "token": "3",
+      "normalized": "3",
+      "kind": "quantity",
+      "role": null,
+      "namespace": null,
+      "object_type": null
+    }
+  ]
+}

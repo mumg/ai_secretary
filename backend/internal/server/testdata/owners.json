@@ -1,0 +1,837 @@
+[
+  {
+    "event": {
+      "body": "Иван, подготовьте договор",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Иван, подготовьте договор",
+    "expected": ""
+  },
+  {
+    "event": {
+      "body": "Повторно подготовить договор — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [
+      {
+        "occurred_at": "2026-09-14",
+        "body": "Подготовить договор — отв. Петров И."
+      }
+    ],
+    "evidence": "Повторно подготовить договор — отв. Петров И.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "external_id": "one"
+        },
+        {
+          "name": "Иван Петров",
+          "external_id": "two"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Петров И.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Назначить встречу — отв. @Иван Петров<mailto:other@example.test>",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Назначить встречу — отв. @Иван Петров<mailto:other@example.test>",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Назначить встречу — отв. Сидоров А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Назначить встречу — отв. Сидоров А.",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — отв. Сидоров А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документы — отв. Петров И.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — отв. Сидоров А.,\nПетров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор — отв. Сидоров А.,\nПетров И.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Сидоров А., Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Сидоров А., Петров И.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Сидоров А. и Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Сидоров А. и Петров И.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Сидоров А. / Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Сидоров А. / Петров И.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — **отв.** Сидоров А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор — **отв.** Сидоров А.",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — отв. Петров И.С.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор — отв. Петров И.С.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — отв. Петров Иван Сергеевич",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор — отв. Петров Иван Сергеевич",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — отв. Петров А.С.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор — отв. Петров А.С.",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — отв. Сидоров А.; проверить смету — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "1. Подготовить договор — отв. Сидоров А.\n2. Проверить смету — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "1. Подготовить договор — отв. Сидоров А.\n2. Проверить смету — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Проверить смету",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Спасибо, всё готово.\nFrom: old@example.test\nПодготовить договор — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор — отв. Петров И.",
+    "expected": "stale"
+  },
+  {
+    "event": {
+      "body": " ⁃ Подготовить договор — отв. Сидоров А.\r\n ⁃ Проверить смету — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": " ⁃ Подготовить договор — отв. Сидоров А.\r\n ⁃ Проверить смету — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Проверить смету",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор\n- отв. Сидоров А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор\n\n- отв. Сидоров А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [
+      {
+        "occurred_at": "2026-09-14",
+        "participants": [
+          {
+            "name": "Илья Петров",
+            "address": "other@example.test"
+          }
+        ]
+      }
+    ],
+    "evidence": "Подготовить документ — отв. Петров И.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Спасибо, всё готово.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [
+      {
+        "occurred_at": "2026-09-14",
+        "body": "Подготовить договор — отв. Петров И."
+      }
+    ],
+    "evidence": "Подготовить договор — отв. Петров И.",
+    "expected": "stale"
+  },
+  {
+    "event": {
+      "body": "1. Подготовить договор — отв. Сидоров А.\n2. Проверить смету — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "1. Подготовить договор — отв. Сидоров А.\n2. Проверить смету — отв. Петров И.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Назначить встречу — отв. Петров А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Назначить встречу — отв. Петров А.",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Иван",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        },
+        {
+          "name": "Иван Сидоров",
+          "address": "other@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Иван",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        },
+        {
+          "name": "Илья Петров",
+          "address": "other@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Петров И.",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — ответственный: Сидоров А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить договор — отв. ИМ",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить договор — отв. ИМ",
+    "expected": "uncertain"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Петров И.С.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Сергеевич Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Петров И.С.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Петров И.А.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Сергеевич Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Петров И.А.",
+    "expected": "other"
+  },
+  {
+    "event": {
+      "body": "Подготовить документ — отв. Иван",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Подготовить документ — отв. Иван",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Назначить встречу — отв. @Петров Иван<mailto:ivan@example.test>, срок - 27.09.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Назначить встречу — отв. @Петров Иван<mailto:ivan@example.test>, срок - 27.09.",
+    "expected": "user"
+  },
+  {
+    "event": {
+      "body": "Назначить встречу — отв. Петров И.",
+      "author": "manager@example.test",
+      "event_type": "email",
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров",
+      "Иван"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "evidence": "Назначить встречу — отв. Петров И.",
+    "expected": "user"
+  }
+]
