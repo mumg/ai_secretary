@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.24"
+  #define AppVersion "0.1.25"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -76,6 +76,7 @@ var
   AccessPage: TInputOptionWizardPage;
   HostPage: TInputQueryWizardPage;
   RuntimeNeedsRestart: Boolean;
+  HelperError: String;
 
 function DataRoot: String;
 begin
@@ -86,6 +87,33 @@ function Q(Value: String): String;
 begin
   StringChangeEx(Value, '"', '\"', True);
   Result := '"' + Value + '"';
+end;
+
+procedure CaptureHelperOutput(const S: String; const Error, FirstLine: Boolean);
+begin
+  Log(S);
+  if Trim(S) <> '' then
+    HelperError := Copy(S, 1, 2000);
+end;
+
+function RunHelper(const Helper, Params, WorkingDir: String): Boolean;
+var
+  Code: Integer;
+begin
+  HelperError := '';
+  Result := False;
+  try
+    if not ExecAndLogOutput(Helper, Params, WorkingDir, SW_HIDE,
+      ewWaitUntilTerminated, Code, @CaptureHelperOutput) then begin
+      HelperError := 'Не удалось запустить помощник: ' + SysErrorMessage(Code);
+      Exit;
+    end;
+    Result := Code = 0;
+    if not Result and (HelperError = '') then
+      HelperError := 'Помощник завершился с кодом ' + IntToStr(Code);
+  except
+    HelperError := GetExceptionMessage;
+  end;
 end;
 
 function ExistingInstallation: Boolean;
@@ -147,7 +175,6 @@ end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Code: Integer;
   Root, Helper, Params: String;
 begin
   Result := '';
@@ -157,8 +184,9 @@ begin
     ExtractTemporaryFile('secretary-setup.exe');
     Helper := ExpandConstant('{tmp}\secretary-setup.exe');
     Params := 'prepare --root ' + Q(Root) + ' --data ' + Q(DataRoot) + ' --target-version {#AppVersion}';
-    if not Exec(Helper, Params, ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
-      Result := 'Резервное копирование не завершено. Установка остановлена до замены файлов. Проверьте ' + DataRoot + '\logs\installer.log';
+    if not RunHelper(Helper, Params, ExpandConstant('{tmp}')) then
+      Result := 'Резервное копирование не завершено. Установка остановлена до замены файлов.' + #13#10
+        + HelperError + #13#10 + 'Журнал: ' + DataRoot + '\logs\installer.log';
   end;
 end;
 
@@ -179,8 +207,10 @@ begin
     Params := 'configure --root ' + Q(Root) + ' --data ' + Q(DataRoot)
       + ' --api-port ' + Q(ConnectionPage.Values[0]) + ' --parser-port ' + Q(ConnectionPage.Values[1])
       + ' --database-port ' + Q(ConnectionPage.Values[2]) + ' --public-host ' + Q(Host);
-    if not Exec(Root + '\setup\secretary-setup.exe', Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
-      RaiseException('Не удалось настроить службы. Данные сохранены. Проверьте ' + DataRoot + '\logs\installer.log' + #13#10 + 'После исправления ошибки запустите установщик повторно.');
+    if not RunHelper(Root + '\setup\secretary-setup.exe', Params, Root) then
+      RaiseException('Не удалось настроить службы. Данные сохранены.' + #13#10
+        + HelperError + #13#10 + 'Журнал: ' + DataRoot + '\logs\installer.log'
+        + #13#10 + 'После исправления ошибки запустите установщик повторно.');
   end;
 end;
 
@@ -192,12 +222,12 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Root, Params: String;
-  Code: Integer;
 begin
   if CurUninstallStep = usUninstall then begin
     Root := ExpandConstant('{app}');
     Params := 'remove --root ' + Q(Root) + ' --data ' + Q(DataRoot);
-    if not Exec(Root + '\setup\secretary-setup.exe', Params, Root, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
-      RaiseException('Не удалось остановить и удалить службы. Файлы программы сохраняются. Проверьте журнал installer.log.');
+    if not RunHelper(Root + '\setup\secretary-setup.exe', Params, Root) then
+      RaiseException('Не удалось остановить и удалить службы. Файлы программы сохраняются.' + #13#10
+        + HelperError + #13#10 + 'Журнал: ' + DataRoot + '\logs\installer.log');
   end;
 end;

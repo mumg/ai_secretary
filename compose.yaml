@@ -1,12 +1,12 @@
 name: improver
 
 x-app-common: &app-common
-  image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.24}}
+  image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.25}}
   build:
     context: .
     dockerfile: backend/Dockerfile
     args:
-      APP_VERSION: ${APP_VERSION:-0.1.24}
+      APP_VERSION: ${APP_VERSION:-0.1.25}
   environment:
     DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://improver@db:5432/improver}
     DATABASE_PASSWORD_FILE: ${DATABASE_PASSWORD_FILE:-/run/secrets/postgres_password}
@@ -110,12 +110,12 @@ services:
     restart: unless-stopped
 
   document-parser:
-    image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.24}}-document-parser
+    image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.25}}-document-parser
     build:
       context: .
       dockerfile: document-parser/Dockerfile
       args:
-        APP_VERSION: ${APP_VERSION:-0.1.24}
+        APP_VERSION: ${APP_VERSION:-0.1.25}
     environment:
       MAX_BYTES: "26214400"
       MAX_CHARACTERS: "100000"
@@ -138,11 +138,11 @@ services:
     restart: unless-stopped
 
   cert-init:
-    image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.24}}-cert-init
+    image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.25}}-cert-init
     build:
       context: ./infra/certs
       args:
-        APP_VERSION: ${APP_VERSION:-0.1.24}
+        APP_VERSION: ${APP_VERSION:-0.1.25}
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
     volumes:

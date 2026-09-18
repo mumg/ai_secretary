@@ -404,18 +404,33 @@ func TestColdBackupAfterUninstall(t *testing.T) {
 func TestRunCommandRedactsFailures(t *testing.T) {
 	if os.Getenv("SETUP_TEST_CHILD") == "1" {
 		fmt.Fprintln(os.Stderr, "sensitive-value provider failure")
+		fmt.Fprintln(os.Stdout, "sensitive-value service registration failure")
 		os.Exit(12)
 	}
 	c := Command{Path: os.Args[0], Args: []string{"-test.run=TestRunCommandRedactsFailures"}, Env: map[string]string{"SETUP_TEST_CHILD": "1", "PGPASSWORD": "sensitive-value"}, Timeout: 5 * time.Second}
 	_, err := RunCommand(c)
-	if err == nil || strings.Contains(err.Error(), "sensitive-value") || !strings.Contains(err.Error(), "[redacted]") {
+	if err == nil || strings.Contains(err.Error(), "sensitive-value") || !strings.Contains(err.Error(), "[redacted]") || !strings.Contains(err.Error(), "service registration failure") {
 		t.Fatal(err)
 	}
 	statement := "SELECT 'sensitive-value';"
 	c.Input = &statement
 	_, err = RunCommand(c)
-	if err == nil || strings.Contains(err.Error(), "provider failure") {
+	if err == nil || strings.Contains(err.Error(), "provider failure") || strings.Contains(err.Error(), "service registration failure") {
 		t.Fatal(err)
+	}
+}
+
+func TestRunCommandPreservesLaunchError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "document-parser.exe")
+	_, err := RunCommand(Command{Path: path, Args: []string{"version"}})
+	if !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), "document-parser.exe") {
+		t.Fatalf("missing executable cause was lost: %v", err)
+	}
+	check(os.WriteFile(path, []byte("not an executable"), 0700))
+	_, err = RunCommand(Command{Path: path, Args: []string{"version"}})
+	var launch *os.PathError
+	if !errors.As(err, &launch) || !strings.Contains(err.Error(), launch.Err.Error()) {
+		t.Fatalf("invalid executable cause was lost: %v", err)
 	}
 }
 func TestJSONWritesReplaceExistingFiles(t *testing.T) {

@@ -447,7 +447,8 @@ func RunCommand(c Command) (string, error) {
 	if err == nil {
 		return string(out), nil
 	}
-	detail := strings.TrimSpace(stderr.String())
+	// WinSW and some Windows utilities report failures on stdout.
+	detail := strings.TrimSpace(stderr.String() + "\n" + string(out))
 	if c.Input != nil {
 		detail = "SQL command failed"
 	} else {
@@ -467,5 +468,7 @@ func RunCommand(c Command) (string, error) {
 	if errors.As(err, &exit) {
 		return "", fmt.Errorf("%s: код %d; %s", filepath.Base(c.Path), exit.ExitCode(), detail)
 	}
-	return "", fmt.Errorf("не удалось запустить %s", filepath.Base(c.Path))
+	// Keep the OS error: missing files, access denial and invalid executable
+	// formats require different remedies. Do not include arguments or env.
+	return "", fmt.Errorf("не удалось запустить %s: %w", filepath.Base(c.Path), err)
 }

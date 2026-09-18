@@ -107,7 +107,7 @@ func run(args []string) error {
 	if err != nil {
 		fmt.Fprintln(log, "Ошибка установки:", err)
 		fmt.Fprintln(log, "Данные сохранены в", persistent)
-		return errors.New("операция не завершена; проверьте logs/installer.log в каталоге данных")
+		return err
 	}
 	return log.Sync()
 }
