@@ -239,7 +239,7 @@ func TestRuntimeFailurePreventsConfiguration(t *testing.T) {
 		t.Fatal("mutation after failed runtime probe")
 	}
 }
-func TestConfigureUpgradeAndUninstallPreserveData(t *testing.T) {
+func TestConfigureBackupUninstallAndReinstallPreserveData(t *testing.T) {
 	h := newHarness(t)
 	if err := h.e.Configure(DefaultOptions()); err != nil {
 		t.Fatal(err)
@@ -276,6 +276,13 @@ func TestConfigureUpgradeAndUninstallPreserveData(t *testing.T) {
 			t.Fatal(h.states)
 		}
 	}
+	// The installer removes the previous program before configuring the new one.
+	if err = h.e.Remove(); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.states) != 0 || !exists(filepath.Join(h.e.Data, "postgres", "PG_VERSION")) || !exists(filepath.Join(h.e.Data, "data", "marker")) {
+		t.Fatal("uninstall before reinstall removed persistent data")
+	}
 	changed := DefaultOptions()
 	changed.APIPort = 18001
 	if err = h.e.Configure(changed); err != nil {
@@ -283,10 +290,10 @@ func TestConfigureUpgradeAndUninstallPreserveData(t *testing.T) {
 	}
 	o := must(readOptions(h.e.Data))
 	if o.APIPort != 18000 {
-		t.Fatal("upgrade changed persisted ports")
+		t.Fatal("reinstall changed persisted ports")
 	}
 	if !bytes.Equal(key, must(os.ReadFile(filepath.Join(h.e.Data, "secrets", "master-key")))) {
-		t.Fatal("upgrade changed encryption key")
+		t.Fatal("reinstall changed encryption key")
 	}
 	if err = h.e.Remove(); err != nil {
 		t.Fatal(err)

@@ -22,9 +22,13 @@ $InstallRoot = "$env:ProgramFiles\AI Secretary CI"
 $DataRoot = "$env:ProgramData\AI Secretary"
 if (Test-Path "$DataRoot\connection.json") { throw 'Smoke test requires a clean disposable machine' }
 if (Get-Service 'AISecretary*' -ErrorAction SilentlyContinue) { throw 'Smoke test requires no existing AI Secretary services' }
-function Run-Installer {
-    $Process = Start-Process -FilePath $Installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$InstallRoot`"") -Wait -PassThru
+function Run-Installer([switch]$ExpectRemoval) {
+    $SetupLog = Join-Path $env:TEMP ("ai-secretary-smoke-" + [guid]::NewGuid().ToString('N') + '.log')
+    $Process = Start-Process -FilePath $Installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$InstallRoot`"", "/LOG=`"$SetupLog`"") -Wait -PassThru
     if ($Process.ExitCode -notin @(0, 3010)) { throw "Installer exit code $($Process.ExitCode)" }
+    if ($ExpectRemoval -and -not (Select-String -Path $SetupLog -SimpleMatch 'Previous installation removed; persistent data preserved.' -Quiet)) {
+        throw 'Installer did not finish removing the previous version before reinstalling'
+    }
     $Ready = Invoke-RestMethod 'http://127.0.0.1:18000/health/ready' -TimeoutSec 15
     if ($Ready.status -ne 'ready') { throw 'API not ready' }
     $Parser = Invoke-RestMethod 'http://127.0.0.1:18080/health' -TimeoutSec 15
@@ -50,8 +54,21 @@ function Query-Database([string]$Sql) {
 function Run-Uninstaller {
     $Process = Start-Process "$InstallRoot\unins000.exe" -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
     if ($Process.ExitCode -ne 0) { throw 'Uninstall failed' }
+    $Registration = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{D7C76C6A-1829-4BE8-B54E-026615D011EE}_is1'
+    $Deadline = [DateTime]::UtcNow.AddSeconds(30)
+    while ((Test-Path "$InstallRoot\unins000.exe") -or (Test-Path $Registration)) {
+        if ([DateTime]::UtcNow -ge $Deadline) { throw 'Uninstaller cleanup did not finish' }
+        Start-Sleep -Milliseconds 100
+    }
     if (Get-Service 'AISecretary*' -ErrorAction SilentlyContinue) { throw 'Uninstall left services registered' }
     if (-not (Test-Path "$DataRoot\postgres\PG_VERSION") -or -not (Test-Path "$DataRoot\secrets\master-key")) { throw 'Uninstall deleted user data' }
+}
+function Assert-SavedData {
+    if ((Query-Database 'SELECT id FROM windows_install_smoke;') -ne '17') { throw 'Reinstall lost database data' }
+    if ((Get-Content "$DataRoot\data\upgrade-marker.txt") -ne 'preserved') { throw 'Reinstall lost attachments' }
+    if ((Get-FileHash "$DataRoot\secrets\master-key").Hash -ne $MasterKeyHash) { throw 'Reinstall replaced encryption key' }
+    if ((Get-FileHash "$DataRoot\connection.json").Hash -ne $ConnectionHash) { throw 'Reinstall replaced connection settings' }
+    if ((Get-Content "$DataRoot\certificates\reinstall-marker.txt") -ne 'preserved') { throw 'Reinstall lost certificates directory' }
 }
 try {
     Run-Installer
@@ -59,15 +76,27 @@ try {
     Query-Database "CREATE TABLE windows_install_smoke(id integer PRIMARY KEY); INSERT INTO windows_install_smoke VALUES (17);"
     Set-Content "$DataRoot\data\upgrade-marker.txt" 'preserved'
     $MasterKeyHash = (Get-FileHash "$DataRoot\secrets\master-key").Hash
-    # Simulate the old helper layout: prepare must use the helper in the new EXE.
+    $ConnectionHash = (Get-FileHash "$DataRoot\connection.json").Hash
+    Set-Content "$DataRoot\certificates\reinstall-marker.txt" 'preserved'
+    # A damaged uninstall registration must abort without stopping the old app.
+    $UninstallKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{D7C76C6A-1829-4BE8-B54E-026615D011EE}_is1'
+    $UninstallCommand = (Get-ItemProperty $UninstallKey).UninstallString
+    try {
+        Set-ItemProperty $UninstallKey -Name UninstallString -Value "`"$InstallRoot\unins-missing.exe`""
+        $Failed = Start-Process -FilePath $Installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$InstallRoot`"") -Wait -PassThru
+        if ($Failed.ExitCode -in @(0, 3010)) { throw 'Installer continued without a valid previous uninstaller' }
+        if ((Invoke-RestMethod 'http://127.0.0.1:18000/health/ready' -TimeoutSec 15).status -ne 'ready') { throw 'Rejected reinstall stopped the old server' }
+        Assert-SavedData
+    } finally {
+        Set-ItemProperty $UninstallKey -Name UninstallString -Value $UninstallCommand
+    }
+    # Legacy untracked files must be backed up before cleanup; keep the old
+    # helper intact because the registered uninstaller must remain runnable.
     New-Item "$InstallRoot\python" -ItemType Directory | Out-Null
     Set-Content "$InstallRoot\python\retired-runtime.txt" 'legacy payload'
     Set-Content "$InstallRoot\setup\manage.py" 'raise RuntimeError("Legacy helper must not run")'
-    Remove-Item "$InstallRoot\setup\secretary-setup.exe"
-    Run-Installer
-    if ((Query-Database 'SELECT id FROM windows_install_smoke;') -ne '17') { throw 'Upgrade lost database data' }
-    if ((Get-Content "$DataRoot\data\upgrade-marker.txt") -ne 'preserved') { throw 'Upgrade lost attachments' }
-    if ((Get-FileHash "$DataRoot\secrets\master-key").Hash -ne $MasterKeyHash) { throw 'Upgrade replaced encryption key' }
+    Run-Installer -ExpectRemoval
+    Assert-SavedData
     $Backups = @(Get-ChildItem "$DataRoot\backups" -Directory)
     if ($Backups.Count -ne 1 -or -not (Test-Path "$($Backups[0].FullName)\database.dump")) { throw 'Database backup missing' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -77,13 +106,12 @@ try {
     } finally { $Archive.Dispose() }
     Run-Uninstaller
     Run-Installer
-    if ((Query-Database 'SELECT id FROM windows_install_smoke;') -ne '17') { throw 'Reinstall lost database data' }
-    if ((Get-FileHash "$DataRoot\secrets\master-key").Hash -ne $MasterKeyHash) { throw 'Reinstall replaced encryption key' }
+    Assert-SavedData
     # Configure completes the upgrade state; find the preserved cold backup itself.
     $ColdBackups = @(Get-ChildItem "$DataRoot\backups" -Directory | Where-Object { Test-Path "$($_.FullName)\postgres\PG_VERSION" })
     if ($ColdBackups.Count -ne 1) { throw 'Cold database backup missing after reinstall' }
     Run-Uninstaller
-    Write-Host 'Install, legacy-helper upgrade, reinstall, data preservation and uninstall checks passed'
+    Write-Host 'Install, failed-removal preflight, automatic uninstall/reinstall, data preservation and uninstall checks passed'
 } finally {
     # Do not upload logs: they can contain private configuration or runtime credentials.
     if (Test-Path "$DataRoot\logs\installer.log") {

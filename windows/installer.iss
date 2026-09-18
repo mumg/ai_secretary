@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.30"
+  #define AppVersion "0.1.31"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -29,6 +29,8 @@ SetupMutex=AISecretarySetup
 AllowCancelDuringInstall=no
 UninstallDisplayName=AI Секретарь
 UninstallDisplayIcon={app}\secretary.ico
+; Always create a fresh log after the previous installation has been removed.
+UninstallLogMode=new
 LicenseFile=THIRD_PARTY.md
 
 [Languages]
@@ -71,6 +73,9 @@ Type: files; Name: "{app}\Open.url"
 Type: files; Name: "{app}\Settings.url"
 
 [Code]
+const
+  UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{D7C76C6A-1829-4BE8-B54E-026615D011EE}_is1';
+
 var
   ConnectionPage: TInputQueryWizardPage;
   AccessPage: TInputOptionWizardPage;
@@ -121,6 +126,75 @@ begin
   Result := FileExists(DataRoot + '\connection.json');
 end;
 
+function InsideDirectory(const Path, Directory: String): Boolean;
+var
+  Prefix: String;
+begin
+  Prefix := AddBackslash(ExpandFileName(Directory));
+  Result := CompareText(Copy(AddBackslash(ExpandFileName(Path)), 1, Length(Prefix)), Prefix) = 0;
+end;
+
+function SafeProgramDirectory(const Root: String): Boolean;
+begin
+  Result := not InsideDirectory(Root, DataRoot) and not InsideDirectory(DataRoot, Root);
+end;
+
+function HasUninstallLog(const Root: String): Boolean;
+var
+  Entry: TFindRec;
+begin
+  Result := FindFirst(AddBackslash(Root) + 'unins*.dat', Entry);
+  if Result then FindClose(Entry);
+end;
+
+function PendingProgramRemoval(const Root: String): Boolean;
+var
+  Operations: String;
+begin
+  Operations := '';
+  RegQueryMultiStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager',
+    'PendingFileRenameOperations', Operations);
+  Result := Pos(Lowercase(AddBackslash(ExpandFileName(Root))), Lowercase(Operations)) > 0;
+end;
+
+function PreviousUninstaller(var Root, Uninstaller: String): String;
+var
+  Command: String;
+begin
+  Result := '';
+  Root := ExpandConstant('{app}');
+  Uninstaller := '';
+  if not RegKeyExists(HKLM64, UninstallKey) then Exit;
+  if not RegQueryStringValue(HKLM64, UninstallKey, 'UninstallString', Command) then begin
+    Result := 'Не найдена команда удаления прежней версии. Восстановите деинсталлятор и повторите установку.';
+    Exit;
+  end;
+  Uninstaller := RemoveQuotes(Trim(Command));
+  Root := ExtractFileDir(Uninstaller);
+  if (Root = '') or not FileExists(Uninstaller) or
+     (CompareText(ExtractFileExt(Uninstaller), '.exe') <> 0) or
+     (CompareText(Copy(ExtractFileName(Uninstaller), 1, 5), 'unins') <> 0) then begin
+    Result := 'Деинсталлятор прежней версии отсутствует или повреждён. Установка поверх неё запрещена.';
+    Exit;
+  end;
+  if not SafeProgramDirectory(Root) then begin
+    Result := 'Каталоги программы и сохраняемых данных пересекаются. Удаление остановлено.';
+    Exit;
+  end;
+  if InsideDirectory(ExpandConstant('{srcexe}'), Root) then
+    Result := 'Переместите новый установщик из каталога программы, например в Загрузки, и запустите снова.';
+end;
+
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
+  MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+begin
+  Result := MemoDirInfo;
+  if RegKeyExists(HKLM64, UninstallKey) then
+    Result := Result + NewLine + NewLine +
+      'Прежняя версия будет удалена, затем программа будет установлена заново.' + NewLine +
+      'База, вложения, настройки и ключи сохраняются в ' + DataRoot + '.';
+end;
+
 procedure InitializeWizard;
 begin
   ConnectionPage := CreateInputQueryPage(wpSelectDir, 'Сервер AI Секретаря',
@@ -157,6 +231,10 @@ var
   I, P: Integer;
 begin
   Result := True;
+  if CurPageID = wpSelectDir then begin
+    Result := SafeProgramDirectory(ExpandConstant('{app}'));
+    if not Result then MsgBox('Каталоги программы и сохраняемых данных не должны пересекаться.', mbError, MB_OK);
+  end;
   if CurPageID = ConnectionPage.ID then begin
     for I := 0 to 2 do begin
       P := StrToIntDef(ConnectionPage.Values[I], 0);
@@ -175,18 +253,74 @@ end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Root, Helper, Params: String;
+  Root, Helper, Params, Uninstaller: String;
+  Code, Attempts: Integer;
+  SavedData: Boolean;
 begin
   Result := '';
-  Root := ExpandConstant('{app}');
-  if ExistingInstallation then begin
-    { Use the new native helper before overwriting any old installation files. }
+  if not SafeProgramDirectory(ExpandConstant('{app}')) then begin
+    Result := 'Каталоги программы и сохраняемых данных не должны пересекаться.';
+    Exit;
+  end;
+  Result := PreviousUninstaller(Root, Uninstaller);
+  if Result <> '' then Exit;
+  if ((Uninstaller = '') or (CompareText(Root, ExpandConstant('{app}')) <> 0)) and
+     HasUninstallLog(ExpandConstant('{app}')) then begin
+    Result := 'В каталоге программы остались данные прежнего деинсталлятора. Завершите удаление прежней версии и повторите установку.';
+    Exit;
+  end;
+  if PendingProgramRemoval(Root) or PendingProgramRemoval(ExpandConstant('{app}')) then begin
+    NeedsRestart := True;
+    Result := 'Удаление прежних файлов ожидает перезагрузки. Перезагрузите Windows и запустите установку снова.';
+    Exit;
+  end;
+  SavedData := ExistingInstallation;
+  if SavedData then begin
+    { Back up the OLD root using the NEW helper before running its uninstaller. }
     ExtractTemporaryFile('secretary-setup.exe');
     Helper := ExpandConstant('{tmp}\secretary-setup.exe');
     Params := 'prepare --root ' + Q(Root) + ' --data ' + Q(DataRoot) + ' --target-version {#AppVersion}';
-    if not RunHelper(Helper, Params, ExpandConstant('{tmp}')) then
+    if not RunHelper(Helper, Params, ExpandConstant('{tmp}')) then begin
       Result := 'Резервное копирование не завершено. Установка остановлена до замены файлов.' + #13#10
         + HelperError + #13#10 + 'Журнал: ' + DataRoot + '\logs\installer.log';
+      Exit;
+    end;
+  end;
+  if Uninstaller <> '' then begin
+    Log('Removing previous installation before installing new files; preserving ' + DataRoot);
+    Params := '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=' + Q(ExpandConstant('{tmp}\ai-secretary-uninstall.log'));
+    if not Exec(Uninstaller, Params, ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, Code) then begin
+      Result := 'Не удалось запустить удаление прежней версии: ' + SysErrorMessage(Code);
+      Exit;
+    end;
+    if Code <> 0 then begin
+      Result := 'Удаление прежней версии завершилось с ошибкой ' + IntToStr(Code) +
+        '. Новая версия не установлена. Данные и резервная копия сохранены.';
+      Exit;
+    end;
+    { The uninstaller clone terminates its original process before deleting it. }
+    for Attempts := 1 to 300 do begin
+      if not FileExists(Uninstaller) and not RegKeyExists(HKLM64, UninstallKey) then Break;
+      Sleep(100);
+    end;
+    if PendingProgramRemoval(Root) then begin
+      NeedsRestart := True;
+      Result := 'Для завершения удаления нужна перезагрузка. Данные сохранены; после перезагрузки запустите установщик снова.';
+      Exit;
+    end;
+    if FileExists(Uninstaller) or RegKeyExists(HKLM64, UninstallKey) then begin
+      Result := 'Удаление прежней версии не завершено. Установка новых файлов остановлена; повторите запуск после завершения удаления.';
+      Exit;
+    end;
+    if SavedData and not ExistingInstallation then begin
+      Result := 'После удаления не найдены сохранённые настройки. Восстановите ProgramData из резервной копии перед установкой.';
+      Exit;
+    end;
+    Log('Previous installation removed; persistent data preserved.');
+  end;
+  { Never append to or replace an orphaned uninstall log. }
+  if HasUninstallLog(ExpandConstant('{app}')) then begin
+    Result := 'В каталоге программы остались данные прежнего деинсталлятора. Завершите удаление прежней версии и повторите установку.';
   end;
 end;
 
