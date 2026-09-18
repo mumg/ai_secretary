@@ -681,13 +681,13 @@ func (s *Server) maintenance(ctx context.Context) bool {
 	return false
 }
 func (q *request) notify(kind, id string) int {
-	delivered := 0
+	delivered := q.server.gatewayNotify(q.Context, kind, id)
 	if q.server.Config.LocalOnly {
-		return 0
+		return delivered
 	}
 	rows := q.rows("SELECT firebase_credentials_encrypted FROM system_settings WHERE id=1")
 	if len(rows) == 0 || str(rows[0], "firebase_credentials_encrypted") == "" {
-		return 0
+		return delivered
 	}
 	plain := must(q.server.Config.Decrypt(str(rows[0], "firebase_credentials_encrypted")))
 	var account M

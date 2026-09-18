@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import net.muratov.assistant.security.AppClientIdentity
+import net.muratov.assistant.security.GatewayIdentity
 
 @Composable
 fun SetupWizard(
@@ -51,7 +52,7 @@ fun SetupWizard(
                     step = 2
                 } catch (cancelled: CancellationException) { throw cancelled
                 } catch (_: Exception) {
-                    error = "Не удалось прочитать ключ. Используйте QR-код из настроек AI Секретаря с действующим сертификатом."
+                    error = "Не удалось прочитать ключ. Используйте действующий QR-код прямого подключения или гейтвея из настроек AI Секретаря."
                 } finally { busy = false }
             }
         }
@@ -63,6 +64,7 @@ fun SetupWizard(
             .setCaptureActivity(IdentityCaptureActivity::class.java))
     }
     val certificateLabel = when {
+        GatewayIdentity.isAlias(alias) -> "Через гейтвей · ключ сохранён в приложении"
         AppClientIdentity.isAppAlias(alias) -> "Ключ сохранён в приложении"
         alias != null -> "Ранее выбранный сертификат Android"
         else -> "Без клиентского сертификата"
@@ -77,7 +79,7 @@ fun SetupWizard(
                 0 -> {
                     Text("Подключите свой сервер")
                     Button(enabled = !busy, onClick = scan) { Text("Сканировать QR-код") }
-                    Text("Введите HTTPS-адрес вашей установки. Его можно получить у администратора AI Секретаря.")
+                    Text("QR-код автоматически определит способ подключения: напрямую или через гейтвей. Для прямого подключения можно ввести HTTPS-адрес вручную.")
                     OutlinedTextField(url, { url = it; error = null }, modifier = Modifier.fillMaxWidth(),
                         label = { Text("Адрес сервера") }, placeholder = { Text("https://assistant.example.org") },
                         singleLine = true, isError = url.isNotBlank() && normalized == null,

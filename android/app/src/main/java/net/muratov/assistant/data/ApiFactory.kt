@@ -6,6 +6,8 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import net.muratov.assistant.data.remote.ImproverApi
+import net.muratov.assistant.security.GatewayIdentity
+import net.muratov.assistant.security.GatewayTransport
 import net.muratov.assistant.security.AppClientIdentity
 import net.muratov.assistant.security.AliasKeyManager
 import net.muratov.assistant.security.BundledClientIdentity
@@ -17,8 +19,9 @@ import javax.net.ssl.X509TrustManager
 import java.util.concurrent.TimeUnit
 
 object ApiFactory {
-    fun client(context: Context, baseUrl: String, certificateAlias: String?): OkHttpClient =
-        OkHttpClient.Builder()
+    fun client(context: Context, baseUrl: String, certificateAlias: String?): OkHttpClient {
+        if (GatewayIdentity.isAlias(certificateAlias)) return GatewayTransport.client(GatewayIdentity.load(context, baseUrl, certificateAlias!!))
+        return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(6, TimeUnit.MINUTES)
@@ -42,9 +45,13 @@ object ApiFactory {
                 }
             }
             .build()
+    }
 
     fun create(context: Context, baseUrl: String, certificateAlias: String?): ImproverApi {
-        val client = client(context, baseUrl, certificateAlias)
+        return create(client(context, baseUrl, certificateAlias), baseUrl)
+    }
+
+    internal fun create(client: OkHttpClient, baseUrl: String): ImproverApi {
         val gson = GsonBuilder().create()
         return Retrofit.Builder()
             .baseUrl(baseUrl.trimEnd('/') + "/")

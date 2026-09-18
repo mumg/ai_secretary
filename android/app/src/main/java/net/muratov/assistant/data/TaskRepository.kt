@@ -5,6 +5,9 @@ import android.os.Build
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import net.muratov.assistant.security.GatewayIdentity
+import net.muratov.assistant.security.GatewayPush
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -39,7 +42,9 @@ class TaskRepository(
 ) {
     val tasks: Flow<List<TaskEntity>> = dao.observeActive()
 
-    private fun api() = ApiFactory.create(context, settings.serverUrl, settings.certificateAlias)
+    private val apiSession = ApiSession { url, alias -> ApiFactory.client(context, url, alias) }
+
+    private fun api() = apiSession.get(settings.serverUrl, settings.certificateAlias)
 
     private fun TaskDto.toEntity() = TaskEntity(
         id = id,
@@ -138,7 +143,10 @@ class TaskRepository(
     suspend fun registerFcmToken(tokenOverride: String? = null) {
         if (!settings.isConfigured) return
         val token = tokenOverride ?: FirebaseMessaging.getInstance().token.await()
-        api().registerDevice(DeviceRequest(label = Build.MODEL, fcmToken = token))
+        val alias = settings.certificateAlias
+        if (GatewayIdentity.isAlias(alias)) {
+            withContext(Dispatchers.IO) { GatewayPush.register(context, GatewayIdentity.load(context, settings.serverUrl, alias!!), token) }
+        } else api().registerDevice(DeviceRequest(label = Build.MODEL, fcmToken = token))
     }
 
     suspend fun chat(

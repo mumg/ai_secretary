@@ -30,6 +30,7 @@ type liveState struct {
 }
 
 func (s *Server) Start(ctx context.Context) {
+	s.startGateway(ctx)
 	go s.listenChanges(ctx)
 	go func() {
 		ticker := time.NewTicker(time.Minute)

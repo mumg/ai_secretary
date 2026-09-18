@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/mumg/ai_secretary/backend/internal/config"
+	"github.com/mumg/ai_secretary/backend/internal/mobileqr"
+	"github.com/mumg/ai_secretary/backend/internal/mobileqr/testutil"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -52,27 +54,36 @@ func TestMobileIdentityQRAndMTLS(t *testing.T) {
 	if !until.Equal(now.AddDate(1, 0, 0)) {
 		t.Fatal("unexpected certificate lifetime")
 	}
-	png, err := qrcode.Encode(payload, qrcode.Medium, 768)
+	png, err := mobileqr.PNG(payload)
 	if err != nil {
 		t.Fatal("identity does not fit QR:", err)
 	}
-	var identity mobileIdentity
-	if err := json.Unmarshal([]byte(strings.TrimPrefix(payload, "ai-secretary:identity:")), &identity); err != nil {
+	fields, err := testutil.Decode(payload, mobileqr.DirectPrefix, 3)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if identity.Version != 1 || identity.Server != "https://secretary.example.test" {
-		t.Fatal("invalid QR contract")
+	if string(fields[0]) != "https://secretary.example.test" {
+		t.Fatal("invalid QR origin")
 	}
-	der, _ := base64.StdEncoding.DecodeString(identity.Certificate)
-	keyDER, _ := base64.StdEncoding.DecodeString(identity.Key)
+	der := fields[1]
 	cert, err := x509.ParseCertificate(der)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := x509.ParsePKCS8PrivateKey(keyDER)
+	key := &ecdsa.PrivateKey{PublicKey: *cert.PublicKey.(*ecdsa.PublicKey), D: new(big.Int).SetBytes(fields[2])}
+	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
 		t.Fatal(err)
 	}
+	identity := mobileIdentity{1, string(fields[0]), base64.StdEncoding.EncodeToString(der), base64.StdEncoding.EncodeToString(keyDER)}
+	legacyJSON, _ := json.Marshal(identity)
+	legacyPayload := "ai-secretary:identity:" + string(legacyJSON)
+	oldCode, _ := qrcode.New(legacyPayload, qrcode.Medium)
+	compactCode, _ := qrcode.New(payload, qrcode.Medium)
+	if compactCode.VersionNumber >= oldCode.VersionNumber {
+		t.Fatal("QR density did not decrease")
+	}
+	t.Logf("Direct: %d -> %d chars; QR version %d -> %d", len(legacyPayload), len(payload), oldCode.VersionNumber, compactCode.VersionNumber)
 	roots := x509.NewCertPool()
 	roots.AddCert(ca)
 	if _, err := cert.Verify(x509.VerifyOptions{Roots: roots, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}}); err != nil {
@@ -107,10 +118,10 @@ func TestMobileIdentityQRAndMTLS(t *testing.T) {
 		if err := os.MkdirAll(fixtureDir, 0700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(fixtureDir, "test-identity.txt"), []byte(payload), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(fixtureDir, "compact-identity.txt"), []byte(payload), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(fixtureDir, "test-identity.png"), png, 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(fixtureDir, "compact-identity.png"), png, 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -135,7 +146,7 @@ func TestMobileIdentityQRAndMTLS(t *testing.T) {
 func TestMobileIdentityLocalOnlyAndCSRF(t *testing.T) {
 	s := New(nil, config.Config{LocalOnly: true}, "test")
 	for _, origin := range []string{"", "https://attacker.test"} {
-		request := httptest.NewRequest("POST", "http://localhost/api/v1/admin/mobile-identity", strings.NewReader(`{"label":"Phone"}`))
+		request := httptest.NewRequest("POST", "http://localhost/api/v1/admin/mobile-identity", strings.NewReader(`{}`))
 		request.Header.Set("Origin", origin)
 		response := httptest.NewRecorder()
 		s.ServeHTTP(response, request)
@@ -146,6 +157,16 @@ func TestMobileIdentityLocalOnlyAndCSRF(t *testing.T) {
 		if response.Code != expected {
 			t.Fatalf("got %d, want %d", response.Code, expected)
 		}
+	}
+}
+
+func TestMobileIdentityWithoutNameValidatesBeforeIssuerLookup(t *testing.T) {
+	s := New(nil, config.Config{}, "test")
+	response := httptest.NewRecorder()
+	s.ServeHTTP(response, httptest.NewRequest("POST", "http://localhost/api/v1/admin/mobile-identity", strings.NewReader(`{}`)))
+	// A missing issuer is expected; an absent device name must not reject the request.
+	if response.Code != 503 {
+		t.Fatalf("got %d, want issuer unavailable: %s", response.Code, response.Body.String())
 	}
 }
 
@@ -171,14 +192,14 @@ func TestMobileIdentityEndpoint(t *testing.T) {
 	s.Config.ClientCAKeyFile = filepath.Join(dir, "ca.key")
 	os.WriteFile(s.Config.ClientCAFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0600)
 	os.WriteFile(s.Config.ClientCAKeyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0600)
-	result := call(t, s, "POST", "/api/v1/admin/mobile-identity", M{"label": "My phone"}, 201).(map[string]any)
+	result := call(t, s, "POST", "/api/v1/admin/mobile-identity", M{}, 201).(map[string]any)
 	if !strings.HasPrefix(result["qr_image"].(string), "data:image/png;base64,") || result["server_url"] != "https://localhost" {
 		t.Fatal("invalid QR response")
 	}
 	call(t, s, "POST", "/api/v1/admin/mobile-identity", M{"label": " "}, 422)
 	call(t, s, "POST", "/api/v1/admin/mobile-identity", M{"label": strings.Repeat("x", 65)}, 422)
 	call(t, s, "POST", "/api/v1/admin/mobile-identity", M{"label": "phone", "secret": "forbidden"}, 422)
-	req := httptest.NewRequest("POST", "/api/v1/admin/mobile-identity", strings.NewReader(`{"label":"Phone"}`))
+	req := httptest.NewRequest("POST", "/api/v1/admin/mobile-identity", strings.NewReader(`{}`))
 	response := httptest.NewRecorder()
 	s.ServeHTTP(response, req)
 	if response.Code != 201 || response.Header().Get("Cache-Control") != "no-store" {

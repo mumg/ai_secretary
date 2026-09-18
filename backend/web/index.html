@@ -45,16 +45,32 @@
       <button class="tab" data-panel="tags">Теги</button>
       <button class="tab" data-panel="analysis">Анализ и календарь</button>
       <button class="tab" data-panel="notifications">Уведомления</button>
-      <button id="mobileTab" class="tab" data-panel="mobile">Мобильное приложение</button>
+      <button id="mobileTab" class="tab" data-panel="mobile">Удалённое подключение</button>
     </nav>
 
     <section id="mobile" class="panel">
-      <div class="section-heading"><div><h2>Подключить Android-приложение</h2><p>Создайте отдельный ключ для телефона и отсканируйте QR-код в настройках приложения.</p></div></div>
-      <form id="mobileIdentityForm" class="tag-create-form">
-        <label>Название устройства<input id="mobileDeviceLabel" maxlength="64" required placeholder="Например, Мой телефон" autocomplete="off"></label>
-        <button id="createMobileIdentity" class="primary" type="submit">Создать QR-код</button>
+      <div class="section-heading"><div><h2>Удалённое подключение</h2><p>Выберите способ подключения. Приложение распознает его после сканирования QR-кода.</p></div></div>
+      <div class="connection-tabs" role="tablist" aria-label="Способ подключения">
+        <button id="directConnectionTab" class="tab" type="button" role="tab" aria-selected="true" aria-controls="directConnection" data-connection="direct">Прямое подключение</button>
+        <button id="gatewayConnectionTab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="gatewayConnection" tabindex="-1" data-connection="gateway">Подключение через шлюз</button>
+      </div>
+      <div id="directConnection" role="tabpanel" aria-labelledby="directConnectionTab">
+        <p>Телефон подключается к публичному HTTPS-адресу вашего сервера.</p>
+        <p id="directUnavailable" class="hint" hidden>Прямое подключение недоступно в локальном режиме. Используйте шлюз или настройте публичный HTTPS при установке сервера.</p>
+        <form id="directSettingsForm" class="settings-grid">
+          <fieldset><legend>Адрес сервера</legend>
+            <label>Доменное имя / HTTPS-адрес<input id="publicUrl" type="url" required placeholder="https://assistant.example.org"></label>
+            <p class="hint">Укажите HTTPS-адрес без пути и параметров. Домен и TLS-сертификат настраиваются при установке сервера.</p>
+          </fieldset>
+        <fieldset id="firebaseSettings"><legend>Firebase service account</legend>
+          <div id="firebaseState" class="credential-state">Не настроен</div>
+          <label>Новый JSON-ключ <small>сохраняется зашифрованно</small><textarea id="firebaseJson" rows="8" spellcheck="false" placeholder="Вставьте содержимое service-account.json"></textarea></label>
+        </fieldset>
+          <div class="bottom-actions"><button id="saveDirectSettings" class="primary" type="submit">Сохранить настройки подключения</button></div>
+        </form>
+      <form id="mobileIdentityForm" class="connection-qr-actions">
+        <button id="createMobileIdentity" class="primary connection-qr-button" type="submit">Показать QR-код</button>
       </form>
-      <p>Ключ хранится только в закрытом каталоге приложения. Установка сертификата в Android не требуется.</p>
       <p id="mobileIdentityError" role="alert"></p>
       <div id="mobileIdentityResult" hidden>
         <p><strong>QR-код содержит секретный ключ доступа. Не отправляйте его другим людям и не сохраняйте снимок экрана.</strong></p>
@@ -62,6 +78,34 @@
         <p id="mobileIdentityInfo"></p>
         <p>В приложении откройте настройки подключения → «Сканировать QR-код». Код автоматически скроется через 2 минуты. Это не отзывает выданный ключ.</p>
         <button id="hideMobileIdentity" type="button" class="secondary">Скрыть QR-код</button>
+      </div>
+      </div>
+      <div id="gatewayConnection" role="tabpanel" aria-labelledby="gatewayConnectionTab" hidden>
+        <p>Сервер сам подключается к шлюзу. Собственный домен и открытые входящие порты не требуются.</p>
+        <p id="gatewayStatus" role="status" aria-live="polite">Состояние не загружено</p>
+        <form id="gatewayForm" class="settings-grid">
+          <fieldset><legend>Регистрация сервера</legend>
+            <label>Адрес шлюза<input id="gatewayAddress" type="url" required value="https://ai.muratov.net" autocomplete="url"></label>
+            <label>UID сервера<input id="gatewayUID" readonly placeholder="Создаётся автоматически"></label>
+            <p class="hint">UID создаётся автоматически. Для регистрации достаточно адреса шлюза.</p>
+            <button id="gatewayEnroll" type="submit" class="primary">Подключить сервер</button>
+          </fieldset>
+          <fieldset><legend>Надёжность и защита подключения</legend>
+            <p>Сервер автоматически восстанавливает соединение со шлюзом после обрыва связи. Для подключения не нужны публичный IP-адрес и открытые входящие порты.</p>
+            <p>Трафик между устройством и вашим сервером защищён сквозным шифрованием. Шлюз передаёт зашифрованные данные и не имеет доступа к содержимому запросов и ответов. Ключи шифрования остаются на устройстве и вашем сервере.</p>
+          </fieldset>
+        </form>
+        <p id="gatewayError" role="alert"></p>
+        <button id="gatewayToggle" class="secondary" type="button" hidden>Приостановить доступ</button>
+        <button id="gatewayReregister" class="secondary" type="button" hidden>Перерегистрировать сервер</button>
+        <p id="gatewayRecovery" class="hint" hidden>Перерегистрация создаст новый UID и новые сертификаты. После неё подключите мобильные устройства заново по новому QR-коду.</p>
+        <div class="connection-qr-actions"><button id="gatewayShowQR" type="button" class="primary connection-qr-button" disabled>Показать QR-код</button></div>
+        <div id="gatewayQRResult" hidden>
+          <p><strong>QR-код содержит ключи доступа. Показывайте его только своим устройствам.</strong></p>
+          <img id="gatewayQR" class="mobile-identity-qr" alt="QR-код подключения через шлюз" width="1024" height="1024">
+          <p>В Android выберите «Сканировать QR-код». Код скроется через 2 минуты; это не отзывает доступ.</p>
+          <button id="gatewayHideQR" class="secondary" type="button">Скрыть QR-код</button>
+        </div>
       </div>
     </section>
 
@@ -85,12 +129,12 @@
     </section>
 
     <section id="analysis" class="panel">
-      <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Анализ и рабочий день</h2></div><button class="primary save-settings">Сохранить</button></div>
+      <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Анализ и рабочий день</h2></div></div>
       <form id="settingsForm" class="settings-grid">
         <fieldset><legend>Пользователь</legend>
           <label>Имя и фамилия пользователя <small>варианты через запятую; почтовые адреса определяются из подключённых источников</small><input id="identityNames" autocomplete="off"></label>
           <label>Часовой пояс<input id="timezone" value="Europe/Moscow"></label>
-          <label>Публичный URL <small>TLS-имя PUBLIC_HOST задаётся до запуска</small><input id="publicUrl" type="url"></label>
+
         </fieldset>
         <fieldset><legend>Рабочий календарь</legend>
           <div class="inline"><label>Начало<input id="workStart" type="time"></label><label>Конец<input id="workEnd" type="time"></label></div>
@@ -123,8 +167,8 @@
     </section>
 
     <section id="notifications" class="panel">
-      <div class="section-heading"><div><p id="notificationsEyebrow" class="eyebrow">FCM</p><h2>Уведомления и расписание</h2></div><button class="primary save-settings">Сохранить</button></div>
-      <p id="localWebNotice" class="hint" hidden>Локальный WEB-режим: изменения появляются автоматически в открытом интерфейсе. Мобильные push-уведомления отключены.</p>
+      <div class="section-heading"><div><p id="notificationsEyebrow" class="eyebrow">FCM</p><h2>Уведомления и расписание</h2></div></div>
+      <p id="localWebNotice" class="hint" hidden>В локальной установке мобильные push-уведомления доступны через шлюз. Настройте его в разделе «Удалённое подключение».</p>
       <div class="settings-grid">
         <fieldset><legend id="scheduleLegend">Сроки</legend>
           <label id="dueSoonSetting">Предупреждать за, минут<input id="dueSoonMinutes" type="number" min="1" max="10080"></label>
@@ -132,10 +176,7 @@
           <label>Повторное ранжирование, секунд<input id="rankingInterval" type="number" min="60"></label>
           <label>Проверка источников, секунд<input id="pollInterval" type="number" min="10"></label>
         </fieldset>
-        <fieldset id="firebaseSettings"><legend>Firebase service account</legend>
-          <div id="firebaseState" class="credential-state">Не настроен</div>
-          <label>Новый JSON-ключ <small>сохраняется зашифрованно</small><textarea id="firebaseJson" rows="8" spellcheck="false" placeholder="Вставьте содержимое service-account.json"></textarea></label>
-        </fieldset>
+
       </div>
       <div class="bottom-actions"><button class="primary save-settings">Сохранить настройки</button></div>
     </section>

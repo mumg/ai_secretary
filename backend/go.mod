@@ -8,6 +8,7 @@ require (
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/emersion/go-imap v1.2.1
 	github.com/emersion/go-message v0.18.2
+	github.com/hashicorp/yamux v0.1.2
 	github.com/icholy/digest v1.1.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2

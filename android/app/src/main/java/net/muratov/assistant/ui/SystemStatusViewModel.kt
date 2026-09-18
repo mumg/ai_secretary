@@ -37,9 +37,9 @@ class SystemStatusViewModel(private val repository: TaskRepository) : ViewModel(
         }
     }
 
-    fun refresh() {
+    fun refresh(fromPull: Boolean = false) {
+        if (fromPull) mutableState.value = mutableState.value.copy(refreshing = true)
         if (requestInProgress) return
-        mutableState.value = mutableState.value.copy(refreshing = true)
         viewModelScope.launch { load() }
     }
 

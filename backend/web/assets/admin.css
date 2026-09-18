@@ -168,3 +168,16 @@ dialog::backdrop { background: rgba(8,30,31,.62); backdrop-filter: blur(4px); }
 .mobile-identity-qr { display: block; width: min(100%, 620px); height: auto; image-rendering: pixelated; background: white; }
 #mobileIdentityError { color: var(--danger, #b42318); }
 @media print { #mobileIdentityResult { display: none !important; } }
+
+.connection-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; padding: 5px; border: 1px solid var(--line); border-radius: 12px; width: fit-content; }
+.connection-tabs [aria-selected="true"] { background: var(--accent); color: white; }
+#gatewayError { color: var(--danger, #b42318); }
+#gatewayConnection > button { margin: 12px 8px 12px 0; }
+@media print { #gatewayQRResult { display: none !important; } }
+
+#mobile button:disabled { opacity: .5; cursor: not-allowed; }
+
+#directSettingsForm .bottom-actions { grid-column: 1 / -1; justify-content: flex-start; margin: 0 0 20px; }
+
+.connection-qr-actions { display: flex; margin: 20px 0; }
+.connection-qr-button { width: 200px; max-width: 100%; min-height: 44px; }

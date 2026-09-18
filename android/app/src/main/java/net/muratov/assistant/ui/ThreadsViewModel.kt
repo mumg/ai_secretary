@@ -33,13 +33,13 @@ class ThreadsViewModel(private val repository: TaskRepository) : ViewModel() {
         loadNext()
     }
 
-    fun refresh() {
+    fun refresh(fromPull: Boolean = false) {
         val current = mutableState.value
         loadJob?.cancel()
         val refreshState = current.copy(
             loading = false,
             hasMore = true,
-            refreshing = true,
+            refreshing = fromPull || current.refreshing,
             error = null,
         )
         mutableState.value = refreshState

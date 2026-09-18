@@ -97,6 +97,15 @@ class ImproverMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        message.data["notification_id"]?.let { id ->
+            val seen = getSharedPreferences("gateway-notifications", MODE_PRIVATE)
+            synchronized(ImproverMessagingService::class.java) {
+                if (seen.contains(id)) return
+                val edit = seen.edit().putLong(id, System.currentTimeMillis())
+                seen.all.entries.sortedByDescending { (it.value as? Long) ?: 0 }.drop(199).forEach { edit.remove(it.key) }
+                edit.commit()
+            }
+        }
         val type = message.data["type"] ?: "TASK_UPDATE"
         val objectId = message.data["object_id"] ?: type
         Log.i("SecretaryPush", "Received $type for $objectId")

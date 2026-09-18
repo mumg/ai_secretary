@@ -45,18 +45,20 @@ function populateSettings(data) {
   settingsState = data.settings;
   const s = data.settings;
   const localWeb = Boolean(data.local_web_only);
-  $("mobileTab").hidden = localWeb;
+  $("mobileTab").hidden = false;
+  $("directUnavailable").hidden = !localWeb;
+  $("saveDirectSettings").disabled = localWeb;
   $("createMobileIdentity").disabled = localWeb;
   $("deploymentHint").textContent = localWeb
-    ? "Локальный WEB-режим. Работа в браузере на этом компьютере, без мобильного приложения и сертификатов."
+    ? "Локальная установка. Мобильный доступ через шлюз настраивается в разделе «Удалённое подключение»."
     : "Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён клиентским сертификатом.";
   $("devicesMetric").hidden = localWeb;
   $("statusMetrics").classList.toggle("local-web", localWeb);
   $("firebaseSettings").hidden = localWeb;
   $("localWebNotice").hidden = !localWeb;
   $("notificationsEyebrow").textContent = localWeb ? "WEB" : "FCM";
-  $("dueSoonSetting").hidden = localWeb;
-  $("overdueSetting").hidden = localWeb;
+  $("dueSoonSetting").hidden = false;
+  $("overdueSetting").hidden = false;
   $("scheduleLegend").textContent = localWeb ? "Обработка" : "Сроки";
   $("publicUrl").disabled = localWeb;
   setValue("identityNames", (s.identity.names || []).join(", "));
@@ -101,7 +103,7 @@ async function saveSettings() {
     const s = structuredClone(settingsState);
     s.identity.names = csv($("identityNames").value);
     s.server.timezone = $("timezone").value.trim();
-    s.server.public_url = $("publicUrl").value.trim();
+
     s.calendar.workday_start = $("workStart").value;
     s.calendar.workday_end = $("workEnd").value;
     s.calendar.daily_plan_time = $("planTime").value;
@@ -129,11 +131,11 @@ async function saveSettings() {
     s.worker.poll_interval_seconds = Number($("pollInterval").value);
     const result = await request("/settings", { method: "PUT", body: JSON.stringify({
       settings: s,
-      firebase_credentials_json: $("firebaseJson").value.trim() || null,
+
       llm_api_key: $("llmApiKey").value.trim() || null,
       clear_llm_api_key: $("clearLlmApiKey").checked,
     }) });
-    $("firebaseJson").value = "";
+
     populateSettings(result);
     const scan = result.filter_reconciliation;
     const scanMessage = scan
@@ -433,6 +435,20 @@ function registerModelContextTools() {
   });
 }
 
+// The server PNG uses six pixels per QR module. Preserve integer module widths
+// when fitting it to the page; arbitrary CSS scaling makes dense codes unreadable.
+function fitConnectionQR(image) {
+  if (!image.getAttribute("src") || !image.naturalWidth || image.naturalWidth % 6 !== 0) return;
+  const available = Math.min(620, image.parentElement.clientWidth);
+  if (!available) return;
+  const modules = image.naturalWidth / 6;
+  image.style.width = `${modules * Math.max(1, Math.floor(available / modules))}px`;
+}
+for (const id of ["mobileIdentityQR", "gatewayQR"]) $(id).addEventListener("load", () => fitConnectionQR($(id)));
+window.addEventListener("resize", () => {
+  for (const id of ["mobileIdentityQR", "gatewayQR"]) fitConnectionQR($(id));
+});
+
 let mobileQRSerial = 0;
 let mobileQRTimer = null;
 function hideMobileIdentity() {
@@ -441,6 +457,8 @@ function hideMobileIdentity() {
   $("mobileIdentityQR").removeAttribute("src");
   $("mobileIdentityInfo").textContent = "";
   $("mobileIdentityResult").hidden = true;
+  $("gatewayQR").removeAttribute("src");
+  $("gatewayQRResult").hidden = true;
 }
 async function createMobileIdentity(event) {
   event.preventDefault();
@@ -450,9 +468,10 @@ async function createMobileIdentity(event) {
   button.disabled = true;
   $("mobileIdentityError").textContent = "";
   try {
+    if (settingsState?.server?.public_url && $("publicUrl").value.trim().replace(/\/$/, "") !== settingsState.server.public_url.replace(/\/$/, "")) throw new Error("Сначала сохраните адрес прямого подключения");
     const result = await request("/mobile-identity", {
       method: "POST", cache: "no-store",
-      body: JSON.stringify({ label: $("mobileDeviceLabel").value.trim() }),
+      body: JSON.stringify({}),
     });
     if (serial !== mobileQRSerial || document.hidden) return;
     $("mobileIdentityQR").src = result.qr_image;
@@ -468,10 +487,11 @@ $("hideMobileIdentity").addEventListener("click", hideMobileIdentity);
 window.addEventListener("pagehide", hideMobileIdentity);
 document.addEventListener("visibilitychange", () => { if (document.hidden) hideMobileIdentity(); });
 
-document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
+document.querySelectorAll(".tab[data-panel]").forEach((tab) => tab.addEventListener("click", () => {
   hideMobileIdentity();
-  document.querySelectorAll(".tab, .panel").forEach((node) => node.classList.remove("active"));
+  document.querySelectorAll(".tab[data-panel], .panel").forEach((node) => node.classList.remove("active"));
   tab.classList.add("active"); $(tab.dataset.panel).classList.add("active");
+  if (tab.dataset.panel === "mobile") loadGateway();
 }));
 document.querySelectorAll(".save-settings").forEach((button) => button.addEventListener("click", saveSettings));
 $("addSource").addEventListener("click", () => openSourceDialog());
@@ -507,3 +527,117 @@ request("/settings").then(populateSettings).catch((error) => toast(error.message
 loadSources();
 loadTags();
 loadStatus();
+
+
+async function saveDirectSettings(event) {
+  event.preventDefault();
+  try {
+    if (!settingsState) throw new Error("Настройки ещё не загружены");
+    const url = new URL($("publicUrl").value.trim());
+    if (url.protocol !== "https:" || url.username || url.password || (url.pathname !== "/" && url.pathname !== "") || url.search || url.hash) throw new Error("Укажите HTTPS-адрес без пути и параметров");
+    const result = await request("/settings", { method: "PUT", body: JSON.stringify({
+      settings: { server: { public_url: url.origin } },
+      firebase_credentials_json: $("firebaseJson").value.trim() || null,
+    }) });
+    $("firebaseJson").value = "";
+    settingsState.server.public_url = result.settings.server.public_url;
+    $("publicUrl").value = result.settings.server.public_url;
+    $("firebaseState").textContent = result.firebase_configured ? "Ключ настроен" : "Ключ не настроен";
+    $("firebaseState").classList.toggle("ok", result.firebase_configured);
+    hideMobileIdentity();
+    toast("Настройки прямого подключения сохранены");
+  } catch (error) { toast(error.message, true); }
+}
+$("directSettingsForm").addEventListener("submit", saveDirectSettings);
+let gatewayState = null;
+let gatewayBusy = false;
+function renderGateway(state) {
+  const previous = gatewayState;
+  if (previous && previous.installation_id !== state.installation_id) hideMobileIdentity();
+  gatewayState = state;
+  const labels = { not_configured: "Шлюз не настроен", enrollment_incomplete: "Регистрация не завершена", paused: "Доступ приостановлен", reconnecting: "Подключение к шлюзу…", connected: "Сервер подключён к шлюзу" };
+  $("gatewayStatus").textContent = labels[state.state] || "Состояние неизвестно";
+  $("gatewayUID").value = state.installation_id || "";
+  // Polling must not overwrite an address the user is editing.
+  if (state.gateway && (!previous || previous.gateway !== state.gateway)) $("gatewayAddress").value = state.gateway;
+  const ready = Boolean(state.qr_available);
+  const incomplete = state.state === "enrollment_incomplete";
+  $("gatewayToggle").hidden = !ready;
+  $("gatewayToggle").textContent = state.enabled ? "Приостановить доступ" : "Возобновить доступ";
+  $("gatewayShowQR").disabled = gatewayBusy || !ready;
+  $("gatewayReregister").hidden = !ready && !incomplete;
+  $("gatewayRecovery").hidden = !ready && !incomplete;
+  $("gatewayEnroll").hidden = ready || incomplete;
+  $("gatewayEnroll").disabled = gatewayBusy || !state.installation_id;
+  $("gatewayAddress").disabled = gatewayBusy;
+  for (const id of ["gatewayToggle", "gatewayReregister"]) $(id).disabled = gatewayBusy;
+}
+let gatewayLoadSerial = 0;
+async function loadGateway() {
+  if (gatewayBusy) return;
+  const serial = ++gatewayLoadSerial;
+  try {
+    const state = await request("/gateway", { cache: "no-store" });
+    if (serial === gatewayLoadSerial && !gatewayBusy) renderGateway(state);
+  } catch (error) { if (serial === gatewayLoadSerial) $("gatewayError").textContent = error.message; }
+}
+async function gatewayAction(path, body, method = "POST") {
+  if (gatewayBusy) return;
+  gatewayBusy = true;
+  ++gatewayLoadSerial;
+  hideMobileIdentity();
+  $("gatewayError").textContent = "";
+  document.querySelectorAll("#gatewayConnection button").forEach(b => { b.disabled = true; });
+  $("gatewayAddress").disabled = true;
+  try {
+    renderGateway(await request(path, { method, body: body ? JSON.stringify(body) : undefined }));
+    if (path === "/gateway/reregister") toast("Новый UID и сертификаты получены. Подключите устройства по новому QR-коду");
+  } catch (error) { $("gatewayError").textContent = error.message; }
+  finally {
+    gatewayBusy = false;
+    document.querySelectorAll("#gatewayConnection button").forEach(b => { b.disabled = false; });
+    $("gatewayAddress").disabled = false;
+    if (gatewayState) renderGateway(gatewayState);
+    await loadGateway();
+  }
+}
+$("gatewayReregister").addEventListener("click", () => {
+  if ($("gatewayForm").reportValidity()) gatewayAction("/gateway/reregister", { gateway: $("gatewayAddress").value.trim() });
+});
+$("gatewayToggle").addEventListener("click", () => gatewayAction("/gateway", { enabled: !gatewayState.enabled }, "PUT"));
+$("gatewayForm").addEventListener("submit", event => {
+  event.preventDefault();
+  if (gatewayState?.qr_available || gatewayState?.state === "enrollment_incomplete") return;
+  gatewayAction("/gateway/enroll", { gateway: $("gatewayAddress").value.trim() });
+});
+$("gatewayShowQR").addEventListener("click", async () => {
+  hideMobileIdentity();
+  const serial = mobileQRSerial;
+  try {
+    const result = await request("/gateway/qr", { method: "POST", cache: "no-store" });
+    if (serial !== mobileQRSerial) return;
+    $("gatewayQR").src = result.qr_image;
+    $("gatewayQRResult").hidden = false;
+    mobileQRTimer = setTimeout(hideMobileIdentity, 120000);
+  } catch (error) { $("gatewayError").textContent = error.message; }
+});
+$("gatewayHideQR").addEventListener("click", hideMobileIdentity);
+const connectionTabs = [...document.querySelectorAll("[data-connection]")];
+connectionTabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => {
+    hideMobileIdentity();
+    connectionTabs.forEach(item => {
+      const selected = item === tab;
+      item.setAttribute("aria-selected", String(selected)); item.tabIndex = selected ? 0 : -1;
+      $(item.getAttribute("aria-controls")).hidden = !selected;
+    });
+    if (tab.dataset.connection === "gateway") loadGateway();
+  });
+  tab.addEventListener("keydown", event => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? 0 : event.key === "End" ? connectionTabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + connectionTabs.length) % connectionTabs.length;
+    connectionTabs[next].focus(); connectionTabs[next].click();
+  });
+});
+setInterval(() => { if (!document.hidden && $("mobile").classList.contains("active") && !$("gatewayConnection").hidden) loadGateway(); }, 10000);

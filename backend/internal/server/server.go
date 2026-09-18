@@ -31,6 +31,7 @@ type Server struct {
 	Version string
 	mux     *http.ServeMux
 	live    liveState
+	gateway gatewayState
 }
 type request struct {
 	context.Context

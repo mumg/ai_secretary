@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"math/big"
@@ -18,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skip2/go-qrcode"
+	"github.com/mumg/ai_secretary/backend/internal/mobileqr"
 )
 
 // The QR carries the identity directly: enrolling a phone does not require a
@@ -103,12 +102,12 @@ func issueMobileIdentity(ca *x509.Certificate, signer crypto.Signer, server, lab
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	privateDER, err := x509.MarshalPKCS8PrivateKey(key)
+	scalar, err := mobileqr.Scalar(key)
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	payload, err := json.Marshal(mobileIdentity{1, strings.TrimRight(server, "/"), base64.StdEncoding.EncodeToString(der), base64.StdEncoding.EncodeToString(privateDER)})
-	return "ai-secretary:identity:" + string(payload), until, err
+	payload, err := mobileqr.Encode(mobileqr.DirectPrefix, []byte(strings.TrimRight(server, "/")), der, scalar)
+	return payload, until, err
 }
 
 func (s *Server) mobileIdentityRoutes() {
@@ -119,10 +118,14 @@ func (s *Server) mobileIdentityRoutes() {
 			fail(409, "Мобильное подключение недоступно в локальном WEB-режиме")
 		}
 		m := q.body()
-		textField(m, "label", 1, 64, true)
-		label := clean(str(m, "label"))
-		if label == "" {
-			fail(422, "Укажите название устройства")
+		// Accept labels from older clients, but the connection page needs no name.
+		textField(m, "label", 1, 64, false)
+		label := "Mobile"
+		if _, supplied := m["label"]; supplied {
+			label = clean(str(m, "label"))
+			if label == "" {
+				fail(422, "Название устройства не должно быть пустым")
+			}
 		}
 		ca, signer, err := readClientIssuer(s.Config.ClientCAFile, s.Config.ClientCAKeyFile)
 		if err != nil {
@@ -133,7 +136,7 @@ func (s *Server) mobileIdentityRoutes() {
 		if err != nil {
 			fail(422, "Для мобильного приложения нужен публичный HTTPS-адрес сервера без пути и параметров")
 		}
-		png, err := qrcode.Encode(payload, qrcode.Medium, 768)
+		png, err := mobileqr.PNG(payload)
 		if err != nil {
 			fail(422, "Сертификат слишком велик для QR-кода")
 		}

@@ -27,20 +27,23 @@ object AppClientIdentity {
     fun isAppAlias(alias: String?): Boolean = alias?.startsWith(PREFIX) == true
 
     private fun parse(payload: String): Identity {
-        require(payload.length <= 4096 && payload.startsWith(QR_PREFIX)) { "Это не QR-код подключения AI Секретаря" }
-        val json = JSONObject(payload.removePrefix(QR_PREFIX))
-        require(json.getInt("v") == 1) { "Обновите приложение для чтения этого QR-кода" }
-        val server = normalizeServerUrl(json.getString("server"))
+        val compact = payload.startsWith(CompactIdentity.DIRECT_PREFIX)
+        val fields = if (compact) CompactIdentity.fields(payload, CompactIdentity.DIRECT_PREFIX, 3) else null
+        require(payload.length <= 8192 && (compact || payload.startsWith(QR_PREFIX))) { "Это не QR-код подключения AI Секретаря" }
+        val json = if (compact) null else JSONObject(payload.removePrefix(QR_PREFIX)).also {
+            require(it.getInt("v") == 1) { "Обновите приложение для чтения этого QR-кода" }
+        }
+        val server = normalizeServerUrl(fields?.get(0)?.toString(Charsets.UTF_8) ?: json!!.getString("server"))
         require(server != null) { "В QR-коде некорректный HTTPS-адрес сервера" }
-        val cert = CertificateFactory.getInstance("X.509").generateCertificate(
-            Base64.getDecoder().decode(json.getString("cert")).inputStream(),
-        ) as X509Certificate
+        val certBytes = fields?.get(1) ?: Base64.getDecoder().decode(json!!.getString("cert"))
+        val cert = CertificateFactory.getInstance("X.509").generateCertificate(certBytes.inputStream()) as X509Certificate
+        require(cert.encoded.contentEquals(certBytes))
         cert.checkValidity()
         require(cert.basicConstraints == -1 && cert.extendedKeyUsage?.contains("1.3.6.1.5.5.7.3.2") == true) {
             "QR-код не содержит клиентский сертификат"
         }
-        val key = KeyFactory.getInstance("EC").generatePrivate(
-            PKCS8EncodedKeySpec(Base64.getDecoder().decode(json.getString("key"))),
+        val key = if (fields != null) CompactIdentity.key(fields[2], cert) else KeyFactory.getInstance("EC").generatePrivate(
+            PKCS8EncodedKeySpec(Base64.getDecoder().decode(json!!.getString("key"))),
         )
         val challenge = "AI Secretary identity validation".toByteArray()
         val signature = Signature.getInstance("SHA256withECDSA").run { initSign(key); update(challenge); sign() }
@@ -62,6 +65,7 @@ object AppClientIdentity {
     }
 
     fun importQR(context: Context, payload: String): Imported {
+        if (GatewayIdentity.isQR(payload)) return GatewayIdentity.importQR(context, payload)
         val identity = parse(payload)
         val id = MessageDigest.getInstance("SHA-256").digest(payload.toByteArray()).joinToString("") { "%02x".format(it) }
         val alias = PREFIX + id
@@ -77,7 +81,7 @@ object AppClientIdentity {
 
     fun keyManagers(context: Context, baseUrl: String, alias: String): Array<KeyManager> {
         val identityFile = file(context, alias)
-        require(identityFile.length() <= 4096) { "Некорректный файл ключа" }
+        require(identityFile.length() <= 8192) { "Некорректный файл ключа" }
         val identity = parse(AtomicFile(identityFile).openRead().use { it.readBytes().toString(Charsets.UTF_8) })
         require(identity.server == normalizeServerUrl(baseUrl)) { "Этот ключ выдан для другого сервера. Отсканируйте его QR-код." }
         val password = CharArray(0)
@@ -93,6 +97,7 @@ object AppClientIdentity {
 
     // Called only after successful connection and saving the selected identity.
     fun retainOnly(context: Context, alias: String?) {
+        GatewayIdentity.retainOnly(context, alias)
         val keep = if (isAppAlias(alias)) file(context, alias!!).name else null
         directory(context).listFiles()?.filter { it.name != keep }?.forEach { it.delete() }
     }

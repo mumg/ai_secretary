@@ -2308,15 +2308,13 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "label"
-                ],
                 "additionalProperties": false,
                 "properties": {
                   "label": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 64
+                    "maxLength": 64,
+                    "description": "Optional label for older clients; omitted by the connection page."
                   }
                 }
               }
@@ -2359,6 +2357,209 @@
           },
           "503": {
             "description": "Client issuer unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/gateway": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read gateway connection status without secrets",
+        "operationId": "gateway_status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayConnectionState"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Registration state does not allow this operation"
+          },
+          "422": {
+            "description": "Invalid request"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Pause or resume the existing gateway registration",
+        "operationId": "gateway_toggle",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayConnectionState"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Registration state does not allow this operation"
+          },
+          "422": {
+            "description": "Invalid request"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/gateway/enroll": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Register with an automatically generated UID and start the tunnel",
+        "operationId": "gateway_enroll",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayConnectionState"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Registration state does not allow this operation"
+          },
+          "422": {
+            "description": "Invalid request"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "gateway"
+                ],
+                "properties": {
+                  "gateway": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/gateway/qr": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Return the existing secret gateway QR with no-store",
+        "operationId": "gateway_qr",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "qr_image"
+                  ],
+                  "properties": {
+                    "qr_image": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Registration state does not allow this operation"
+          },
+          "422": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/gateway/reregister": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Replace the registration with a new UID and certificates; preserve the current registration if issuance fails",
+        "operationId": "gateway_reregister",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayConnectionState"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Registration state does not allow this operation"
+          },
+          "422": {
+            "description": "Invalid request"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "gateway"
+                ],
+                "properties": {
+                  "gateway": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -5515,6 +5716,53 @@
           "current_version"
         ],
         "title": "VersionStatus"
+      },
+      "GatewayConnectionState": {
+        "type": "object",
+        "required": [
+          "installation_id",
+          "gateway",
+          "enabled",
+          "state",
+          "qr_available",
+          "last_connected_at"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "installation_id": {
+            "type": "string"
+          },
+          "gateway": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "not_configured",
+              "enrollment_incomplete",
+              "paused",
+              "reconnecting",
+              "connected"
+            ]
+          },
+          "qr_available": {
+            "type": "boolean"
+          },
+          "last_connected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
       }
     }
   }

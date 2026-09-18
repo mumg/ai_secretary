@@ -424,10 +424,10 @@ private fun ImproverScreen(
                 onRefresh = {
                     when (pageTab) {
                         HomeTab.TASKS -> viewModel.refreshFromPull()
-                        HomeTab.MEETINGS -> meetingsViewModel.refresh()
-                        HomeTab.RESULTS -> meetingResultsViewModel.refresh()
-                        HomeTab.THREADS -> threadsViewModel.refresh()
-                        HomeTab.STATUS -> systemStatusViewModel.refresh()
+                        HomeTab.MEETINGS -> meetingsViewModel.refresh(fromPull = true)
+                        HomeTab.RESULTS -> meetingResultsViewModel.refresh(fromPull = true)
+                        HomeTab.THREADS -> threadsViewModel.refresh(fromPull = true)
+                        HomeTab.STATUS -> systemStatusViewModel.refresh(fromPull = true)
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -436,7 +436,6 @@ private fun ImproverScreen(
                     HomeTab.TASKS -> Column(
                         Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     ) {
-                if (loading) CircularProgressIndicator(Modifier.padding(vertical = 8.dp))
                 if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
                 if (taskSearchError != null) {
                     Text(taskSearchError!!, color = MaterialTheme.colorScheme.error)
@@ -503,7 +502,6 @@ private fun ImproverScreen(
                     query = taskSearchQuery,
                     onQueryChange = viewModel::setSearchQuery,
                     placeholder = "Поиск по задачам",
-                    loading = taskSearchLoading,
                 )
             }
                     HomeTab.MEETINGS -> MeetingList(
@@ -591,9 +589,6 @@ private fun SystemHealthIndicator(status: String, onClick: () -> Unit) {
 @Composable
 private fun SystemStatusTable(state: SystemStatusUiState, modifier: Modifier = Modifier) {
     Column(modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-        if (state.loading && state.snapshot == null) {
-            CircularProgressIndicator(Modifier.padding(12.dp))
-        }
         state.error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
         }
@@ -759,7 +754,6 @@ private fun FullTextSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     placeholder: String,
-    loading: Boolean,
     modifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
@@ -782,10 +776,6 @@ private fun FullTextSearchField(
                 query.isNotEmpty() -> IconButton(onClick = { onQueryChange("") }) {
                     Icon(Icons.Default.Close, contentDescription = "Очистить поиск")
                 }
-                loading -> CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                )
             }
         },
         singleLine = true,
@@ -849,22 +839,11 @@ private fun MeetingList(
                     onOpen = { onOpenMeeting(meeting.id) },
                 )
             }
-            if (state.loading) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
-                    }
-                }
-            }
         }
         FullTextSearchField(
             query = state.query,
             onQueryChange = viewModel::setSearchQuery,
             placeholder = "Поиск по встречам",
-            loading = state.loading,
         )
     }
 }
@@ -1016,22 +995,11 @@ private fun MeetingResultList(
                     onOpen = { onOpenResult(result.id) },
                 )
             }
-            if (state.loading) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
-                    }
-                }
-            }
         }
         FullTextSearchField(
             query = state.query,
             onQueryChange = viewModel::setSearchQuery,
             placeholder = "Поиск по итогам",
-            loading = state.loading,
         )
     }
 }
@@ -1158,22 +1126,11 @@ private fun ConversationThreadList(
                     onOpen = { onOpenThread(thread.id) },
                 )
             }
-            if (state.loading) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
-                    }
-                }
-            }
         }
         FullTextSearchField(
             query = state.query,
             onQueryChange = viewModel::setSearchQuery,
             placeholder = "Поиск по перепискам",
-            loading = state.loading,
         )
     }
 }

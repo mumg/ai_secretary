@@ -1,10 +1,14 @@
 package net.muratov.assistant
 
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import net.muratov.assistant.security.CompactIdentity
+import java.security.Signature
 import android.system.Os
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.zxing.BinaryBitmap
+import com.google.zxing.DecodeHintType
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.qrcode.QRCodeReader
@@ -68,4 +72,39 @@ class AppClientIdentityTest {
             File(context.noBackupFilesDir, "client-identities/${imported.alias.removePrefix("app-identity:")}.json").delete()
         }
     }
+    @Test fun compactServerQRScansAtScreenSizeAndAuthenticates() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val assets = instrumentation.context.assets
+        val payload = assets.open("mobile-identity/compact-identity.txt").bufferedReader().use { it.readText() }
+        val original = assets.open("mobile-identity/compact-identity.png").use { BitmapFactory.decodeStream(it) }
+        for (available in listOf(original.width, 360, 480)) {
+            val modules = original.width / 6
+            val size = modules * (available / modules)
+            val bitmap = Bitmap.createScaledBitmap(original, size, size, false)
+            val pixels = IntArray(size * size)
+            bitmap.getPixels(pixels, 0, size, 0, 0, size, size)
+            try {
+                assertEquals(payload, QRCodeReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(size, size, pixels))), mapOf(DecodeHintType.TRY_HARDER to true)).text)
+            } catch (e: Exception) { throw AssertionError("Direct QR at $size pixels", e) }
+        }
+        val imported = AppClientIdentity.importQR(context, payload)
+        try {
+            val manager = AppClientIdentity.keyManagers(context, imported.server, imported.alias).filterIsInstance<X509KeyManager>().single()
+            val alias = manager.getClientAliases("EC", null).first()
+            val challenge = "compact QR authentication".toByteArray()
+            val signature = Signature.getInstance("SHA256withECDSA").run { initSign(manager.getPrivateKey(alias)); update(challenge); sign() }
+            assertTrue(Signature.getInstance("SHA256withECDSA").run { initVerify(manager.getCertificateChain(alias).first()); update(challenge); verify(signature) })
+            val fields = CompactIdentity.fields(payload, CompactIdentity.DIRECT_PREFIX, 3)
+            val badOrigin = fields.toMutableList().apply { this[0] = "http://example.test".toByteArray() }
+            assertThrows(IllegalArgumentException::class.java) { AppClientIdentity.importQR(context, compactTestPayload(CompactIdentity.DIRECT_PREFIX, badOrigin)) }
+            val badKey = fields.toMutableList().apply { this[2] = ByteArray(32) }
+            assertThrows(IllegalArgumentException::class.java) { AppClientIdentity.importQR(context, compactTestPayload(CompactIdentity.DIRECT_PREFIX, badKey)) }
+            assertThrows(IllegalArgumentException::class.java) { AppClientIdentity.importQR(context, compactTestRaw(CompactIdentity.DIRECT_PREFIX, ByteArray(16385))) }
+            assertThrows(IllegalArgumentException::class.java) { AppClientIdentity.importQR(context, payload + "0") }
+            assertThrows(IllegalArgumentException::class.java) { AppClientIdentity.importQR(context, payload.replace(":D2:", ":D3:")) }
+            assertNotNull(AppClientIdentity.keyManagers(context, imported.server, imported.alias))
+        } finally { File(context.noBackupFilesDir, "client-identities/${imported.alias.removePrefix("app-identity:")}.json").delete() }
+    }
+
 }
