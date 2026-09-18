@@ -3,15 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Локальная панель настройки Improver">
-  <title>Improver — управление сервером</title>
+  <meta name="description" content="Настройки AI Секретаря">
+  <title>AI Секретарь — Настройки</title>
+  <link rel="icon" type="image/svg+xml" href="/admin/assets/secretary-robot.svg">
   <link rel="stylesheet" href="/admin/assets/admin.css">
   <link rel="stylesheet" href="/admin/assets/version.css?v=1">
   <script src="/admin/assets/version.js?v=1" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/admin"><span class="brand-mark">I</span><span>Improver</span></a>
+    <a class="brand" href="/app/" aria-label="AI Секретарь — главная"><img class="brand-icon" src="/admin/assets/secretary-robot.svg" alt="" width="32" height="32"><span>AI Секретарь</span></a>
     <div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div>
   </header>
 
@@ -28,7 +29,7 @@
     <section class="intro">
       <div>
         <p class="eyebrow">ПЕРСОНАЛЬНЫЙ КОНТУР</p>
-        <h1>Настройка без YAML</h1>
+        <h1>Настройки</h1>
         <p id="deploymentHint">Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён тем же клиентским сертификатом, что и мобильное приложение.</p>
       </div>
       <div id="statusMetrics" class="metrics" aria-label="Состояние системы">
@@ -121,6 +122,7 @@
       <div class="bottom-actions"><button class="primary save-settings">Сохранить настройки</button></div>
     </section>
   </main>
+  <footer class="copyright">Максим Муратов (С) 2026</footer>
 
   <dialog id="sourceDialog">
     <form id="sourceForm" method="dialog">

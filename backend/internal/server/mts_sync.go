@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"regexp"
 	"sort"
@@ -44,8 +45,8 @@ func (q *request) mtsJSON(source M, path string, query url.Values) M {
 	if len(query) > 0 {
 		endpoint += "?" + query.Encode()
 	}
-	get := func(token string) (M, int, error) {
-		return requestJSON(q.Context, "GET", endpoint, nil, map[string]string{"Authorization": "Bearer " + token, "Cookie": "access=" + token, "User-Agent": "Improver MTS-Link transcript connector"})
+	get := func(token string) (any, int, error) {
+		return requestJSONValue(q.Context, "GET", endpoint, nil, map[string]string{"Authorization": "Bearer " + token, "Cookie": "access=" + token, "User-Agent": "Improver MTS-Link transcript connector"})
 	}
 	result, status, e := get(access)
 	if (status == 401 || status == 403) && refresh != "" {
@@ -67,11 +68,53 @@ func (q *request) mtsJSON(source M, path string, query url.Values) M {
 			}
 			return true
 		})
-		check(err)
-		result, _, e = get(str(rotated, "access_token"))
+		if err != nil {
+			panic(&sourceFailure{message: "Не удалось обновить авторизацию МТС Линк. Повторите SSO-вход в настройках источника."})
+		}
+		result, status, e = get(str(rotated, "access_token"))
 	}
-	check(e)
-	return result
+	if e != nil {
+		switch {
+		case status == 401 || status == 403:
+			panic(&sourceFailure{message: "МТС Линк отклонил авторизацию. Выполните SSO-вход в настройках источника.", httpStatus: status})
+		case status >= 300:
+			panic(&sourceFailure{message: fmt.Sprintf("МТС Линк вернул HTTP %d при загрузке данных; будет повторено.", status), httpStatus: status})
+		case status == 0:
+			panic(&sourceFailure{message: "Не удалось связаться с МТС Линк; проверьте доступность сервиса. Будет повторено."})
+		default:
+			panic(&sourceFailure{message: "МТС Линк вернул некорректный JSON при загрузке данных; будет повторено."})
+		}
+	}
+	// List endpoints may return a bare array, while profile/details and some
+	// list endpoints return objects. SSO responses still require an object.
+	switch value := result.(type) {
+	case map[string]any:
+		return M(value)
+	case []any:
+		if path != "/api/login" && !strings.HasSuffix(path, "/details") {
+			return M{"data": value}
+		}
+	}
+	panic(&sourceFailure{message: "МТС Линк вернул неподдерживаемый формат данных; будет повторено."})
+}
+
+// A listed transcript can be unpublished or removed before its content is
+// available. Retry it on a later sync without blocking all other meetings.
+func (q *request) mtsTranscript(source M, id string) (details M, utterances []M, available bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			if failure, ok := err.(*sourceFailure); ok && (failure.httpStatus == 404 || failure.httpStatus == 410) {
+				slog.Info("MTS transcript unavailable; will check on next sync", "http_status", failure.httpStatus)
+				available = false
+				return
+			}
+			panic(err)
+		}
+	}()
+	path := "/api/transcript/" + url.PathEscape(id)
+	details = obj(q.mtsJSON(source, path+"/details", nil), "data")
+	utterances = dataItems(q.mtsJSON(source, path, url.Values{"perPage": {"10000"}}))
+	return details, utterances, true
 }
 func mtsURLs(values ...string) []string {
 	out := []string{}
@@ -232,13 +275,18 @@ func (q *request) mtsSync(source M, testOnly bool) int {
 			if session == nil {
 				continue
 			}
-			transcriptID := fmt.Sprint(state["transcriptId"])
+			transcriptID := strings.TrimSpace(fmt.Sprint(state["transcriptId"]))
+			if transcriptID == "" || transcriptID == "0" {
+				continue
+			}
 			external := "transcript:" + transcriptID
 			if len(q.rows("SELECT id FROM communication_events WHERE source_id=$1 AND external_id=$2", source["id"], external)) > 0 {
 				continue
 			}
-			details := obj(q.mtsJSON(source, "/api/transcript/"+url.PathEscape(transcriptID)+"/details", nil), "data")
-			utterances := dataItems(q.mtsJSON(source, "/api/transcript/"+url.PathEscape(transcriptID), url.Values{"perPage": {"10000"}}))
+			details, utterances, available := q.mtsTranscript(source, transcriptID)
+			if !available {
+				continue
+			}
 			starts, ends := timestamp(session["startsAt"]), timestamp(session["endsAt"])
 			basis := "session"
 			if starts == nil || ends == nil || !ends.After(*starts) {

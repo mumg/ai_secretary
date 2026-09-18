@@ -275,6 +275,8 @@ func (s *Server) route(pattern string, transaction bool, fn func(*request) any) 
 			if v := recover(); v != nil {
 				status, detail := 500, "Internal server error"
 				switch e := v.(type) {
+				case *llmFailure:
+					status, detail = 502, e.Error()
 				case apiError:
 					status, detail = e.Status, e.Detail
 				case error:

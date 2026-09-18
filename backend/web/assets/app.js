@@ -508,7 +508,7 @@
   function sourceHTML(s) {
     if (!s)
       return '<p class="muted">Создана вручную. Исходное сообщение отсутствует.</p>';
-    return `<article class="source"><div class="eyebrow">${e(s.source_label || s.source_id || "Первоисточник")}</div><h3>${e(s.subject || "Без темы")}</h3><p class="muted">${e(s.author || "Автор не указан")} · ${e(date(s.occurred_at))} · ${e({ INCOMING: "Входящее", OUTGOING: "Исходящее", INTERNAL: "Внутреннее" }[s.direction] || s.direction || "")}</p>${people(s.participants)}<div class="text-body">${e(s.body || "Текст отсутствует")}</div>${link(s.source_url, "Открыть в источнике ↗")}</article>`;
+    return `<article class="source"><div class="eyebrow">${e(s.source_label || s.source_id || "Первоисточник")}</div><h3>${e(s.subject || "Без темы")}</h3><p class="muted">${e(s.author || "Автор не указан")} · ${e(date(s.occurred_at))} · ${e({ INCOMING: "Входящее", OUTGOING: "Исходящее", INTERNAL: "Внутреннее" }[s.direction] || s.direction || "")}</p>${s.analysis_error ? `<p class="inline-error" role="alert">${e(s.analysis_error)}</p>` : ""}${people(s.participants)}<div class="text-body">${e(s.body || "Текст отсутствует")}</div>${link(s.source_url, "Открыть в источнике ↗")}</article>`;
   }
   function taskHTML(data) {
     const t = data.task;
@@ -541,11 +541,16 @@
       `<h2>${e(x.title || "Без темы")}</h2><p class="muted">${e(x.source_label)} · ${x.event_count} сообщений · ${e(date(x.first_event_at))} — ${e(date(x.last_event_at))}</p>${people(x.participants)}<h3>Резюме Qwen</h3>${x.summary ? markdown(x.summary) : '<p class="muted">Резюме ещё не сформировано.</p>'}<h3>Сообщения · сначала новые</h3>${x.events.map((ev) => `<article class="source"><strong>${e(ev.subject || "Без темы")}</strong><p class="muted">${e(ev.author || "Автор не указан")} · ${e(date(ev.occurred_at))}</p><div class="text-body">${e(ev.preview)}</div>${openButton("event", ev.id, "Читать полное сообщение")}</article>`).join("")}<p class="muted">Показано ${x.events.length} из ${x.event_count}</p>${x.has_more_events ? '<button data-action="more-events">Загрузить следующие сообщения</button>' : ""}`
     );
   }
+  function formatMetric(value) {
+    return typeof value === "number"
+      ? value.toLocaleString("ru-RU", { maximumFractionDigits: 2 })
+      : value;
+  }
   function metricsHTML(metrics) {
     return `<div class="metrics">${Object.entries(metrics || {})
       .map(
         ([key, value]) =>
-          `<div class="metric"><strong class="numbers">${e(value)}</strong><span>${e(key)}</span></div>`,
+          `<div class="metric"><strong class="numbers">${e(formatMetric(value))}</strong><span>${e(key)}</span></div>`,
       )
       .join("")}</div>`;
   }
@@ -591,7 +596,7 @@
             `<tr><td>${openButton("component", c.id, c.label)}</td><td class="${C.healthClass(c.status)}"><span class="dot"></span>${e(label(c.status))}<p class="muted">${e(c.message || "")}</p></td><td>${e(date(c.observed_at))}</td><td class="numbers">${Object.entries(
               c.metrics,
             )
-              .map(([k, v]) => `${e(k)}: ${e(v)}`)
+              .map(([k, v]) => `${e(k)}: ${e(formatMetric(v))}`)
               .join("<br>")}</td></tr>`,
         )
         .join("")}</tbody></table></div>`

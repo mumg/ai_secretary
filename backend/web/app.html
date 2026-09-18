@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <meta name="referrer" content="no-referrer" />
-    <title>Секретарь</title>
+    <title>AI Секретарь</title>
+    <link rel="icon" type="image/svg+xml" href="/app/assets/secretary-robot.svg" />
     <link rel="stylesheet" href="/app/assets/app.css" />
     <link rel="stylesheet" href="/app/assets/version.css?v=1" />
     <script src="/app/assets/version.js?v=1" defer></script>
@@ -16,8 +17,8 @@
   </head>
   <body>
     <header class="app-header">
-      <a class="brand" href="/app/" aria-label="Секретарь — главная"
-        ><span>◈</span> Секретарь</a
+      <a class="brand" href="/app/" aria-label="AI Секретарь — главная"
+        ><img class="brand-icon" src="/app/assets/secretary-robot.svg" alt="" width="32" height="32" /> AI Секретарь</a
       >
       <div class="header-actions">
         <button
@@ -32,11 +33,8 @@
         <a
           class="icon-button"
           href="/admin"
-          target="_blank"
-          rel="noopener"
-          aria-label="Настройки"
           title="Настройки"
-          >⚙</a
+          ><span aria-hidden="true">⚙</span> Настройки</a
         >
       </div>
     </header>
@@ -167,6 +165,7 @@
       <footer>
         <span id="timezone">Часовой пояс сервера</span
         ><span id="updated">Ожидание данных</span>
+        <span class="copyright">Максим Муратов (С) 2026</span>
       </footer>
     </main>
     <dialog id="task-dialog" aria-labelledby="form-title">

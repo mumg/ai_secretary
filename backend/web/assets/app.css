@@ -109,6 +109,9 @@ select:focus {
   border-bottom: 1px solid var(--line);
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 22px;
   font-weight: 650;
   color: var(--text);
@@ -116,8 +119,10 @@ select:focus {
   white-space: nowrap;
   letter-spacing: -0.8px;
 }
-.brand span {
-  color: var(--green);
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 .header-actions {
   margin-left: auto;
@@ -127,6 +132,7 @@ select:focus {
 }
 .icon-button {
   text-decoration: none;
+  white-space: nowrap;
 }
 .task-reject {
   display: inline-flex;
@@ -723,6 +729,7 @@ td button {
 }
 footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 15px;
   padding: 10px 2px;
@@ -835,7 +842,7 @@ dialog select {
   .composer p {
     grid-column: auto;
   }
-  footer span:last-child {
+  footer #updated {
     display: none;
   }
   .detail h2 {
@@ -849,12 +856,16 @@ dialog select {
 }
 @media (max-width: 600px) {
   .app-header {
-    padding: 0 8px;
+    height: auto;
+    min-height: 68px;
+    flex-wrap: wrap;
+    padding: 8px;
   }
   .brand {
     font-size: 20px;
   }
-  .header-actions button {
+  .header-actions button,
+  .header-actions .icon-button {
     padding: 7px 8px;
   }
 }

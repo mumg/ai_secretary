@@ -367,3 +367,15 @@ test("websocket closes in hidden tab; return reconnects and resyncs missed data"
   assert.equal(d.querySelector(".queue-progress").value,0);
   assert.doesNotMatch(d.querySelector(".queue-panel").textContent,/NaN|Infinity/);
  });
+
+test("failed event displays analysis failure reason as text", async (t) => {
+  const api = createAPI();
+  api.data.source.analysis_state = "FAILED";
+  api.data.source.analysis_error = "Анализ не будет выполнен: лимит токенов <script>unsafe()</script>";
+  const { d } = setup(t, api, "#tab=threads&kind=event&id=event1");
+  await settle();
+  const error = d.querySelector("#detail .inline-error");
+  assert.ok(error);
+  assert.equal(error.textContent, api.data.source.analysis_error);
+  assert.equal(error.querySelector("script"), null);
+});

@@ -56,11 +56,52 @@ func (q *request) llmConfig() M {
 
 // llmFailure contains only application-generated diagnostics, never provider
 // response bodies, credentials, prompts or transport URLs.
-type llmFailure struct{ message string }
+type llmFailure struct {
+	message    string
+	tokenLimit bool
+	terminal   bool
+}
 
 func (e *llmFailure) Error() string { return e.message }
 
-func (q *request) llm(system string, user any, schema string, emit func(string)) (answer M, err error) {
+func (q *request) llm(system string, user any, schema string, emit func(string)) (M, error) {
+	cfg := q.llmConfig()
+	tokens := min(8192, int(num(cfg, "context_length"))/2)
+	if schema == "" {
+		tokens = min(2048, int(num(cfg, "context_length"))/4)
+	}
+	if schema == "RelevantReferenceSelection" || schema == "EmailThreadMatch" || schema == "MeetingTopicMatch" {
+		tokens = 512
+	}
+	const attempts = 3
+	for attempt := 1; attempt <= attempts; attempt++ {
+		// Publish only a complete attempt: partial streams from failed attempts
+		// must not be concatenated with the eventual answer.
+		var chunks []string
+		var collect func(string)
+		if emit != nil {
+			collect = func(s string) { chunks = append(chunks, s) }
+		}
+		answer, err := q.llmAttempt(system, user, schema, collect, cfg, tokens)
+		var failure *llmFailure
+		if !errors.As(err, &failure) || !failure.tokenLimit {
+			if err == nil && emit != nil {
+				for _, chunk := range chunks {
+					emit(chunk)
+				}
+			}
+			return answer, err
+		}
+		if attempt == attempts {
+			return nil, &llmFailure{message: fmt.Sprintf("Анализ не будет выполнен: ответ модели обрезан по лимиту токенов после %d попыток с удвоением лимита (последний лимит — %d). Автоматические повторы остановлены.", attempts, tokens), terminal: true}
+		}
+		tokens *= 2
+		slog.Info("LLM token limit retry", "schema", schema, "attempt", attempt+1, "output_tokens", tokens)
+	}
+	panic("unreachable")
+}
+
+func (q *request) llmAttempt(system string, user any, schema string, emit func(string), cfg M, outputTokens int) (answer M, err error) {
 	started := time.Now()
 	defer func() {
 		if err != nil {
@@ -75,13 +116,17 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 			if errors.Is(err, context.Canceled) {
 				detail = "Обработка отменена"
 			}
-			err = &llmFailure{detail}
+			if safe != nil {
+				safe.message = detail
+				err = safe
+			} else {
+				err = &llmFailure{message: detail}
+			}
 			slog.Warn("LLM request failed", "schema", schema, "elapsed_seconds", time.Since(started).Seconds(), "reason", detail)
 		} else {
 			slog.Info("LLM request completed", "schema", schema, "elapsed_seconds", time.Since(started).Seconds())
 		}
 	}()
-	cfg := q.llmConfig()
 	timeout := time.Duration(num(cfg, "request_timeout_seconds")) * time.Second
 	ctx, cancel := context.WithTimeout(q.Context, timeout)
 	defer cancel()
@@ -98,15 +143,11 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 	if e != nil {
 		return nil, e
 	}
-	outputTokens := min(8192, int(num(cfg, "context_length"))/2)
-	if schema == "" {
-		outputTokens = min(2048, int(num(cfg, "context_length"))/4)
-	}
-	if schema == "RelevantReferenceSelection" || schema == "EmailThreadMatch" || schema == "MeetingTopicMatch" {
-		outputTokens = 512
-	}
 	messages := []M{{"role": "system", "content": system}, {"role": "user", "content": string(data)}}
-	payload := M{"model": cfg["model"], "messages": messages, "stream": emit != nil, "options": M{"temperature": cfg["temperature"], "num_ctx": cfg["context_length"], "num_predict": outputTokens, "num_gpu": -1}, "keep_alive": -1}
+	// Budget tokens for the answer, not Ollama's optional thinking channel.
+	// Otherwise short selection/matching calls can exhaust all 512 tokens
+	// before producing content, causing the same work to retry indefinitely.
+	payload := M{"model": cfg["model"], "messages": messages, "stream": emit != nil, "think": false, "options": M{"temperature": cfg["temperature"], "num_ctx": cfg["context_length"], "num_predict": outputTokens, "num_gpu": -1}, "keep_alive": -1}
 	if schema != "" {
 		payload["format"] = llmWireSchemas[schema]
 	}
@@ -152,7 +193,7 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 		}
 		if response.StatusCode >= 500 {
 			response.Body.Close()
-			e = &llmFailure{fmt.Sprintf("Модель вернула HTTP %d", response.StatusCode)}
+			e = &llmFailure{message: fmt.Sprintf("Модель вернула HTTP %d", response.StatusCode)}
 			continue
 		}
 		break
@@ -165,11 +206,11 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 		if errors.As(e, &failure) {
 			return nil, failure
 		}
-		return nil, &llmFailure{"Ошибка соединения с моделью"}
+		return nil, &llmFailure{message: "Ошибка соединения с моделью"}
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return nil, &llmFailure{fmt.Sprintf("Модель вернула HTTP %d", response.StatusCode)}
+		return nil, &llmFailure{message: fmt.Sprintf("Модель вернула HTTP %d", response.StatusCode)}
 	}
 	var content string
 	if emit != nil {
@@ -194,10 +235,16 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 			if item["error"] != nil {
 				return nil, errors.New("LLM streaming error")
 			}
+			if !openai && str(item, "done_reason") == "length" {
+				return nil, &llmFailure{message: "Ответ модели обрезан по лимиту токенов", tokenLimit: true}
+			}
 			delta := str(obj(item, "message"), "content")
 			if openai {
 				if choices, ok := item["choices"].([]any); ok && len(choices) > 0 {
 					if choice, ok := choices[0].(map[string]any); ok {
+						if str(choice, "finish_reason") == "length" {
+							return nil, &llmFailure{message: "Ответ модели обрезан по лимиту токенов", tokenLimit: true}
+						}
 						delta = str(obj(choice, "delta"), "content")
 					}
 				}
@@ -217,14 +264,17 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-			return nil, &llmFailure{"Некорректный ответ модели"}
+			return nil, &llmFailure{message: "Некорректный ответ модели"}
+		}
+		if !openai && str(result, "done_reason") == "length" {
+			return nil, &llmFailure{message: "Ответ модели обрезан по лимиту токенов", tokenLimit: true}
 		}
 		content = str(obj(result, "message"), "content")
 		if openai {
 			if choices, ok := result["choices"].([]any); ok && len(choices) > 0 {
 				if choice, ok := choices[0].(map[string]any); ok {
 					if str(choice, "finish_reason") == "length" {
-						return nil, &llmFailure{"Ответ модели обрезан по лимиту токенов"}
+						return nil, &llmFailure{message: "Ответ модели обрезан по лимиту токенов", tokenLimit: true}
 					}
 					content = str(obj(choice, "message"), "content")
 				}
@@ -232,7 +282,7 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 		}
 	}
 	if strings.TrimSpace(content) == "" {
-		return nil, &llmFailure{"Модель вернула пустой ответ"}
+		return nil, &llmFailure{message: "Модель вернула пустой ответ"}
 	}
 	if schema == "" {
 		return M{"answer": content}, nil
@@ -245,11 +295,11 @@ func (q *request) llm(system string, user any, schema string, emit func(string))
 	}
 	var result M
 	if e = json.Unmarshal([]byte(content), &result); e != nil {
-		return nil, &llmFailure{"Ответ модели не является JSON"}
+		return nil, &llmFailure{message: "Ответ модели не является JSON"}
 	}
 	if validator := llmSchemas[schema]; validator != nil {
 		if validator.Validate(map[string]any(result)) != nil {
-			return nil, &llmFailure{"Ответ модели не соответствует схеме"}
+			return nil, &llmFailure{message: "Ответ модели не соответствует схеме"}
 		}
 	}
 	return result, nil
@@ -359,10 +409,7 @@ func (q *request) archiveAnswer(m M, emit func(string)) M {
 	}
 	envelope["history"] = history
 	envelope["records"] = packed
-	result, e := q.llm(prompt, envelope, "", emit)
-	if e != nil {
-		fail(502, e.Error())
-	}
+	result := must(q.llm(prompt, envelope, "", emit))
 	used := map[string]bool{}
 	for _, key := range regexp.MustCompile(`\b[TE]\d+\b`).FindAllString(strings.ToUpper(str(result, "answer")), -1) {
 		used[key] = true

@@ -198,7 +198,8 @@
     "occurred_at",
     "body",
     "source_url",
-    "analysis_state"
+    "analysis_state",
+    "analysis_error"
   ],
   "ConversationThreadRead": [
     "id",

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.21"
+  #define AppVersion "0.1.24"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -40,6 +40,7 @@ Source: "{#PayloadDir}\setup\secretary-setup.exe"; Flags: dontcopy
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
+Name: "{commondesktop}\AI Секретарь"; Filename: "{app}\Open.url"; IconFilename: "{app}\secretary.ico"
 Name: "{group}\AI Секретарь"; Filename: "{app}\Open.url"; IconFilename: "{app}\secretary.ico"
 Name: "{group}\Настройки AI Секретаря"; Filename: "{app}\Settings.url"; IconFilename: "{app}\secretary.ico"
 Name: "{group}\Новые версии"; Filename: "https://github.com/mumg/ai_secretary/releases"

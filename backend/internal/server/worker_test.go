@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -90,6 +91,30 @@ func TestCalendarWorkerAndMIME(t *testing.T) {
 	}
 }
 func TestMTSImport(t *testing.T) {
+	for _, shape := range []string{"array", "data-array", "items", "data-items"} {
+		t.Run(shape, func(t *testing.T) { testMTSImport(t, shape) })
+	}
+}
+func testMTSImport(t *testing.T, shape string) {
+	wrap := func(items any) any {
+		switch shape {
+		case "array":
+			return items
+		case "data-array":
+			return M{"data": items}
+		case "items":
+			return M{"items": items}
+		default:
+			return M{"data": M{"items": items}}
+		}
+	}
+	var sessionID, activityID, transcriptID any = "session1", "activity1", "transcript1"
+	if shape == "array" {
+		sessionID = json.Number("9007199254740993")
+		activityID = json.Number("9007199254740995")
+		transcriptID = json.Number("12345678901234567")
+	}
+	transcriptPath := "/api/transcript/" + fmt.Sprint(transcriptID)
 	s := testServer(t)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer access" {
@@ -97,15 +122,28 @@ func TestMTSImport(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/api/eventsessions/schedule":
-			writeJSON(w, 200, M{"data": M{"items": []M{{"id": "session1", "activitySessionId": "activity1", "name": "Встреча", "startsAt": "2026-09-10T10:00:00Z", "endsAt": "2026-09-10T11:00:00Z"}}}})
+			writeJSON(w, 200, wrap([]M{{"id": sessionID, "activitySessionId": activityID, "name": "Встреча", "startsAt": "2026-09-10T10:00:00Z", "endsAt": "2026-09-10T11:00:00Z"}}))
 		case "/api/eventsessions/endless":
-			writeJSON(w, 200, M{"data": M{"items": []any{}}})
+			writeJSON(w, 200, wrap([]any{}))
 		case "/api/event-sessions/activity-sessions/transcript-states":
-			writeJSON(w, 200, M{"data": M{"items": []M{{"eventSessionId": "session1", "activitySessionId": "activity1", "transcriptId": "transcript1", "isPublished": true, "status": "ready"}}}})
-		case "/api/transcript/transcript1/details":
+			if r.URL.Query().Get("items[0][eventSessionId]") != fmt.Sprint(sessionID) || r.URL.Query().Get("items[0][activitySessionId]") != fmt.Sprint(activityID) {
+				t.Error("numeric session identifiers changed")
+			}
+			writeJSON(w, 200, wrap([]M{
+				{"eventSessionId": sessionID, "activitySessionId": activityID, "transcriptId": "unpublished", "isPublished": true},
+				{"eventSessionId": sessionID, "activitySessionId": activityID, "transcriptId": "removed", "isPublished": true},
+				{"eventSessionId": sessionID, "activitySessionId": activityID, "transcriptId": transcriptID, "isPublished": true, "status": "ready"},
+			}))
+		case "/api/transcript/unpublished/details":
+			w.WriteHeader(404)
+		case "/api/transcript/removed/details":
+			writeJSON(w, 200, M{"data": M{}})
+		case "/api/transcript/removed":
+			w.WriteHeader(410)
+		case transcriptPath + "/details":
 			writeJSON(w, 200, M{"data": M{"transcriptName": "Итоги", "createdAt": "2026-09-10T11:01:00Z", "ownerName": "Иван"}})
-		case "/api/transcript/transcript1":
-			writeJSON(w, 200, M{"data": M{"items": []M{{"nickname": "Иван", "text": "Обсудим план", "dateTime": "2026-09-10T10:05:00Z"}, {"nickname": "Анна", "text": "План согласован", "dateTime": "2026-09-10T10:55:00Z"}}}})
+		case transcriptPath:
+			writeJSON(w, 200, wrap([]M{{"nickname": "Иван", "text": "Обсудим план", "dateTime": "2026-09-10T10:05:00Z"}, {"nickname": "Анна", "text": "План согласован", "dateTime": "2026-09-10T10:55:00Z"}}))
 		default:
 			t.Error(r.URL.Path)
 			w.WriteHeader(404)
@@ -211,5 +249,30 @@ func TestRepeatedFailureDoesNotStarveUnattemptedMail(t *testing.T) {
 		if state != "IGNORED" {
 			t.Fatal("unattempted mail was delayed by repeated failure, or retry was lost", state)
 		}
+	}
+}
+
+func TestTokenExhaustionStopsEventRetriesAndExposesReason(t *testing.T) {
+	s := testServer(t)
+	calls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		writeJSON(w, 200, M{"done_reason": "length", "message": M{"content": ""}})
+	}))
+	defer upstream.Close()
+	call(t, s, "PUT", "/api/v1/admin/settings", M{"settings": M{"llm": M{"provider": "ollama", "base_url": upstream.URL}}}, 200)
+	call(t, s, "POST", "/api/v1/admin/sources", M{"id": "mail", "label": "Mail", "source_type": "imap", "enabled": false}, 201)
+	event := call(t, s, "POST", "/api/v1/events", M{"source_id": "mail", "source_type": "imap", "external_id": "exhausted", "body": "hello", "occurred_at": time.Now().Format(time.RFC3339)}, 202).(map[string]any)
+	s.processEvent(context.Background())
+	result := call(t, s, "GET", "/api/v1/events/"+str(event, "id"), nil, 200).(map[string]any)
+	if result["analysis_state"] != "FAILED" || !strings.Contains(str(result, "analysis_error"), "Анализ не будет выполнен") || calls != 3 {
+		t.Fatal("event did not stop with visible reason", result, calls)
+	}
+	var retry *time.Time
+	if err := s.Pool.QueryRow(context.Background(), "SELECT next_analysis_at FROM communication_events WHERE id=$1", event["id"]).Scan(&retry); err != nil || retry != nil {
+		t.Fatal("failed event retained retry", retry, err)
+	}
+	if s.processEvent(context.Background()) || calls != 3 {
+		t.Fatal("failed event retried automatically", calls)
 	}
 }

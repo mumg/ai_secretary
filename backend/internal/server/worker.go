@@ -29,6 +29,9 @@ func (s *Server) job(ctx context.Context, fn func(*request) bool) (worked bool, 
 			if e, ok := v.(*llmFailure); ok {
 				err = e
 			}
+			if e, ok := v.(*sourceFailure); ok {
+				err = e
+			}
 			if e, ok := v.(apiError); ok && e.Status < 500 {
 				err = e
 			}
@@ -109,6 +112,14 @@ func (s *Server) processEvent(ctx context.Context) bool {
 		// Cancellation must also release a committed claim during shutdown.
 		retryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
+		if failure != nil && failure.terminal {
+			_, updateErr := s.Pool.Exec(retryCtx, "UPDATE communication_events SET analysis_state='FAILED',analysis_error=$2,next_analysis_at=NULL,updated_at=now() WHERE id=$1 AND analysis_state='PROCESSING'", eventID, failure.Error())
+			if updateErr != nil {
+				slog.Error("cannot mark event failed")
+			}
+			slog.Warn("event analysis stopped", "event_id", eventID, "reason", failure.Error())
+			return true
+		}
 		delay := time.Duration(math.Min(30*math.Pow(2, float64(min(attempts-1, 7))), 3600)) * time.Second
 		_, updateErr := s.Pool.Exec(retryCtx, "UPDATE communication_events SET analysis_state='PENDING',analysis_error=$2,analysis_attempts=$3,next_analysis_at=$4,updated_at=now() WHERE id=$1 AND analysis_state IN ('PENDING','PROCESSING','COMPLETED')", eventID, detail, attempts, time.Now().Add(delay))
 		if updateErr != nil {
@@ -504,6 +515,14 @@ func (s *Server) processChat(ctx context.Context) bool {
 		return true
 	})
 	if e != nil && id != nil {
+		var failure *llmFailure
+		if errors.As(e, &failure) && failure.terminal {
+			_, updateErr := s.Pool.Exec(ctx, "UPDATE chat_requests SET status='FAILED',attempts=$2,error=$3,next_attempt_at=NULL,updated_at=now() WHERE id=$1", id, attempt, failure.Error())
+			if updateErr != nil {
+				slog.Error("cannot mark chat failed")
+			}
+			return true
+		}
 		if cause, ok := e.(apiError); ok && cause.Status == 422 {
 			_, _ = s.Pool.Exec(ctx, "UPDATE chat_requests SET status='FAILED',attempts=$2,error=$3,next_attempt_at=NULL,updated_at=now() WHERE id=$1", id, attempt, cause.Detail)
 			return true
@@ -513,18 +532,28 @@ func (s *Server) processChat(ctx context.Context) bool {
 	return worked
 }
 func (s *Server) processContext(ctx context.Context) bool {
+	var meetingID any
 	worked, e := s.job(ctx, func(q *request) bool {
 		rows := q.rows("SELECT c.*,m.title FROM meeting_contexts c JOIN meetings m ON m.id=c.meeting_id WHERE m.ends_at>now() AND m.status<>'CANCELLED' AND (c.status='PENDING' OR (c.requested_at IS NOT NULL AND c.next_refresh_at<=now())) ORDER BY m.starts_at FOR UPDATE OF c SKIP LOCKED LIMIT 1")
 		if len(rows) == 0 {
 			return false
 		}
 		m := rows[0]
+		meetingID = m["meeting_id"]
 		q.exec("UPDATE meeting_contexts SET status='PROCESSING',started_at=now(),generation=$2 WHERE meeting_id=$1", m["meeting_id"], newID())
 		answer := q.archiveAnswer(M{"query": m["title"], "history": []any{}, "tag_ids": []any{}, "literal_topic": true, "before": q.now()}, nil)
 		q.exec(`UPDATE meeting_contexts SET status=CASE WHEN json_array_length($3::json)>0 THEN 'READY' ELSE 'EMPTY' END,summary=$2,"references"=$3,input_fingerprint=$4,generated_at=now(),notify_after=CASE WHEN requested_at IS NOT NULL THEN now() ELSE NULL END,next_refresh_at=now()+interval '15 minutes',error=NULL,updated_at=now() WHERE meeting_id=$1`, m["meeting_id"], answer["answer"], must(json.Marshal(answer["references"])), hash(answer))
 		return true
 	})
 	if e != nil {
+		var failure *llmFailure
+		if meetingID != nil && errors.As(e, &failure) && failure.terminal {
+			_, updateErr := s.Pool.Exec(ctx, "UPDATE meeting_contexts SET status='FAILED',error=$2,next_refresh_at=NULL,updated_at=now() WHERE meeting_id=$1", meetingID, failure.Error())
+			if updateErr != nil {
+				slog.Error("cannot mark meeting context failed")
+			}
+			return true
+		}
 		slog.Warn("meeting context retry pending")
 	}
 	return worked
@@ -561,12 +590,18 @@ func (s *Server) syncSources(ctx context.Context) bool {
 					sourceQ.mtsSync(source, false)
 				}
 				sourceQ.update("communication_sources", id, M{"last_sync_at": time.Now(), "last_error": nil})
-				sourceQ.component("source-"+id, M{"label": source["label"], "component_type": "event_loader", "status": "OK", "metrics": M{}, "ttl_seconds": max(900, interval*3)})
+				sourceQ.component("source-"+id, M{"label": source["label"], "component_type": "event_loader", "status": "OK", "message": nil, "metrics": M{}, "ttl_seconds": max(900, interval*3)})
 				return true
 			})
 			if syncErr != nil {
-				q.update("communication_sources", id, M{"last_error": "Ошибка загрузки данных; проверьте соединение и учётные данные"})
-				q.component("source-"+id, M{"label": source["label"], "component_type": "event_loader", "status": "ERROR", "message": "Ошибка загрузки данных", "metrics": M{}, "ttl_seconds": max(900, interval*3)})
+				message := "Ошибка загрузки данных; проверьте соединение и учётные данные"
+				var safe *sourceFailure
+				if errors.As(syncErr, &safe) {
+					message = safe.Error()
+				}
+				q.update("communication_sources", id, M{"last_error": message})
+				q.component("source-"+id, M{"label": source["label"], "component_type": "event_loader", "status": "ERROR", "message": message, "metrics": M{}, "ttl_seconds": max(900, interval*3)})
+				slog.Warn("source sync failed", "source_id", id, "reason", message)
 			}
 		}
 		return false

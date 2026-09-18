@@ -19,6 +19,18 @@ const gateway = "https://gw.mts-link.ru"
 const tokenPrefix = "mts-link-tokens:v1:"
 
 func requestJSON(ctx context.Context, method, endpoint string, body any, headers map[string]string) (M, int, error) {
+	value, status, err := requestJSONValue(ctx, method, endpoint, body, headers)
+	if err != nil {
+		return nil, status, err
+	}
+	result, ok := value.(map[string]any)
+	if !ok {
+		return nil, status, errors.New("upstream JSON must be an object")
+	}
+	return M(result), status, nil
+}
+
+func requestJSONValue(ctx context.Context, method, endpoint string, body any, headers map[string]string) (any, int, error) {
 	var data []byte
 	var e error
 	if body != nil {
@@ -47,8 +59,11 @@ func requestJSON(ctx context.Context, method, endpoint string, body any, headers
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, response.StatusCode, fmt.Errorf("upstream HTTP %d", response.StatusCode)
 	}
-	var result M
-	if e = json.NewDecoder(io.LimitReader(response.Body, 32<<20)).Decode(&result); e != nil {
+	var result any
+	decoder := json.NewDecoder(io.LimitReader(response.Body, 32<<20))
+	// Session/transcript IDs must retain their decimal representation and precision.
+	decoder.UseNumber()
+	if e = decoder.Decode(&result); e != nil {
 		return nil, response.StatusCode, errors.New("invalid upstream JSON")
 	}
 	return result, response.StatusCode, nil

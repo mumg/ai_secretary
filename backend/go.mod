@@ -3,7 +3,7 @@ module github.com/mumg/ai_secretary/backend
 go 1.25.0
 
 require (
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358
+	github.com/Azure/go-ntlmssp v0.1.1
 	github.com/coder/websocket v1.8.14
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/emersion/go-imap v1.2.1
