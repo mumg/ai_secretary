@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const root = path.resolve(__dirname, '../../backend/src/improver/web');
+const root = path.resolve(__dirname, '../../backend/web');
 const settle = ms => new Promise(resolve => setTimeout(resolve, ms));
 function setup(t) {
   const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {

@@ -139,6 +139,7 @@ def main():
         announce("1/5 Получение исходников: git pull --ff-only")
         run("git", "pull", "--ff-only")
         version = source_version()
+        os.environ["APP_VERSION"] = version
         revision = output("git", "rev-parse", "HEAD")
         if registry_mode:
             os.environ["SECRETARY_IMAGE_TAG"] = "sha-" + revision
@@ -229,19 +230,12 @@ def main():
                 stdout=stream, check=True)
         announce("4/5 Применение миграций базы")
         migration_started = True
-        run(*command, "run", "--rm", "--no-deps", "-T", "migrate", "alembic", "upgrade", "head")
+        run(*command, "run", "--rm", "--no-deps", "-T", "migrate", "improver", "migrate")
         announce("5/5 Запуск сервисов и проверка готовности")
         run(*command, "up", "-d", "--no-deps", "--no-build", "--pull", "never", "--wait", "--wait-timeout", str(args.wait_timeout), *services)
-        probe = (
-            "import json,urllib.request; "
-            "r=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health/ready',timeout=5)); "
-            "assert r['status']=='ready'; "
-            "v=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health/live',timeout=5)); "
-            "assert v['version']==" + repr(version)
-        )
         deadline = time.monotonic() + args.wait_timeout
         while True:
-            result = subprocess.run([*command, "exec", "-T", "api", "python", "-c", probe],
+            result = subprocess.run([*command, "exec", "-T", "api", "improver", "healthcheck", "--ready", "--expected-version", version],
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if result.returncode == 0:
                 break

@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const destination = path.resolve(
   __dirname,
-  "../backend/src/improver/web/assets",
+  "../backend/web/assets",
 );
 const source = path.join(__dirname, "node_modules/markdown-it");
 fs.copyFileSync(

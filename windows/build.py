@@ -55,19 +55,25 @@ def extract(archive: Path, destination: Path, prefix: str = "", allowed: tuple[s
 
 
 def source_copy(destination):
-    for relative in ("backend/src", "backend/migrations", "windows/setup"):
-        target = destination / ("setup" if relative == "windows/setup" else relative)
-        shutil.copytree(ROOT / relative, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "downloads"))
-    shutil.copyfile(ROOT / "backend/alembic.ini", destination / "backend/alembic.ini")
+    shutil.copytree(ROOT / "backend/web", destination / "backend/web", ignore=shutil.ignore_patterns("downloads"))
+    version = (ROOT / "version").read_text().strip()
+    env = {**os.environ, "CGO_ENABLED": "0", "GOOS": "windows", "GOARCH": "amd64"}
+    (destination / "setup").mkdir()
+    subprocess.run(["go", "build", "-trimpath", "-ldflags", f"-s -w -X main.version={version}", "-o", str(destination / "setup/secretary-setup.exe"), "./cmd/secretary-setup"], cwd=ROOT / "windows", env=env, check=True)
+    subprocess.run(["go", "build", "-trimpath", "-ldflags", f"-s -w -X main.version={version}", "-o", str(destination / "backend/improver.exe"), "./cmd/improver"], cwd=ROOT / "backend", env=env, check=True)
+    modules = subprocess.check_output(["go", "list", "-m", "all"], cwd=ROOT / "backend", text=True)
+    (destination / "go-modules.txt").write_text(modules, encoding="utf-8")
+    shutil.copytree(ROOT / "backend/third_party", destination / "third_party")
+    shutil.copytree(ROOT / "windows/third_party", destination / "third_party/windows-setup")
     shutil.copyfile(ROOT / "version", destination / "version")
     shutil.copyfile(ROOT / "windows/assets/secretary.ico", destination / "secretary.ico")
-    shutil.copyfile(ROOT / "version", destination / "backend/src/improver/version")
     (destination / "parser").mkdir()
-    shutil.copyfile(ROOT / "document-parser/main.py", destination / "parser/secretary_document_parser.py")
+    subprocess.run(["go", "build", "-trimpath", "-ldflags", f"-s -w -X main.version={version}", "-o", str(destination / "parser/document-parser.exe"), "./cmd/document-parser"], cwd=ROOT / "document-parser", env=env, check=True)
+    shutil.copytree(ROOT / "document-parser/third_party", destination / "third_party/document-parser")
     for name in ("README.md", "THIRD_PARTY.md", "vendor.json"):
         shutil.copyfile(ROOT / "windows" / name, destination / name)
     subprocess.run([sys.executable, str(ROOT / "browser-extension/build.py"), "--output", str(OUT / "extension.zip"),
-                    "--backend-web", str(destination / "backend/src/improver/web")], check=True)
+                    "--backend-web", str(destination / "backend/web")], check=True)
 
 
 def build():
@@ -80,7 +86,6 @@ def build():
         shutil.rmtree(payload)
     payload.mkdir(parents=True)
     source_copy(payload)
-    extract(vendors["python"], payload / "python")
     extract(vendors["postgres"], payload / "postgres", "pgsql/",
             ("bin", "lib", "share", "server_license.txt", "commandlinetools_3rd_party_licenses.txt"))
     extract(vendors["caddy"], payload / "caddy")
@@ -90,13 +95,9 @@ def build():
     # Preserve WinSW's MIT notice with its redistributable.
     with urllib.request.urlopen("https://raw.githubusercontent.com/winsw/winsw/v2.12.0/LICENSE.txt", timeout=30) as response:
         (payload / "vendor/WinSW-LICENSE.txt").write_bytes(response.read())
-    packages = payload / "python/Lib/site-packages"
-    subprocess.run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-compile", "--target", str(packages),
-                    "-r", str(ROOT / "backend/requirements.txt"), str(ROOT / "document-parser"), "tzdata==2026.4"], check=True)
-    inventory = subprocess.check_output([sys.executable, "-m", "pip", "freeze", "--path", str(packages)], text=True)
-    (payload / "python-packages.txt").write_text(inventory, encoding="utf-8")
-    (payload / "python/python313._pth").write_text("python313.zip\n.\nLib/site-packages\n../backend/src\n../parser\n../setup\nimport site\n", encoding="utf-8")
-    subprocess.run([str(payload / "python/python.exe"), "-B", str(payload / "setup/check_runtime.py"), "--root", str(payload)], check=True)
+    subprocess.run([str(payload / "setup/secretary-setup.exe"), "check-runtime", "--root", str(payload)], check=True)
+    if list(payload.rglob("*.py")) or list(payload.rglob("python*.exe")) or (payload / "python").exists():
+        raise RuntimeError("Python must not be included in the Windows payload")
     print("Offline payload ready:", payload)
 
 

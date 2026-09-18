@@ -1,0 +1,709 @@
+[
+  {
+    "event": {
+      "body": "@ivan, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "role": "to",
+          "address": "team@example.test",
+          "name": "Team"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": true,
+      "user_is_recipient": false,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": false,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Подготовьте документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "address": "sender@example.test",
+          "name": "Sender"
+        },
+        {
+          "address": "ivan@example.test",
+          "name": "Иван Петров"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": true,
+      "addressed_by_name": false,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Подготовьте документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "role": "to",
+          "address": "colleague@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": false,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": false,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": false
+    }
+  },
+  {
+    "event": {
+      "body": "Согласую перечень сервисов",
+      "author": "Иван Петров <ivan@example.test>",
+      "direction": "OUTGOING",
+      "participants": [
+        {
+          "role": "to",
+          "address": "colleague@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": false,
+      "user_is_author": true,
+      "sole_recipient": false,
+      "addressed_by_name": false,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Подготовьте документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "role": "to",
+          "address": "ivan@example.test"
+        },
+        {
+          "role": "cc",
+          "address": "colleague@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": false,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "role": "to",
+          "address": "ivan@example.test"
+        },
+        {
+          "role": "cc",
+          "address": "colleague@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Петров, подготовьте документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "role": "to",
+          "address": "ivan@example.test"
+        },
+        {
+          "role": "cc",
+          "address": "colleague@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Подготовьте документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "role": "from",
+          "address": "sender@example.test"
+        },
+        {
+          "role": "to",
+          "address": "ivan@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": true,
+      "addressed_by_name": false,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "@Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test",
+          "role": "to"
+        },
+        {
+          "name": "Иван Сидоров",
+          "address": "sidorov@example.test",
+          "role": "cc"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": true,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": true,
+      "ambiguous_names": [
+        "иван"
+      ],
+      "unambiguous_names": [
+        "Иван Петров",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Сидоров",
+          "address": "sidorov@example.test",
+          "role": "cc"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": false,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": false,
+      "name_ambiguous": true,
+      "ambiguous_names": [
+        "иван"
+      ],
+      "unambiguous_names": [
+        "Иван Петров",
+        "петров"
+      ],
+      "eligible": false
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "external_id": "one",
+          "role": "speaker"
+        },
+        {
+          "name": "Иван Петров",
+          "external_id": "two",
+          "role": "speaker"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": true,
+      "ambiguous_names": [
+        "иван",
+        "петров"
+      ],
+      "unambiguous_names": [],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Иван Сидоров <sidorov@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test",
+          "role": "to"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": true,
+      "addressed_by_name": true,
+      "name_ambiguous": true,
+      "ambiguous_names": [
+        "иван"
+      ],
+      "unambiguous_names": [
+        "Иван Петров",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test",
+          "role": "to"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [
+      {
+        "participants": [
+          {
+            "name": "Иван Сидоров",
+            "address": "sidorov@example.test",
+            "role": "cc"
+          }
+        ],
+        "body": "Обсуждение"
+      }
+    ],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": true,
+      "addressed_by_name": true,
+      "name_ambiguous": true,
+      "ambiguous_names": [
+        "иван"
+      ],
+      "unambiguous_names": [
+        "Иван Петров",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван Петров, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test",
+          "role": "to"
+        },
+        {
+          "name": "Иван Петров",
+          "address": "sidorov@example.test",
+          "role": "cc"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": true,
+      "ambiguous_names": [
+        "иван",
+        "петров"
+      ],
+      "unambiguous_names": [],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test",
+          "role": "to"
+        },
+        {
+          "name": "Иван Сидоров",
+          "address": "sidorov@example.test",
+          "role": "cc"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": true,
+      "ambiguous_names": [
+        "иван"
+      ],
+      "unambiguous_names": [
+        "Иван Петров",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван",
+          "role": "speaker"
+        },
+        {
+          "name": "Анна",
+          "role": "speaker"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test",
+          "role": "to"
+        },
+        {
+          "name": "Анна Сидорова",
+          "address": "anna@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": false,
+      "addressed_by_name": true,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  },
+  {
+    "event": {
+      "body": "Иван, подготовь документ",
+      "author": "Sender <sender@example.test>",
+      "direction": null,
+      "participants": [
+        {
+          "name": "Иван Петров",
+          "address": "ivan@example.test",
+          "role": "to"
+        },
+        {
+          "name": "Иван Петров",
+          "address": "ivan.work@example.test"
+        }
+      ]
+    },
+    "names": [
+      "Иван Петров"
+    ],
+    "addresses": [
+      "ivan@example.test",
+      "ivan.work@example.test"
+    ],
+    "previous": [],
+    "expected": {
+      "directly_mentioned": false,
+      "user_is_recipient": true,
+      "user_is_author": false,
+      "sole_recipient": true,
+      "addressed_by_name": true,
+      "name_ambiguous": false,
+      "ambiguous_names": [],
+      "unambiguous_names": [
+        "Иван Петров",
+        "иван",
+        "петров"
+      ],
+      "eligible": true
+    }
+  }
+]

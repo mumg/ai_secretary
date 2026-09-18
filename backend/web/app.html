@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="referrer" content="no-referrer" />
+    <title>AI Секретарь</title>
+    <link rel="icon" type="image/svg+xml" href="/app/assets/secretary-robot.svg" />
+    <link rel="stylesheet" href="/app/assets/app.css" />
+    <link rel="stylesheet" href="/app/assets/version.css?v=1" />
+    <script src="/app/assets/version.js?v=1" defer></script>
+    <script src="/app/assets/markdown-it.min.js" defer></script>
+    <script src="/app/assets/app-core.js" defer></script>
+    <script src="/app/assets/realtime.js" defer></script>
+    <script src="/app/assets/app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="/app/" aria-label="AI Секретарь — главная"
+        ><img class="brand-icon" src="/app/assets/secretary-robot.svg" alt="" width="32" height="32" /> AI Секретарь</a
+      >
+      <div class="header-actions">
+        <button
+          id="health"
+          class="health unknown"
+          title="Состояние компонентов"
+        >
+          <span class="dot"></span
+          ><span id="health-label">Проверка состояния</span>
+        </button>
+        <button id="chat-toggle" aria-pressed="false">Чат с Qwen</button>
+        <a
+          class="icon-button"
+          href="/admin"
+          title="Настройки"
+          ><span aria-hidden="true">⚙</span> Настройки</a
+        >
+      </div>
+    </header>
+    <div id="version-notice" class="version-notice" role="status" aria-live="polite" hidden>
+      <span id="version-notice-text"></span>
+      <a href="https://github.com/mumg/ai_secretary" target="_blank" rel="noopener noreferrer">Открыть новую версию на GitHub</a>
+    </div>
+    <div id="connection" class="connection" role="status" hidden></div>
+    <main class="workspace">
+      <div class="layout">
+        <aside class="list-pane" aria-label="Список записей">
+          <nav id="tabs" aria-label="Разделы">
+            <button data-tab="tasks" aria-current="page">Задачи</button
+            ><button data-tab="meetings">Встречи</button
+            ><button data-tab="results">Итоги</button
+            ><button data-tab="threads">Переписки</button
+            ><button data-tab="status">Статус</button>
+          </nav>
+          <div class="page-heading">
+            <h1 id="page-title">План на сегодня</h1>
+            <p id="page-sub" class="muted"></p>
+            <button id="create-task" class="primary">＋ Новая задача</button>
+          </div>
+          <div class="toolbar">
+            <div class="search" id="search-wrap">
+              <span aria-hidden="true">⌕</span
+              ><input
+                id="search"
+                type="search"
+                maxlength="200"
+                autocomplete="off"
+                placeholder="Поиск по задачам"
+                aria-label="Поиск по задачам"
+              /><button id="clear-search" aria-label="Очистить поиск" hidden>
+                ×
+              </button>
+            </div>
+            <div class="list-meta">
+              <span id="count" aria-live="polite"></span
+              ><select id="sort" aria-label="Сортировка задач">
+                <option value="rank">По рейтингу</option>
+                <option value="due">Приоритет и срок</option>
+              </select>
+              <details class="view-menu">
+                <summary aria-label="Меню раздела" title="Меню раздела">
+                  ⋯
+                </summary>
+                <div><button id="refresh">Обновить · Alt+R</button></div>
+              </details>
+            </div>
+          </div>
+          <div id="list-error" class="inline-error" role="status" hidden></div>
+          <div
+            id="list-scroll"
+            class="scroll-list"
+            tabindex="0"
+            aria-label="Записи раздела"
+          >
+            <div id="list"><p class="empty">Загрузка…</p></div>
+            <button id="load-more" class="load-more" hidden>
+              Загрузить ещё
+            </button>
+          </div>
+        </aside>
+        <section
+          id="reading-pane"
+          class="reading-pane"
+          aria-label="Область чтения"
+        >
+          <div
+            id="detail-error"
+            class="inline-error"
+            role="status"
+            hidden
+          ></div>
+          <div id="detail" class="detail" tabindex="-1">
+            <div class="empty">
+              <h2>Выберите запись слева</h2>
+              <p>Здесь появятся детали, контекст и первоисточники.</p>
+            </div>
+          </div>
+          <div id="chat-pane" class="chat-pane" hidden>
+            <div class="chat-header">
+              <div>
+                <div class="eyebrow">Архив переписок</div>
+                <h2>Чат с Qwen</h2>
+              </div>
+              <button id="chat-close" aria-label="Закрыть чат">×</button>
+            </div>
+            <div
+              id="chat-error"
+              class="inline-error"
+              role="status"
+              hidden
+            ></div>
+            <div
+              id="chat-scroll"
+              class="chat-scroll"
+              tabindex="0"
+              aria-label="История чата"
+            >
+              <button id="older-chat" class="load-more" hidden>
+                Загрузить предыдущие вопросы
+              </button>
+              <div id="chat-messages"></div>
+            </div>
+            <button id="new-messages" hidden>К новым сообщениям ↓</button>
+            <form id="chat-form" class="composer">
+              <label class="sr-only" for="message">Вопрос Qwen</label
+              ><textarea
+                id="message"
+                maxlength="8000"
+                rows="3"
+                placeholder="Найти ответ, договорённость или задачу…"
+                required
+              ></textarea
+              ><button class="primary" id="send" type="submit">
+                Отправить ↑
+              </button>
+              <p class="muted">
+                Enter — отправить · Shift+Enter — новая строка. Ответ готовится
+                на сервере.
+              </p>
+            </form>
+          </div>
+        </section>
+      </div>
+      <footer>
+        <span id="timezone">Часовой пояс сервера</span
+        ><span id="updated">Ожидание данных</span>
+        <span class="copyright">Максим Муратов (С) 2026</span>
+      </footer>
+    </main>
+    <dialog id="task-dialog" aria-labelledby="form-title">
+      <form id="task-form">
+        <div class="dialog-heading">
+          <h2 id="form-title">Новая задача</h2>
+          <button type="button" data-close aria-label="Закрыть форму">×</button>
+        </div>
+        <label
+          >Название<input id="task-title" maxlength="500" required
+        /></label>
+        <label
+          >Описание<textarea id="task-description" rows="4"></textarea>
+        </label>
+        <label
+          >Приоритет<select id="task-priority">
+            <option value="LOW">Низкий</option>
+            <option value="NORMAL" selected>Обычный</option>
+            <option value="HIGH">Высокий</option>
+            <option value="CRITICAL">Критический</option>
+          </select></label
+        >
+        <label
+          >Срок (необязательно)<input id="task-due" type="datetime-local"
+        /></label>
+        <p class="muted form-zone"></p>
+        <p id="task-form-error" class="inline-error" role="alert" hidden></p>
+        <div class="actions">
+          <button type="submit" class="primary">Создать задачу</button
+          ><button type="button" data-close>Закрыть, сохранив черновик</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="reminder-dialog" aria-labelledby="reminder-title">
+      <form id="reminder-form">
+        <div class="dialog-heading">
+          <h2 id="reminder-title">Напомнить о задаче</h2>
+          <button type="button" data-close aria-label="Закрыть форму">×</button>
+        </div>
+        <p id="reminder-task"></p>
+        <label
+          >Дата и время<input id="reminder-time" type="datetime-local" required
+        /></label>
+        <p class="muted form-zone"></p>
+        <p id="reminder-error" class="inline-error" role="alert" hidden></p>
+        <div class="actions">
+          <button type="submit" class="primary">Добавить напоминание</button
+          ><button type="button" data-close>Закрыть</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

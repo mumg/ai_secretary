@@ -1,0 +1,424 @@
+{
+  "ReminderCreate": [
+    "remind_at"
+  ],
+  "ReminderRead": [
+    "id",
+    "remind_at",
+    "sent_at",
+    "enabled"
+  ],
+  "TaskCreate": [
+    "title",
+    "description",
+    "priority",
+    "due_at"
+  ],
+  "DictatedTaskCreate": [
+    "text"
+  ],
+  "TaskUpdate": [
+    "title",
+    "description",
+    "priority",
+    "due_at",
+    "status"
+  ],
+  "TaskRead": [
+    "id",
+    "title",
+    "description",
+    "status",
+    "priority",
+    "due_at",
+    "source_event_id",
+    "evidence",
+    "confidence",
+    "ranking_score",
+    "ranking_reasons",
+    "manually_created",
+    "completed_at",
+    "reminders",
+    "created_at",
+    "updated_at"
+  ],
+  "TaskSourceRead": [
+    "id",
+    "source_id",
+    "source_label",
+    "source_type",
+    "event_type",
+    "direction",
+    "subject",
+    "author",
+    "participants",
+    "occurred_at",
+    "body",
+    "source_url"
+  ],
+  "TaskDetailRead": [
+    "task",
+    "source"
+  ],
+  "PlanItemRead": [
+    "position",
+    "pinned",
+    "automatically_added",
+    "task"
+  ],
+  "MeetingRead": [
+    "id",
+    "source_id",
+    "source_label",
+    "source_event_id",
+    "title",
+    "starts_at",
+    "ends_at",
+    "all_day",
+    "location",
+    "organizer",
+    "attendees",
+    "status",
+    "method",
+    "mts_link_url"
+  ],
+  "MeetingPage": [
+    "items",
+    "offset",
+    "limit",
+    "has_more"
+  ],
+  "MeetingResultRead": [
+    "id",
+    "source_id",
+    "source_label",
+    "source_event_id",
+    "calendar_meeting_id",
+    "title",
+    "starts_at",
+    "ends_at",
+    "owner_name",
+    "meeting_url",
+    "transcript_status",
+    "summary",
+    "decisions",
+    "agreements",
+    "analysis_state",
+    "analyzed_at",
+    "origin_type",
+    "supplement_count",
+    "brief_summary",
+    "time_known",
+    "time_basis",
+    "received_at"
+  ],
+  "ParticipantMeetingSummary": [
+    "source_event_id",
+    "source_label",
+    "author",
+    "occurred_at",
+    "summary",
+    "decisions",
+    "agreements"
+  ],
+  "MeetingResultDetail": [
+    "id",
+    "source_id",
+    "source_label",
+    "source_event_id",
+    "calendar_meeting_id",
+    "title",
+    "starts_at",
+    "ends_at",
+    "owner_name",
+    "meeting_url",
+    "transcript_status",
+    "summary",
+    "decisions",
+    "agreements",
+    "analysis_state",
+    "analyzed_at",
+    "origin_type",
+    "supplement_count",
+    "brief_summary",
+    "time_known",
+    "time_basis",
+    "received_at",
+    "participants",
+    "participant_summaries"
+  ],
+  "MeetingResultPage": [
+    "items",
+    "offset",
+    "limit",
+    "has_more"
+  ],
+  "DailyPlanRead": [
+    "id",
+    "plan_date",
+    "generated_at",
+    "items",
+    "meetings"
+  ],
+  "DeviceUpsert": [
+    "label",
+    "fcm_token"
+  ],
+  "DeviceRead": [
+    "id",
+    "label",
+    "active",
+    "last_seen_at"
+  ],
+  "EventIngest": [
+    "source_id",
+    "source_type",
+    "external_id",
+    "event_type",
+    "direction",
+    "thread_external_id",
+    "subject",
+    "author",
+    "participants",
+    "occurred_at",
+    "body",
+    "source_url"
+  ],
+  "EventRead": [
+    "id",
+    "source_id",
+    "source_type",
+    "external_id",
+    "event_type",
+    "direction",
+    "thread_external_id",
+    "subject",
+    "author",
+    "participants",
+    "occurred_at",
+    "body",
+    "source_url",
+    "analysis_state",
+    "analysis_error"
+  ],
+  "ConversationThreadRead": [
+    "id",
+    "source_id",
+    "source_label",
+    "source_type",
+    "title",
+    "participants",
+    "summary",
+    "event_count",
+    "first_event_at",
+    "last_event_at",
+    "summarized_at"
+  ],
+  "ConversationThreadPage": [
+    "items",
+    "offset",
+    "limit",
+    "has_more"
+  ],
+  "ConversationEventRead": [
+    "id",
+    "event_type",
+    "direction",
+    "subject",
+    "author",
+    "occurred_at",
+    "preview",
+    "source_url"
+  ],
+  "ConversationThreadDetail": [
+    "id",
+    "source_id",
+    "source_label",
+    "source_type",
+    "title",
+    "participants",
+    "summary",
+    "event_count",
+    "first_event_at",
+    "last_event_at",
+    "summarized_at",
+    "events",
+    "has_more_events",
+    "events_offset",
+    "events_limit"
+  ],
+  "ChatHistoryMessage": [
+    "role",
+    "content"
+  ],
+  "ChatQuery": [
+    "query",
+    "history",
+    "tag_ids"
+  ],
+  "ChatReference": [
+    "key",
+    "kind",
+    "id",
+    "title",
+    "source_label",
+    "occurred_at",
+    "snippet",
+    "source_url"
+  ],
+  "ChatResponse": [
+    "answer",
+    "references"
+  ],
+  "MeetingContextReference": [
+    "key",
+    "kind",
+    "id",
+    "title",
+    "source_label",
+    "occurred_at",
+    "snippet",
+    "source_url",
+    "meeting_result_id"
+  ],
+  "MeetingContextRead": [
+    "meeting",
+    "status",
+    "summary",
+    "references",
+    "generated_at",
+    "error",
+    "stale"
+  ],
+  "ChatRequestRead": [
+    "id",
+    "query",
+    "status",
+    "answer",
+    "references",
+    "error",
+    "attempts",
+    "created_at",
+    "updated_at",
+    "completed_at"
+  ],
+  "AdminSettingsWrite": [
+    "settings",
+    "firebase_credentials_json",
+    "llm_api_key",
+    "clear_llm_api_key"
+  ],
+  "AdminSettingsRead": [
+    "local_web_only",
+    "settings",
+    "firebase_configured",
+    "llm_api_key_configured",
+    "filter_reconciliation",
+    "identity_requeued"
+  ],
+  "TagReference": [
+    "id",
+    "name"
+  ],
+  "TagWrite": [
+    "name"
+  ],
+  "TagRead": [
+    "id",
+    "name",
+    "source_count",
+    "created_at",
+    "updated_at"
+  ],
+  "SourceWrite": [
+    "id",
+    "label",
+    "source_type",
+    "enabled",
+    "settings",
+    "credential",
+    "tag_ids"
+  ],
+  "SourceRead": [
+    "id",
+    "label",
+    "source_type",
+    "enabled",
+    "settings",
+    "tags",
+    "credential_configured",
+    "refresh_token_configured",
+    "last_sync_at",
+    "last_error",
+    "created_at",
+    "updated_at"
+  ],
+  "ExternalTaskSourceWrite": [
+    "label",
+    "enabled",
+    "tag_ids"
+  ],
+  "ExternalTaskSourceRead": [
+    "id",
+    "label",
+    "enabled",
+    "tags",
+    "created_at",
+    "updated_at"
+  ],
+  "ExternalTaskWrite": [
+    "external_id",
+    "title",
+    "description",
+    "status",
+    "priority",
+    "due_at",
+    "source_url",
+    "evidence",
+    "occurred_at",
+    "source_updated_at"
+  ],
+  "ExternalTaskBatchWrite": [
+    "tasks",
+    "close_missing"
+  ],
+  "ExternalTaskSyncItem": [
+    "external_id",
+    "task_id",
+    "action",
+    "status",
+    "active"
+  ],
+  "ExternalTaskBatchRead": [
+    "source_id",
+    "created",
+    "updated",
+    "unchanged",
+    "closed_missing",
+    "items"
+  ],
+  "ComponentStatusWrite": [
+    "label",
+    "component_type",
+    "status",
+    "message",
+    "metrics",
+    "observed_at",
+    "ttl_seconds"
+  ],
+  "ComponentStatusRead": [
+    "id",
+    "label",
+    "component_type",
+    "status",
+    "message",
+    "metrics",
+    "observed_at",
+    "expires_at"
+  ],
+  "SystemStatusRead": [
+    "overall_status",
+    "generated_at",
+    "components"
+  ]
+}

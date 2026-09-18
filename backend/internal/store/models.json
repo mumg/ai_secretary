@@ -1,0 +1,1239 @@
+{
+  "chat_requests": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "query": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "history": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "tag_ids": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "status": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "PENDING"
+    },
+    "answer": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "references": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "error": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "attempts": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false,
+      "default": 0
+    },
+    "next_attempt_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "started_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "completed_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "communication_sources": {
+    "id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": true
+    },
+    "label": {
+      "nullable": false,
+      "type": "VARCHAR(255)",
+      "primary": false
+    },
+    "source_type": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false
+    },
+    "enabled": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": true
+    },
+    "settings": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": {}
+    },
+    "credential_encrypted": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "last_sync_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "last_error": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "component_statuses": {
+    "id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": true
+    },
+    "label": {
+      "nullable": false,
+      "type": "VARCHAR(255)",
+      "primary": false
+    },
+    "component_type": {
+      "nullable": false,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "status": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false
+    },
+    "message": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "metrics": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": {}
+    },
+    "observed_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "expires_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "daily_plans": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "plan_date": {
+      "nullable": false,
+      "type": "DATE",
+      "primary": false
+    },
+    "generated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "database_schema_version": {
+    "id": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": true,
+      "default": 1
+    },
+    "version": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false
+    },
+    "revision": {
+      "nullable": false,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "devices": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "label": {
+      "nullable": false,
+      "type": "VARCHAR(255)",
+      "primary": false
+    },
+    "fcm_token": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "certificate_subject": {
+      "nullable": true,
+      "type": "VARCHAR(512)",
+      "primary": false
+    },
+    "active": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": true
+    },
+    "last_seen_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "system_settings": {
+    "id": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": true,
+      "default": 1
+    },
+    "payload": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": {}
+    },
+    "firebase_credentials_encrypted": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "tags": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "name": {
+      "nullable": false,
+      "type": "VARCHAR(100)",
+      "primary": false
+    },
+    "normalized_name": {
+      "nullable": false,
+      "type": "VARCHAR(100)",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "communication_events": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "source_id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "source_type": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false
+    },
+    "external_id": {
+      "nullable": false,
+      "type": "VARCHAR(512)",
+      "primary": false
+    },
+    "event_type": {
+      "nullable": false,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "direction": {
+      "nullable": false,
+      "type": "VARCHAR(16)",
+      "primary": false,
+      "default": "INCOMING"
+    },
+    "thread_external_id": {
+      "nullable": true,
+      "type": "VARCHAR(512)",
+      "primary": false
+    },
+    "subject": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "subject_key": {
+      "nullable": true,
+      "type": "VARCHAR(80)",
+      "primary": false
+    },
+    "subject_tokens": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "author": {
+      "nullable": true,
+      "type": "VARCHAR(512)",
+      "primary": false
+    },
+    "participants": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "occurred_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "body": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false,
+      "default": ""
+    },
+    "source_url": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "raw_headers": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": {}
+    },
+    "content_hash": {
+      "nullable": false,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "analysis_state": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "PENDING"
+    },
+    "analysis_error": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "analysis_model": {
+      "nullable": true,
+      "type": "VARCHAR(255)",
+      "primary": false
+    },
+    "analysis_result": {
+      "nullable": true,
+      "type": "JSON",
+      "primary": false
+    },
+    "analyzed_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "analysis_attempts": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false,
+      "default": 0
+    },
+    "next_analysis_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "semantic_summary": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "semantic_categories": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "semantic_keywords": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "semantic_people": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "semantic_organizations": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "semantic_decisions": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "semantic_agreements": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "semantic_index": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "semantic_version": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false,
+      "default": 0
+    },
+    "is_mailing": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": false
+    },
+    "mailing_confidence": {
+      "nullable": true,
+      "type": "FLOAT",
+      "primary": false
+    },
+    "mailing_kind": {
+      "nullable": true,
+      "type": "VARCHAR(32)",
+      "primary": false
+    },
+    "mailing_version": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false,
+      "default": 0
+    },
+    "mailing_analyzed_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "communication_source_tags": {
+    "source_id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": true
+    },
+    "tag_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    }
+  },
+  "source_cursors": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "source_id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "cursor_key": {
+      "nullable": false,
+      "type": "VARCHAR(255)",
+      "primary": false
+    },
+    "cursor_value": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "attachments": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "event_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "filename": {
+      "nullable": false,
+      "type": "VARCHAR(512)",
+      "primary": false
+    },
+    "media_type": {
+      "nullable": false,
+      "type": "VARCHAR(255)",
+      "primary": false
+    },
+    "size_bytes": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false
+    },
+    "sha256": {
+      "nullable": false,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "storage_path": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "extraction_state": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "PENDING"
+    },
+    "extracted_text": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "extraction_error": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "conversation_threads": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "source_id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "source_type": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false
+    },
+    "thread_external_id": {
+      "nullable": false,
+      "type": "VARCHAR(512)",
+      "primary": false
+    },
+    "title": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "participants": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "summary": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "event_count": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false,
+      "default": 0
+    },
+    "first_event_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "last_event_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "latest_event_id": {
+      "nullable": true,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "summary_model": {
+      "nullable": true,
+      "type": "VARCHAR(255)",
+      "primary": false
+    },
+    "summarized_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "meetings": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "source_id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "external_uid": {
+      "nullable": false,
+      "type": "VARCHAR(512)",
+      "primary": false
+    },
+    "source_event_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "title": {
+      "nullable": false,
+      "type": "VARCHAR(500)",
+      "primary": false
+    },
+    "starts_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "ends_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "all_day": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": false
+    },
+    "location": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "mts_link_url": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "mts_link_keys": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "organizer": {
+      "nullable": true,
+      "type": "JSON",
+      "primary": false
+    },
+    "attendees": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "status": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "CONFIRMED"
+    },
+    "method": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "REQUEST"
+    },
+    "last_event_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "tasks": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "title": {
+      "nullable": false,
+      "type": "VARCHAR(500)",
+      "primary": false
+    },
+    "description": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "status": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "NEW"
+    },
+    "priority": {
+      "nullable": false,
+      "type": "VARCHAR(16)",
+      "primary": false,
+      "default": "NORMAL"
+    },
+    "priority_source": {
+      "nullable": false,
+      "type": "VARCHAR(16)",
+      "primary": false,
+      "default": "MANUAL"
+    },
+    "due_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "source_event_id": {
+      "nullable": true,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "evidence": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "confidence": {
+      "nullable": true,
+      "type": "FLOAT",
+      "primary": false
+    },
+    "ranking_score": {
+      "nullable": false,
+      "type": "FLOAT",
+      "primary": false,
+      "default": 0.0
+    },
+    "ranking_reasons": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "manually_created": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": false
+    },
+    "completed_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "due_reminder_sent_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "overdue_notification_date": {
+      "nullable": true,
+      "type": "DATE",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "daily_plan_items": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "plan_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "task_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "position": {
+      "nullable": false,
+      "type": "INTEGER",
+      "primary": false
+    },
+    "pinned": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": false
+    },
+    "automatically_added": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": true
+    }
+  },
+  "meeting_contexts": {
+    "meeting_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "status": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "NOT_REQUESTED"
+    },
+    "requested_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "notify_after": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "summary": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "references": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "meeting_fingerprint": {
+      "nullable": false,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "input_fingerprint": {
+      "nullable": true,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "generation": {
+      "nullable": true,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "started_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "generated_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "next_refresh_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "error": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "meeting_results": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "source_id": {
+      "nullable": false,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "transcript_id": {
+      "nullable": true,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "event_session_id": {
+      "nullable": true,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "activity_session_id": {
+      "nullable": true,
+      "type": "VARCHAR(128)",
+      "primary": false
+    },
+    "source_event_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "calendar_meeting_id": {
+      "nullable": true,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "parent_result_id": {
+      "nullable": true,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "origin_type": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "mts_transcript"
+    },
+    "title": {
+      "nullable": false,
+      "type": "VARCHAR(500)",
+      "primary": false
+    },
+    "starts_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "ends_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "owner_name": {
+      "nullable": true,
+      "type": "VARCHAR(500)",
+      "primary": false
+    },
+    "meeting_url": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "mts_link_keys": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "transcript_status": {
+      "nullable": false,
+      "type": "VARCHAR(64)",
+      "primary": false
+    },
+    "evidence": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "summary": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "decisions": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "agreements": {
+      "nullable": false,
+      "type": "JSON",
+      "primary": false,
+      "default": []
+    },
+    "analyzed_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  },
+  "reminders": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "task_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "remind_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "sent_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "enabled": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": true
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    }
+  }
+}

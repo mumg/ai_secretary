@@ -62,7 +62,7 @@ REST endpoint. При подключении сервер всегда пере�
 До восстановления LISTEN новые WebSocket-подключения отклоняются, и клиенты
 используют резервный опрос.
 
-Сначала выполните `alembic upgrade head`, затем обновите API и worker.
+Сначала выполните `improver migrate`, затем обновите API и worker.
 Минимальная версия схемы backend — 21. Старый Android продолжает работать
 через REST и Firebase. WebSocket использует существующие клиентские сертификаты
 mTLS; Caddy проксирует `/api/*` вместе с Upgrade. Браузерный Origin проверяется
@@ -70,7 +70,7 @@ mTLS; Caddy проксирует `/api/*` вместе с Upgrade. Браузе�
 
 ## Проверки
 
-- `backend/tests/test_realtime.py`: Origin, протокол, heartbeat, объединение
+- `backend/internal/server/status_realtime_test.go`: Origin, протокол, heartbeat, объединение
   событий, COMMIT/ROLLBACK, отсутствие цикла ранжирования, восстановление LISTEN.
   Для тестов БД нужен `REALTIME_TEST_DATABASE_URL` на отдельную мигрированную БД.
 - `web/tests/ui.test.cjs`: обновление списка/деталей и чата, сохранение черновика

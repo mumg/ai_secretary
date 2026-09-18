@@ -1,10 +1,12 @@
 name: improver
 
 x-app-common: &app-common
-  image: improver-backend:local
+  image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.24}}
   build:
     context: .
     dockerfile: backend/Dockerfile
+    args:
+      APP_VERSION: ${APP_VERSION:-0.1.24}
   environment:
     DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://improver@db:5432/improver}
     DATABASE_PASSWORD_FILE: ${DATABASE_PASSWORD_FILE:-/run/secrets/postgres_password}
@@ -46,7 +48,7 @@ services:
 
   migrate:
     <<: *app-common
-    command: ["alembic", "upgrade", "head"]
+    command: ["improver", "migrate"]
     depends_on:
       db:
         condition: service_healthy
@@ -54,7 +56,7 @@ services:
 
   api:
     <<: *app-common
-    command: ["uvicorn", "improver.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["improver", "serve"]
     depends_on:
       db:
         condition: service_healthy
@@ -63,14 +65,14 @@ services:
       document-parser:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')"]
+      test: ["CMD", "improver", "healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 10
 
   worker:
     <<: *app-common
-    command: ["python", "-m", "improver.worker"]
+    command: ["improver", "worker"]
     depends_on:
       db:
         condition: service_healthy
@@ -108,8 +110,12 @@ services:
     restart: unless-stopped
 
   document-parser:
+    image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.24}}-document-parser
     build:
-      context: ./document-parser
+      context: .
+      dockerfile: document-parser/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.24}
     environment:
       MAX_BYTES: "26214400"
       MAX_CHARACTERS: "100000"
@@ -125,15 +131,18 @@ services:
     mem_limit: 512m
     pids_limit: 64
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      test: ["CMD", "document-parser", "healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 10
     restart: unless-stopped
 
   cert-init:
+    image: improver-backend:${APP_IMAGE_TAG:-${APP_VERSION:-0.1.24}}-cert-init
     build:
       context: ./infra/certs
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.24}
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
     volumes:

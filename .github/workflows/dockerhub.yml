@@ -16,10 +16,35 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 10
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.0"
+          cache-dependency-path: |
+            backend/go.sum
+            document-parser/go.sum
+      - name: Go server tests
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
+        run: |
+          go vet ./...
+          go test -race ./...
+      - name: Go document parser tests
+        working-directory: document-parser
+        run: |
+          go vet ./...
+          go test -race ./...
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
@@ -42,17 +67,10 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
               out.write(f'version={version}\n')
           PY
-      - name: Backend and updater tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://test:test@127.0.0.1/test
-          PYTHONPATH: backend/src
+      - name: Extension packaging and updater tests
         run: |
-          python -m pip install -r backend/requirements.txt pytest aiosqlite
           python browser-extension/build.py
-          python -m pytest backend/tests -q
           python -m unittest discover -s tests -p 'test_*.py' -v
-          python -m pip install ./document-parser
-          python -m pytest document-parser/tests -q
       - name: Web tests
         working-directory: web
         run: |
@@ -71,7 +89,7 @@ jobs:
             dockerfile: backend/Dockerfile
             suffix: ''
           - component: document-parser
-            context: document-parser
+            context: .
             dockerfile: document-parser/Dockerfile
             suffix: '-document-parser'
           - component: cert-init

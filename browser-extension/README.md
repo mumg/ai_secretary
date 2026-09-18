@@ -11,7 +11,7 @@ python3 browser-extension/build.py
 ```
 
 Архив для установки: `dist/ai-secretary-extension.zip`.
-Сборка также помещает копию в `backend/src/improver/web/downloads/` для включения
+Сборка также помещает копию в `backend/web/downloads/` для включения
 в Python-пакет. Обе копии — генерируемые файлы, исключённые из Git.
 В архив попадают только файлы расширения; порядок и даты записей фиксированы.
 

@@ -1,22 +1,28 @@
-FROM python:3.13.7-slim-bookworm
+FROM --platform=$BUILDPLATFORM golang:1.26.0-alpine AS parser-build
+WORKDIR /src
+COPY document-parser/go.mod document-parser/go.sum ./
+RUN go mod download
+COPY document-parser/cmd ./cmd
+COPY document-parser/internal ./internal
+COPY version ./version
+ARG TARGETOS=linux
+ARG TARGETARCH
+ARG APP_VERSION
+RUN test "$APP_VERSION" = "$(cat version)" \
+    && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath \
+       -ldflags "-s -w -X main.version=$APP_VERSION" -o /out/document-parser ./cmd/document-parser
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
-
-RUN groupadd --system --gid 10002 parser \
-    && useradd --system --uid 10002 --gid parser --home-dir /app parser
-
+FROM alpine:3.22
+RUN addgroup -S -g 10002 parser \
+    && adduser -S -D -u 10002 -G parser parser
 WORKDIR /app
-COPY pyproject.toml main.py ./
-RUN python -m pip install --upgrade pip==25.2 \
-    && python -m pip install .
-
+COPY --from=parser-build /out/document-parser /usr/local/bin/document-parser
+COPY document-parser/third_party /app/third_party
 USER parser
 EXPOSE 8080
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
-
-ARG APP_VERSION=unknown
+CMD ["document-parser", "serve"]
+HEALTHCHECK --interval=10s --timeout=3s --retries=10 CMD ["document-parser", "healthcheck"]
+ARG APP_VERSION
 ARG SOURCE_REVISION=unknown
 LABEL org.opencontainers.image.title="AI Секретарь — парсер документов" \
     org.opencontainers.image.source="https://github.com/mumg/ai_secretary" \
