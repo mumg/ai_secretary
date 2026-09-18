@@ -43,8 +43,8 @@ android {
         applicationId = "net.muratov.assistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "0.5.3"
+        versionCode = 16
+        versionName = "0.6.0"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -115,6 +115,7 @@ dependencies {
     androidTestImplementation(composeBom)
 
     implementation("androidx.activity:activity-compose:1.11.0")
+    implementation("androidx.window:window:1.5.1")
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.work:work-runtime-ktx:2.10.5")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.3")

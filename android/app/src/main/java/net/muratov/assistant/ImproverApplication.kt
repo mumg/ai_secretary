@@ -10,6 +10,7 @@ class ImproverApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        net.muratov.assistant.ui.AdaptiveActivityLayout.install(this, container.settings.isConfigured)
         container.realtime.install()
         container.updates.schedule()
     }

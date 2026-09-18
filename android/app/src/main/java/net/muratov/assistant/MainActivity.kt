@@ -122,6 +122,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val application = application as ImproverApplication
+        net.muratov.assistant.ui.AdaptiveActivityLayout.install(this, application.container.settings.isConfigured)
         if (application.container.settings.isConfigured && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 10)
         }
@@ -213,7 +214,7 @@ private fun ImproverScreen(
     var showCreate by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var reminderTask by remember { mutableStateOf<TaskEntity?>(null) }
-    var sortByDue by remember { mutableStateOf(false) }
+    var sortByDue by rememberSaveable { mutableStateOf(false) }
     var voiceError by remember { mutableStateOf<String?>(null) }
     val pagerState = rememberPagerState(pageCount = { HomeTab.entries.size })
     val pagerScope = rememberCoroutineScope()
