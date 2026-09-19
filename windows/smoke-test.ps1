@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Root = Split-Path $PSScriptRoot -Parent
+. (Join-Path $PSScriptRoot 'shortcut-utils.ps1')
 $WindowsBuild = [int](Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentBuildNumber
 if (-not [Environment]::Is64BitOperatingSystem -or $WindowsBuild -lt 14393) { throw 'Requires Windows 10 1607 x64 or newer' }
 if ($ExpectedWindowsBuild -and $WindowsBuild -ne $ExpectedWindowsBuild) { throw "Expected Windows build $ExpectedWindowsBuild, got $WindowsBuild" }
@@ -44,16 +45,17 @@ function Run-Installer([switch]$ExpectRemoval) {
     }
     $Desktop = "$InstallRoot\desktop\AI Secretary.exe"
     if (-not (Test-Path $Desktop)) { throw 'Electron desktop application missing' }
-    $Shell = New-Object -ComObject WScript.Shell
     foreach ($Folder in @('CommonDesktopDirectory', 'CommonPrograms')) {
-        $Links = @(Get-ChildItem ([Environment]::GetFolderPath($Folder)) -Filter '*.lnk' -Recurse |
-            ForEach-Object { $Shell.CreateShortcut($_.FullName) } |
-            Where-Object { $_.TargetPath -eq $Desktop })
+        $FolderPath = [Environment]::GetFolderPath($Folder)
+        $AllLinks = @(Get-ChildItem -LiteralPath $FolderPath -Filter '*.lnk' -Recurse |
+            ForEach-Object { Get-ShortcutInfo -LiteralPath $_.FullName })
+        $Links = @($AllLinks | Where-Object { $_.TargetPath -eq $Desktop })
+        $Details = $AllLinks | Select-Object FullName, TargetPath, Arguments | ConvertTo-Json -Compress
         if (@($Links | Where-Object { $_.Arguments -eq '' }).Count -ne 1) {
-            throw "Application shortcut must target Electron in $Folder"
+            throw "Application shortcut must target '$Desktop' in '$FolderPath'. Found: $Details"
         }
         if ($Folder -eq 'CommonPrograms' -and @($Links | Where-Object { $_.Arguments -eq '--settings' }).Count -ne 1) {
-            throw 'Settings shortcut must target Electron with --settings'
+            throw "Settings shortcut must target '$Desktop' with --settings. Found: $Details"
         }
     }
     $DesktopTest = Join-Path ([IO.Path]::GetTempPath().TrimEnd('\')) ("AI Secretary smoke " + [guid]::NewGuid().ToString('N'))

@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 
 import release
 
@@ -24,6 +25,19 @@ MAGIC = {b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe', b'\xca\xfe\xba\xbe', b'\xca\x
 
 def run(*args, **kwargs):
     return subprocess.run([str(arg) for arg in args], check=True, **kwargs)
+
+
+def detach_image(mount):
+    # Spotlight and filesystem services can briefly hold a freshly read image.
+    for attempt in range(5):
+        try:
+            run('hdiutil', 'detach', mount, stdout=subprocess.DEVNULL)
+            return
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 16 or attempt == 4:
+                raise
+            print(f'Image busy; retrying detach ({attempt + 1}/4): {mount}', flush=True)
+            time.sleep(2)
 
 
 def digest(file, algorithm='sha256'):
@@ -108,7 +122,7 @@ def postgres(archive, destination):
                 else:
                     shutil.copy2(file, licenses / file.name)
     finally:
-        run('hdiutil', 'detach', mount, stdout=subprocess.DEVNULL)
+        detach_image(mount)
     # A few optional Postgres.app libraries retain their original install names.
     # Relocate every reference so the runtime can live in Application Support.
     prefix = '/Applications/Postgres.app/Contents/Versions/17/'
@@ -289,7 +303,7 @@ def verify_dmg(dmg, version):
             if not {'arm64', 'x86_64'} <= set(architectures):
                 raise ValueError('DMG application is not universal')
         finally:
-            run('hdiutil', 'detach', mount, stdout=subprocess.DEVNULL)
+            detach_image(mount)
     print('Mounted DMG: application signature, version and architectures verified', flush=True)
 
 
