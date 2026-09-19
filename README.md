@@ -827,6 +827,16 @@ Debug APK создаётся в `android/app/build/outputs/apk/debug/`. Инст
 [Инструкция Windows](windows/README.md) описывает установку, публикацию,
 мобильный доступ и восстановление после ошибки обновления.
 
+### Приложение macOS
+
+Universal DMG для Apple Silicon и Intel (macOS 13+) включает Electron с WEB-интерфейсом,
+PostgreSQL, API, worker, парсер документов и Caddy. Серверные компоненты работают
+как пользовательские службы `launchd`: запускаются после входа в macOS и продолжают
+работать при закрытом приложении. Docker и Homebrew для установки не нужны.
+Сборка и smoke-тест предусмотрены в GitHub Actions **macOS universal DMG**.
+[Инструкция macOS](macos/README.md) описывает сборку DMG, данные, обновления,
+удалённое подключение и ограничения подписи текущего пакета.
+
 ### Сервер на Go
 
 В ветке `golang` API, worker и миграции запускаются бинарным файлом `improver`.

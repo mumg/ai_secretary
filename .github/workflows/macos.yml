@@ -1,0 +1,96 @@
+name: macOS universal DMG
+
+on:
+  push:
+    branches: [main]
+    paths: ['macos/**', 'backend/**', 'document-parser/**', 'browser-extension/**', 'version', 'windows/installer.iss', '.github/workflows/macos.yml']
+    tags: ['macos-v*']
+  pull_request:
+    paths: ['macos/**', 'backend/**', 'document-parser/**', 'browser-extension/**', 'version', '.github/workflows/macos.yml']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Опубликовать проверенный DMG в GitHub Releases'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: |
+            backend/go.sum
+            document-parser/go.sum
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: macos/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Validate release tag
+        run: |
+          set -euo pipefail
+          release_version="$(tr -d '\r\n' < version)"
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF" != "refs/tags/macos-v$release_version" ]]; then exit 1; fi
+          if [[ "${{ inputs.publish }}" == true && "$GITHUB_REF" != refs/heads/main && "$GITHUB_REF" != refs/tags/macos-v* ]]; then exit 1; fi
+      - uses: actions/cache@v4
+        with:
+          path: |
+            dist/macos/cache
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: macos-vendors-${{ hashFiles('macos/vendor.json', 'macos/package-lock.json') }}
+      - run: npm ci --prefix macos --no-audit --no-fund
+      - run: npm test --prefix macos
+      - name: Test native components
+        run: |
+          go -C backend test ./...
+          go -C document-parser test ./...
+      - name: Build universal offline DMG
+        run: python3 macos/build.py
+      - name: Smoke test services from the packaged application
+        run: node macos/smoke-test.cjs 'dist/macos/mac-universal/AI Secretary.app/Contents/Resources/server'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-universal-dmg
+          path: |
+            dist/macos/AI-Secretary-*-mac-universal.dmg
+            dist/macos/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/macos-v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v8
+        with:
+          name: macos-universal-dmg
+          path: dist/macos
+      - name: Publish tested DMG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_version="$(tr -d '\r\n' < version)"
+          gh release create "macos-v$release_version" dist/macos/*.dmg dist/macos/SHA256SUMS \
+            --target "$GITHUB_SHA" --title "macOS $release_version" --latest=false \
+            --notes "Universal DMG для Apple Silicon и Intel. Electron, PostgreSQL, API, worker, парсер и Caddy включены. Фоновые службы launchd работают после входа пользователя и при закрытом приложении. Без Developer ID и notarization. Инструкция: macos/README.md."

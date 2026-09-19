@@ -1,0 +1,17 @@
+{
+  "postgres": {
+    "filename": "Postgres-2.9.6-17.dmg",
+    "url": "https://github.com/PostgresApp/PostgresApp/releases/download/v2.9.6/Postgres-2.9.6-17.dmg",
+    "sha256": "b38bb00b8c8702a568270aab85995c550f7f93d1503b818efdc5ff9a519b7168"
+  },
+  "caddy-amd64": {
+    "filename": "caddy_2.10.2_mac_amd64.tar.gz",
+    "url": "https://github.com/caddyserver/caddy/releases/download/v2.10.2/caddy_2.10.2_mac_amd64.tar.gz",
+    "sha512": "d6077f7a35663b1b0436a45341e96828bb8025221b777417c781c30c56931e45209b0e5468cd6eb8ec881728c20f142a4333a878c82a10b49913384cffaf541d"
+  },
+  "caddy-arm64": {
+    "filename": "caddy_2.10.2_mac_arm64.tar.gz",
+    "url": "https://github.com/caddyserver/caddy/releases/download/v2.10.2/caddy_2.10.2_mac_arm64.tar.gz",
+    "sha512": "3b8a4b24054bddd96cae8da5c34e48c19105be29859d6f09e37344b7e188881cfd6b0a91af3f3e8f1d10987153e6bad70d1752c967e1360cc0041fc7736076ec"
+  }
+}
