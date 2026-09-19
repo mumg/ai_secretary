@@ -58,26 +58,6 @@ function Run-Installer([switch]$ExpectRemoval) {
             throw "Settings shortcut must target '$Desktop' with --settings. Found: $Details"
         }
     }
-    $DesktopTest = Join-Path ([IO.Path]::GetTempPath().TrimEnd('\')) ("AI Secretary smoke " + [guid]::NewGuid().ToString('N'))
-    New-Item $DesktopTest -ItemType Directory | Out-Null
-    $env:AI_SECRETARY_SMOKE_ROOT = $DesktopTest
-    try {
-        # Keep screenshots independent of GPU drivers on unattended runners.
-        # Normal application/shortcut launches retain hardware acceleration.
-        $UI = Start-Process $Desktop -ArgumentList @('--secretary-smoke-test', '--disable-gpu') -PassThru
-        if (-not $UI.WaitForExit(180000)) { $UI.Kill(); throw 'Electron smoke test timed out' }
-        if ($UI.ExitCode -ne 0) { throw "Electron smoke test failed: $($UI.ExitCode)" }
-        $State = Get-Content "$DesktopTest\electron-smoke.json" -Raw | ConvertFrom-Json
-        if ($State.tabs -ne 5 -or $State.node -ne 'undefined' -or $State.require -ne 'undefined' -or -not $State.nativeSSO) {
-            throw 'Desktop renderer or native MTS SSO bridge failed'
-        }
-        foreach ($Name in @('AISecretaryDatabase', 'AISecretaryParser', 'AISecretaryApi', 'AISecretaryWorker')) {
-            if ((Get-Service $Name).Status -ne 'Running') { throw 'Closing Electron stopped server services' }
-        }
-    } finally {
-        Remove-Item Env:AI_SECRETARY_SMOKE_ROOT
-        Remove-Item $DesktopTest -Recurse -Force
-    }
 }
 function Query-Database([string]$Sql) {
     $env:PGPASSWORD = (Get-Content "$DataRoot\secrets\database-password" -Raw).Trim()

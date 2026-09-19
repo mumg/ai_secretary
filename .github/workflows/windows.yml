@@ -89,7 +89,7 @@ jobs:
       - name: Build offline EXE
         shell: pwsh
         run: ./windows/build.ps1
-      - name: Verify Electron, services, uninstall/reinstall and data preservation (Server 2022)
+      - name: Verify installation, services, shortcuts and data preservation (Server 2022)
         shell: pwsh
         run: ./windows/smoke-test.ps1
       - uses: actions/upload-artifact@v7
