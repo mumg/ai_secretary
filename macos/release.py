@@ -40,7 +40,8 @@ def verify_identity(file):
     requirement = (f'anchor apple generic and certificate leaf[subject.OU] = "{team}" '
                    'and certificate leaf[field.1.2.840.113635.100.6.1.13] exists')
     subprocess.run(['codesign', '--verify', '--strict', '--all-architectures',
-                    '-R', requirement, str(file)], check=True)
+                    # Without '=', codesign treats the requirement as a filename.
+                    '-R', '=' + requirement, str(file)], check=True)
 
 
 def verify_payload(payload):

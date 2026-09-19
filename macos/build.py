@@ -61,7 +61,9 @@ def download(entry):
 
 
 def native(file):
-    if file.is_symlink() or not file.is_file():
+    # Universal static archives share the fat Mach-O magic, but contain linker
+    # inputs, not loadable code. codesign cannot verify them as signed binaries.
+    if file.suffix == '.a' or file.is_symlink() or not file.is_file():
         return False
     with file.open('rb') as stream:
         return stream.read(4) in MAGIC

@@ -20,6 +20,15 @@ spec.loader.exec_module(ci)
 
 
 class ReleaseTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'darwin', 'requires Apple codesign')
+    def test_identity_requirement_is_parsed_as_source_not_filename(self):
+        # Use a system binary: the requirement is valid, but its Apple signature
+        # must fail our Developer ID/team check (exit 3, not a parse error).
+        with patch.dict(os.environ, {'MACOS_SIGNING_TEAM_ID': 'ABCDEFGHIJ'}):
+            with self.assertRaises(subprocess.CalledProcessError) as error:
+                release.verify_identity(Path('/usr/bin/true'))
+        self.assertEqual(error.exception.returncode, 3)
+
     def test_required_signing_cannot_fall_back_to_adhoc(self):
         with patch.dict(os.environ, {'MACOS_REQUIRE_SIGNING': 'true'}, clear=True):
             with self.assertRaisesRegex(ValueError, 'no identity'):
