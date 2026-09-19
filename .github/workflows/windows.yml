@@ -40,6 +40,14 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: macos/package-lock.json
+      - name: Validate release version
+        shell: pwsh
+        run: |
+          python windows/build.py --check-version
+          if ($LASTEXITCODE -ne 0) { throw 'Release versions are inconsistent' }
+          $Version = (Get-Content version -Raw).Trim()
+          if ($env:GITHUB_REF.StartsWith('refs/tags/') -and $env:GITHUB_REF -ne "refs/tags/windows-v$Version") { throw 'Windows tag must match root version' }
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:GITHUB_REF -ne 'refs/heads/main') { throw 'Publish only from main' }
       - name: Install Electron tooling and test SSO isolation
         shell: pwsh
         run: |
@@ -47,12 +55,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Electron dependencies failed' }
           npm test --prefix macos
           if ($LASTEXITCODE -ne 0) { throw 'Electron/SSO tests failed' }
-      - name: Validate release version
-        shell: pwsh
-        run: |
-          $Version = (Get-Content version -Raw).Trim()
-          if ($env:GITHUB_REF.StartsWith('refs/tags/') -and $env:GITHUB_REF -ne "refs/tags/windows-v$Version") { throw 'Windows tag must match root version' }
-          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:GITHUB_REF -ne 'refs/heads/main') { throw 'Publish only from main' }
       - name: Go document parser tests on Windows
         working-directory: document-parser
         shell: pwsh

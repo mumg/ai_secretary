@@ -2,6 +2,8 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Root = Split-Path $PSScriptRoot -Parent
 Set-Location $Root
+python windows/build.py --check-version
+if ($LASTEXITCODE -ne 0) { throw 'Release versions are inconsistent' }
 npm ci --prefix macos --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { throw 'Electron dependencies failed' }
 python windows/build.py

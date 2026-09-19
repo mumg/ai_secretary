@@ -6,14 +6,39 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
+import tomllib
 import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "dist" / "windows"
+
+
+def validate_version():
+    version = (ROOT / "version").read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        raise RuntimeError(f"Invalid release version in version: {version!r}")
+    package = json.loads((ROOT / "macos/package.json").read_text(encoding="utf-8"))
+    lock = json.loads((ROOT / "macos/package-lock.json").read_text(encoding="utf-8"))
+    backend = tomllib.loads((ROOT / "backend/pyproject.toml").read_text(encoding="utf-8"))
+    installer = re.search(r'^\s*#define\s+AppVersion\s+"([^"]+)"',
+                          (ROOT / "windows/installer.iss").read_text(encoding="utf-8"), re.MULTILINE)
+    versions = {
+        "macos/package.json": package.get("version"),
+        "macos/package-lock.json (version)": lock.get("version"),
+        'macos/package-lock.json (packages[""].version)': lock.get("packages", {}).get("", {}).get("version"),
+        "backend/pyproject.toml": backend.get("project", {}).get("version"),
+        "windows/installer.iss (AppVersion)": installer.group(1) if installer else None,
+    }
+    mismatches = [f"{name}={value!r}" for name, value in versions.items() if value != version]
+    if mismatches:
+        raise RuntimeError(f"Release version mismatch: version={version!r}; " + "; ".join(mismatches)
+                           + ". Commit the root version and all release metadata together.")
+    return version
 
 
 def verified_download(entry: dict, destination: Path) -> Path:
@@ -77,9 +102,7 @@ def source_copy(destination):
 
 
 def desktop_copy(destination):
-    version = (ROOT / "version").read_text(encoding="utf-8").strip()
-    if json.loads((ROOT / "macos/package.json").read_text(encoding="utf-8"))['version'] != version:
-        raise RuntimeError('Electron version does not match root version')
+    validate_version()
     npm = shutil.which('npm.cmd' if os.name == 'nt' else 'npm')
     if not npm:
         raise RuntimeError('Install Node.js 24 and run npm ci --prefix macos')
@@ -96,6 +119,7 @@ def build(cross=False):
         raise RuntimeError('Build on Windows, or explicitly use --cross for packaging without Windows runtime validation.')
     if sys.version_info < (3, 11):
         raise RuntimeError('Python 3.11+ is required on the build host.')
+    validate_version()
     entries = json.loads((ROOT / "windows/vendor.json").read_text(encoding="utf-8"))
     vendors = {name: verified_download(entry, OUT / "vendor") for name, entry in entries.items()}
     payload = OUT / "payload"
@@ -126,4 +150,9 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cross', action='store_true')
-    build(parser.parse_args().cross)
+    parser.add_argument('--check-version', action='store_true', help='Validate release metadata without building')
+    args = parser.parse_args()
+    if args.check_version:
+        print('Release versions consistent:', validate_version())
+    else:
+        build(args.cross)

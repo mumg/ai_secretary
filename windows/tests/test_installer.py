@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -14,6 +15,32 @@ builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
 class InstallerBuildTests(unittest.TestCase):
+    def test_version_mismatch_names_root_and_affected_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ('version', 'macos/package.json', 'macos/package-lock.json',
+                         'backend/pyproject.toml', 'windows/installer.iss'):
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / name, target)
+            (root / 'version').write_text('0.0.0\n', encoding='utf-8')
+            with patch.object(builder, 'ROOT', root):
+                with self.assertRaises(RuntimeError) as error:
+                    builder.validate_version()
+            message = str(error.exception)
+            self.assertIn("version='0.0.0'", message)
+            for name in ('macos/package.json', 'macos/package-lock.json', 'backend/pyproject.toml', 'windows/installer.iss'):
+                self.assertIn(name, message)
+
+    def test_version_validation_precedes_downloads_and_payload_changes(self):
+        with patch.object(builder, 'validate_version', side_effect=RuntimeError('mismatch')), \
+                patch.object(builder, 'verified_download') as download, \
+                patch.object(builder.shutil, 'rmtree') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'mismatch'):
+                builder.build(cross=True)
+            download.assert_not_called()
+            remove.assert_not_called()
+
     def test_desktop_package_with_cp1252_default_file_encoding(self):
         read_text = Path.read_text
 
