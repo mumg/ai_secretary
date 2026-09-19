@@ -220,12 +220,15 @@ def build(payload_only=False):
     icon()
     if payload_only:
         return
+    print('Packaging Electron x64 + arm64; server payload is attached only after merging.', flush=True)
     run('npm', 'exec', '--', 'electron-builder', '--config', 'electron-builder.cjs', '--mac', '--universal', '--dir', '--publish', 'never', cwd=HERE,
-        env={**os.environ, 'CSC_IDENTITY_AUTO_DISCOVERY': 'false'})
+        env={**os.environ, 'CSC_IDENTITY_AUTO_DISCOVERY': 'false',
+             'DEBUG': ','.join(filter(None, [os.environ.get('DEBUG'), 'electron-universal']))})
     package_dmg(OUT / 'mac-universal/AI Secretary.app', version)
 
 
 def package_dmg(app, version):
+    print('Verifying universal architectures, payload checksums and application signatures.', flush=True)
     validate_native_tree(app)
     release.verify_payload(app / 'Contents/Resources/server')
     run('codesign', '--verify', '--deep', '--strict', app)
@@ -239,6 +242,7 @@ def package_dmg(app, version):
         archive = OUT / 'notarization-app.zip'
         archive.unlink(missing_ok=True)
         try:
+            print('Creating application archive for Apple notarization.', flush=True)
             run('ditto', '-c', '-k', '--keepParent', app, archive)
             release.notarize(archive, app, OUT / 'notarization')
         finally:

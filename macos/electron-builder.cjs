@@ -4,7 +4,8 @@ module.exports = {
   artifactName: 'AI-Secretary-${version}-mac-universal.${ext}',
   directories: { output: '../dist/macos', buildResources: 'assets' },
   files: ['main.cjs', 'services.cjs', 'windows-services.cjs', 'mts-auth.cjs', 'preload.cjs', 'splash.html', 'package.json'],
-  extraResources: [{ from: '../dist/macos/payload', to: 'server' }],
+  // sign.cjs copies the already-universal server payload after merging Electron.
+  // Otherwise @electron/universal runs `file` on thousands of server files twice.
   asar: true,
   mac: {
     target: [{ target: 'dir', arch: ['universal'] }],
@@ -16,7 +17,6 @@ module.exports = {
     // disabled; the release hook enables hardened runtime for Developer ID.
     hardenedRuntime: false,
     gatekeeperAssess: false,
-    x64ArchFiles: 'Contents/Resources/server/**',
     extendInfo: { NSHumanReadableCopyright: 'AI Secretary contributors' }
   },
   afterPack: require('./sign.cjs'),

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 import shutil
+import struct
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -15,6 +16,23 @@ builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
 class InstallerBuildTests(unittest.TestCase):
+    def test_windows_icon_contains_real_256_pixel_image(self):
+        data = (ROOT / 'windows/assets/secretary.ico').read_bytes()
+        reserved, kind, count = struct.unpack_from('<HHH', data)
+        self.assertEqual((reserved, kind), (0, 1))
+        sizes = []
+        for index in range(count):
+            width, height, _, _, planes, depth, length, offset = struct.unpack_from('<BBBBHHII', data, 6 + 16 * index)
+            size = (width or 256, height or 256)
+            self.assertGreaterEqual(offset, 6 + 16 * count)
+            self.assertLessEqual(offset + length, len(data))
+            image = data[offset:offset + length]
+            self.assertEqual(image[:8], b'\x89PNG\r\n\x1a\n')
+            self.assertEqual(struct.unpack_from('>II', image, 16), size)
+            self.assertEqual((planes, depth), (1, 32))
+            sizes.append(size)
+        self.assertIn((256, 256), sizes, 'electron-builder requires a 256x256 ICO image')
+
     def test_version_mismatch_names_root_and_affected_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

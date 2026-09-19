@@ -64,6 +64,7 @@ def verify_payload(payload):
 
 
 def notarize(archive, staple_target, output):
+    print(f'Apple notarization: submitting {archive.name}; waiting up to 30 minutes for a result.', flush=True)
     output.mkdir(parents=True, exist_ok=True)
     auth = ['--keychain-profile', os.environ['MACOS_NOTARY_PROFILE']]
     if os.environ.get('MACOS_SIGNING_KEYCHAIN'):
