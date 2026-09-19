@@ -60,7 +60,13 @@ def verify_payload(payload):
             with file.open('rb') as stream:
                 actual[relative] = hashlib.file_digest(stream, 'sha256').hexdigest()
     if expected != actual:
-        raise ValueError('Payload files changed after signing and hashing')
+        changes = []
+        for name in sorted(expected.keys() | actual.keys()):
+            if expected.get(name) != actual.get(name):
+                kind = 'added' if name not in expected else 'missing' if name not in actual else 'changed'
+                changes.append(f'{kind}: {name}')
+        raise ValueError(f'Payload files changed after signing and hashing ({len(changes)}): '
+                         + '; '.join(changes[:20]))
 
 
 def notarize(archive, staple_target, output):

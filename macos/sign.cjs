@@ -29,7 +29,9 @@ module.exports = async context => {
         preAutoEntitlements: false,
         preEmbedProvisioningProfile: false,
         gatekeeperAssess: false,
-        ignore: [file => path.resolve(file) === payload || path.resolve(file).startsWith(payload + path.sep)],
+        // osx-sign 1.3.3 drops array-valued ignore in validateOptsIgnore.
+        // A single function is normalized correctly; do not wrap it in [].
+        ignore: file => path.resolve(file) === payload || path.resolve(file).startsWith(payload + path.sep),
         optionsForFile: file => {
           current = path.relative(app, file) || path.basename(app);
           console.log(`[macOS] Signing: ${current}`);
