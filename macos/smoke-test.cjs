@@ -34,6 +34,7 @@ async function main() {
       assert.equal(renderer.tabs, 5);
       assert.equal(renderer.node, 'undefined');
       assert.equal(renderer.require, 'undefined');
+      assert.equal(renderer.nativeSSO, true);
       await fs.mkdir('dist/macos', { recursive: true });
       await fs.copyFile(path.join(data, 'electron-app.png'), 'dist/macos/smoke-electron.png');
       // The actual Electron process has exited; all launchd jobs must remain running.

@@ -9,6 +9,10 @@ on:
     paths: ['macos/**', 'backend/**', 'document-parser/**', 'browser-extension/**', 'version', '.github/workflows/macos.yml']
   workflow_dispatch:
     inputs:
+      sign:
+        description: 'Developer ID и нотариализация Apple (только main или macos-v*)'
+        type: boolean
+        default: true
       publish:
         description: 'Опубликовать проверенный DMG в GitHub Releases'
         type: boolean
@@ -24,7 +28,9 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 120
+    outputs:
+      signed: ${{ steps.signing-mode.outputs.signed }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -42,11 +48,22 @@ jobs:
         with:
           python-version: '3.13'
       - name: Validate release tag
+        env:
+          PUBLISH: ${{ inputs.publish }}
+          SIGN: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.sign) }}
+        id: signing-mode
         run: |
           set -euo pipefail
           release_version="$(tr -d '\r\n' < version)"
           if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF" != "refs/tags/macos-v$release_version" ]]; then exit 1; fi
-          if [[ "${{ inputs.publish }}" == true && "$GITHUB_REF" != refs/heads/main && "$GITHUB_REF" != refs/tags/macos-v* ]]; then exit 1; fi
+          if [[ "$SIGN" == true && "$GITHUB_REF" != refs/heads/main && "$GITHUB_REF" != refs/tags/macos-v* ]]; then
+            echo 'Signing is allowed only on main or a macos-v* tag'; exit 1
+          fi
+          if [[ "$PUBLISH" == true || "$GITHUB_REF" == refs/tags/macos-v* ]]; then
+            if [[ "$SIGN" != true ]]; then echo 'Publishing requires signing and notarization'; exit 1; fi
+          fi
+          echo "signed=$SIGN" >> "$GITHUB_OUTPUT"
+          echo "MACOS_REQUIRE_SIGNING=$SIGN" >> "$GITHUB_ENV"
       - uses: actions/cache@v4
         with:
           path: |
@@ -56,12 +73,27 @@ jobs:
           key: macos-vendors-${{ hashFiles('macos/vendor.json', 'macos/package-lock.json') }}
       - run: npm ci --prefix macos --no-audit --no-fund
       - run: npm test --prefix macos
+      - name: Test signing and notarization pipeline
+        run: python3 -m unittest discover -s macos/tests -p 'test_*.py' -v
       - name: Test native components
         run: |
           go -C backend test ./...
           go -C document-parser test ./...
+      - name: Import Developer ID and validate Apple credentials
+        if: steps.signing-mode.outputs.signed == 'true'
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: python3 macos/ci-signing.py setup
       - name: Build universal offline DMG
         run: python3 macos/build.py
+      - name: Test native SSO against an isolated local HTTPS provider
+        run: |
+          node macos/node_modules/electron/install.js
+          macos/node_modules/.bin/electron macos/sso-smoke.cjs
       - name: Smoke test services from the packaged application
         run: node macos/smoke-test.cjs 'dist/macos/mac-universal/AI Secretary.app/Contents/Resources/server'
       - uses: actions/upload-artifact@v7
@@ -72,10 +104,21 @@ jobs:
             dist/macos/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
+      - name: Upload notarization diagnostics
+        if: always() && steps.signing-mode.outputs.signed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-notarization-logs
+          path: dist/macos/notarization/*.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Remove signing keychain
+        if: always() && steps.signing-mode.outputs.signed == 'true'
+        run: python3 macos/ci-signing.py cleanup
 
   publish:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/macos-v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    if: needs.build.outputs.signed == 'true' && (startsWith(github.ref, 'refs/tags/macos-v') || (github.event_name == 'workflow_dispatch' && inputs.publish))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -93,4 +136,4 @@ jobs:
           release_version="$(tr -d '\r\n' < version)"
           gh release create "macos-v$release_version" dist/macos/*.dmg dist/macos/SHA256SUMS \
             --target "$GITHUB_SHA" --title "macOS $release_version" --latest=false \
-            --notes "Universal DMG для Apple Silicon и Intel. Electron, PostgreSQL, API, worker, парсер и Caddy включены. Фоновые службы launchd работают после входа пользователя и при закрытом приложении. Без Developer ID и notarization. Инструкция: macos/README.md."
+            --notes "Universal DMG для Apple Silicon и Intel. Electron, PostgreSQL, API, worker, парсер и Caddy включены. Фоновые службы launchd работают после входа пользователя и при закрытом приложении. Подпись Developer ID и нотариализация Apple; билеты прикреплены к приложению и DMG. Инструкция: macos/README.md."

@@ -14,6 +14,8 @@ import sys
 import tarfile
 import tempfile
 
+import release
+
 ROOT = Path(__file__).resolve().parent.parent
 HERE = ROOT / 'macos'
 OUT = ROOT / 'dist/macos'
@@ -154,6 +156,7 @@ def icon():
 
 
 def build(payload_only=False):
+    release.validate_configuration()
     if sys.platform != 'darwin':
         raise SystemExit('Build on macOS with Xcode Command Line Tools, Go, Node.js and Python 3.11+.')
     version = (ROOT / 'version').read_text().strip()
@@ -204,7 +207,7 @@ def build(payload_only=False):
     # lipo changes signatures. Sign before hashing/copying to the persistent runtime.
     for file in payload.rglob('*'):
         if native(file):
-            run('codesign', '--force', '--sign', '-', file, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            release.sign_native(file)
     manifest = {}
     for file in sorted(payload.rglob('*')):
         if file.is_symlink():
@@ -224,7 +227,23 @@ def build(payload_only=False):
 
 def package_dmg(app, version):
     validate_native_tree(app)
+    release.verify_payload(app / 'Contents/Resources/server')
     run('codesign', '--verify', '--deep', '--strict', app)
+    if release.signed():
+        for file in app.rglob('*'):
+            if native(file):
+                release.verify_identity(file)
+        release.verify_identity(app)
+        # Staple the app before creating the final disk image so both remain
+        # verifiable offline after dragging the app into Applications.
+        archive = OUT / 'notarization-app.zip'
+        archive.unlink(missing_ok=True)
+        try:
+            run('ditto', '-c', '-k', '--keepParent', app, archive)
+            release.notarize(archive, app, OUT / 'notarization')
+        finally:
+            archive.unlink(missing_ok=True)
+        run('spctl', '--assess', '--type', 'execute', '--verbose=2', app)
     dmg = OUT / f'AI-Secretary-{version}-mac-universal.dmg'
     staging = OUT / 'dmg-root'
     shutil.rmtree(staging, ignore_errors=True)
@@ -233,6 +252,11 @@ def package_dmg(app, version):
     (staging / 'Applications').symlink_to('/Applications')
     run('hdiutil', 'create', '-ov', '-format', 'UDZO', '-fs', 'HFS+', '-volname',
         f'AI Secretary {version}', '-srcfolder', staging, dmg)
+    if release.signed():
+        release.sign_native(dmg, disk_image=True)
+        release.verify_identity(dmg)
+        release.notarize(dmg, dmg, OUT / 'notarization')
+        run('spctl', '--assess', '--type', 'open', '--context', 'context:primary-signature', '--verbose=2', dmg)
     run('hdiutil', 'verify', dmg)
     verify_dmg(dmg, version)
     shutil.rmtree(staging)
@@ -252,6 +276,11 @@ def verify_dmg(dmg, version):
             if os.readlink(mount / 'Applications') != '/Applications':
                 raise ValueError('Missing Applications installation shortcut')
             run('codesign', '--verify', '--deep', '--strict', app)
+            release.verify_payload(app / 'Contents/Resources/server')
+            if release.signed():
+                release.verify_identity(app)
+                run('xcrun', 'stapler', 'validate', app)
+                run('spctl', '--assess', '--type', 'execute', '--verbose=2', app)
             architectures = subprocess.check_output(['lipo', '-archs', str(app / 'Contents/MacOS/AI Secretary')], text=True).split()
             if not {'arm64', 'x86_64'} <= set(architectures):
                 raise ValueError('DMG application is not universal')

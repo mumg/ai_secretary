@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.32"
+  #define AppVersion "0.1.33"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -29,6 +29,8 @@ SetupMutex=AISecretarySetup
 AllowCancelDuringInstall=no
 UninstallDisplayName=AI Секретарь
 UninstallDisplayIcon={app}\secretary.ico
+CloseApplications=yes
+RestartApplications=no
 ; Always create a fresh log after the previous installation has been removed.
 UninstallLogMode=new
 LicenseFile=THIRD_PARTY.md
@@ -42,14 +44,14 @@ Source: "{#PayloadDir}\setup\secretary-setup.exe"; Flags: dontcopy
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{commondesktop}\AI Секретарь"; Filename: "{app}\Open.url"; IconFilename: "{app}\secretary.ico"
-Name: "{group}\AI Секретарь"; Filename: "{app}\Open.url"; IconFilename: "{app}\secretary.ico"
-Name: "{group}\Настройки AI Секретаря"; Filename: "{app}\Settings.url"; IconFilename: "{app}\secretary.ico"
+Name: "{commondesktop}\AI Секретарь"; Filename: "{app}\desktop\AI Secretary.exe"; IconFilename: "{app}\secretary.ico"
+Name: "{group}\AI Секретарь"; Filename: "{app}\desktop\AI Secretary.exe"; IconFilename: "{app}\secretary.ico"
+Name: "{group}\Настройки AI Секретаря"; Filename: "{app}\desktop\AI Secretary.exe"; Parameters: "--settings"; IconFilename: "{app}\secretary.ico"
 Name: "{group}\Новые версии"; Filename: "https://github.com/mumg/ai_secretary/releases"
 Name: "{group}\Удалить AI Секретарь"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\Settings.url"; Description: "Открыть настройку источников и модели"; Flags: shellexec postinstall skipifsilent runasoriginaluser
+Filename: "{app}\desktop\AI Secretary.exe"; Parameters: "--settings"; Description: "Открыть настройку источников и модели"; Flags: postinstall skipifsilent runasoriginaluser
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\python"

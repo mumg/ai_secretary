@@ -188,7 +188,7 @@ test('gateway enrolls without invitation and rotates the identity, clearing the 
   const w = dom.window;
   const el = id => w.document.getElementById(id);
   const writes = [];
-  let state = {state: 'not_configured', gateway: 'https://ai.muratov.net', installation_id: 'auto-uid', qr_available: false, enabled: false};
+  let state = {state: 'not_configured', gateway: 'https://connect.ai-secretary.co', installation_id: 'auto-uid', qr_available: false, enabled: false};
   let failRotation = false;
   w.fetch = async (url, options = {}) => {
     if (url.endsWith('/gateway/enroll') || url.endsWith('/gateway/reregister')) {
@@ -203,7 +203,7 @@ test('gateway enrolls without invitation and rotates the identity, clearing the 
   };
   w.eval(fs.readFileSync(path.join(root, 'assets/admin.js'), 'utf8'));
   await settle();
-  assert.equal(el('gatewayAddress').value, 'https://ai.muratov.net');
+  assert.equal(el('gatewayAddress').value, 'https://connect.ai-secretary.co');
   for (const id of ['gatewayName', 'gatewayInvitation', 'gatewayPrepare']) assert.equal(el(id), null);
   el('mobileTab').click(); el('gatewayConnectionTab').click();
   await settle();
@@ -215,7 +215,7 @@ test('gateway enrolls without invitation and rotates the identity, clearing the 
   el('gatewayAddress').value = state.gateway;
   el('gatewayForm').dispatchEvent(new w.Event('submit', {cancelable: true}));
   await settle();
-  assert.deepEqual(writes[0].body, {gateway: 'https://ai.muratov.net'});
+  assert.deepEqual(writes[0].body, {gateway: 'https://connect.ai-secretary.co'});
   assert.equal(el('gatewayEnroll').hidden, true);
   assert.equal(el('gatewayReregister').hidden, false);
   el('gatewayShowQR').click(); await settle();
@@ -230,5 +230,5 @@ test('gateway enrolls without invitation and rotates the identity, clearing the 
   assert.equal(el('gatewayUID').value, 'new-uid');
   assert.equal(el('gatewayQRResult').hidden, true);
   assert.ok(writes[2].url.endsWith('/gateway/reregister'));
-  assert.deepEqual(writes[2].body, {gateway: 'https://ai.muratov.net'});
+  assert.deepEqual(writes[2].body, {gateway: 'https://connect.ai-secretary.co'});
 });

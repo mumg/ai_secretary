@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { Services, plist, compareVersions, validateConnection } = require('../services.cjs');
 const connection = { apiPort: 18000, parserPort: 18080, databasePort: 15432, httpsPort: 18443, httpPort: 18081, publicHost: '' };
 
-test('launchd runs independent jobs with private secret files, loopback ports and escaped paths', () => {
+test('launchd runs independent jobs with private secret files, loopback ports and escaped paths', { skip: process.platform === 'win32' }, () => {
   const s = new Services({ payload: '/tmp/payload', data: '/tmp/AI Secretary & тест' });
   s.runtime = '/tmp/runtime & version';
   for (const name of ['database', 'parser', 'api', 'worker', 'proxy']) {
@@ -33,7 +33,7 @@ test('connection configuration cannot inject Caddy directives or collide ports',
   assert.throws(() => validateConnection({ ...connection, apiPort: 5432, databasePort: 5432 }));
   assert.throws(() => validateConnection({ ...connection, httpsPort: 443 }));
 });
-test('stop order drains HTTP and worker clients before PostgreSQL', async () => {
+test('stop order drains HTTP and worker clients before PostgreSQL', { skip: process.platform === 'win32' }, async () => {
   const s = new Services({ payload: '/tmp/payload' });
   const stopped = []; s.stop = async name => stopped.push(name);
   await s.stopAll();

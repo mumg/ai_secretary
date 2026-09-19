@@ -1,5 +1,6 @@
 const mtsSsoChannel = "improver-mts-sso-v1";
 let mtsExtensionReady = false;
+let mtsNativeSSO = false;
 let mtsLogin = null;
 let mtsExtensionCheckTimer;
 const mtsSavedEmails = new Map();
@@ -32,8 +33,9 @@ function renderMtsExtension(checking = false) {
   const ready = mtsExtensionReady;
   const status = $("sourceMtsExtensionStatus");
   if (status) {
-    status.textContent = checking ? "Проверяем расширение «AI Секретарь»…" : ready
-      ? "Расширение «AI Секретарь» подключено. Доступен вход через SSO."
+    status.textContent = checking ? "Проверяем доступность входа…" : ready
+      ? mtsNativeSSO ? "Вход через МТС Линк доступен в приложении. Расширение не требуется."
+        : "Расширение «AI Секретарь» подключено. Доступен вход через SSO."
       : "Расширение «AI Секретарь» не обнаружено на этой странице.";
     $("sourceMtsSso").disabled = !ready;
     $("sourceMtsSsoHint").hidden = !ready;
@@ -164,10 +166,11 @@ window.addEventListener("message", async event => {
   if (message.action === "ready") {
     clearTimeout(mtsExtensionCheckTimer);
     mtsExtensionReady = true;
+    mtsNativeSSO = message.transport === "desktop";
     renderMtsExtension();
     if (mtsLogin && !mtsLogin.busy) {
       $("mtsSsoFind").disabled = false;
-      mtsMessage("Расширение подключено. Введите рабочий email.");
+      mtsMessage(mtsNativeSSO ? "Введите рабочий email для входа в МТС Линк." : "Расширение подключено. Введите рабочий email.");
     }
     return;
   }

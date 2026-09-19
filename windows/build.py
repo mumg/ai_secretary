@@ -76,9 +76,26 @@ def source_copy(destination):
                     "--backend-web", str(destination / "backend/web")], check=True)
 
 
-def build():
-    if os.name != "nt" or sys.version_info[:2] != (3, 13):
-        raise RuntimeError("Build the installer on Windows x64 with Python 3.13 (GitHub Actions).")
+def desktop_copy(destination):
+    version = (ROOT / "version").read_text().strip()
+    if json.loads((ROOT / "macos/package.json").read_text())['version'] != version:
+        raise RuntimeError('Electron version does not match root version')
+    npm = shutil.which('npm.cmd' if os.name == 'nt' else 'npm')
+    if not npm:
+        raise RuntimeError('Install Node.js 24 and run npm ci --prefix macos')
+    subprocess.run([npm, 'exec', '--', 'electron-builder', '--config', '../windows/electron-builder.cjs',
+                    '--win', '--x64', '--dir', '--publish', 'never'], cwd=ROOT / 'macos', check=True,
+                   env={**os.environ, 'CSC_IDENTITY_AUTO_DISCOVERY': 'false'})
+    shutil.copytree(OUT / 'electron/win-unpacked', destination / 'desktop')
+    if not (destination / 'desktop/AI Secretary.exe').is_file():
+        raise RuntimeError('Electron executable is missing')
+
+
+def build(cross=False):
+    if os.name != 'nt' and not cross:
+        raise RuntimeError('Build on Windows, or explicitly use --cross for packaging without Windows runtime validation.')
+    if sys.version_info < (3, 11):
+        raise RuntimeError('Python 3.11+ is required on the build host.')
     entries = json.loads((ROOT / "windows/vendor.json").read_text(encoding="utf-8"))
     vendors = {name: verified_download(entry, OUT / "vendor") for name, entry in entries.items()}
     payload = OUT / "payload"
@@ -86,6 +103,7 @@ def build():
         shutil.rmtree(payload)
     payload.mkdir(parents=True)
     source_copy(payload)
+    desktop_copy(payload)
     extract(vendors["postgres"], payload / "postgres", "pgsql/",
             ("bin", "lib", "share", "server_license.txt", "commandlinetools_3rd_party_licenses.txt"))
     extract(vendors["caddy"], payload / "caddy")
@@ -95,7 +113,10 @@ def build():
     # Preserve WinSW's MIT notice with its redistributable.
     with urllib.request.urlopen("https://raw.githubusercontent.com/winsw/winsw/v2.12.0/LICENSE.txt", timeout=30) as response:
         (payload / "vendor/WinSW-LICENSE.txt").write_bytes(response.read())
-    subprocess.run([str(payload / "setup/secretary-setup.exe"), "check-runtime", "--root", str(payload)], check=True)
+    if not cross:
+        subprocess.run([str(payload / "setup/secretary-setup.exe"), "check-runtime", "--root", str(payload)], check=True)
+    else:
+        print('Cross-build: Windows runtime/install checks have NOT been run. Run windows/smoke-test.ps1 on Windows.')
     if list(payload.rglob("*.py")) or list(payload.rglob("python*.exe")) or (payload / "python").exists():
         raise RuntimeError("Python must not be included in the Windows payload")
     print("Offline payload ready:", payload)
@@ -103,4 +124,6 @@ def build():
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(errors="backslashreplace")
-    build()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--cross', action='store_true')
+    build(parser.parse_args().cross)

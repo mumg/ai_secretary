@@ -1,8 +1,8 @@
 {
   "name": "ai-secretary-desktop",
-  "version": "0.1.32",
+  "version": "0.1.33",
   "private": true,
-  "description": "AI Секретарь для macOS",
+  "description": "AI Секретарь для macOS и Windows",
   "author": "AI Secretary contributors",
   "main": "main.cjs",
   "scripts": {
@@ -11,6 +11,7 @@
     "start": "electron ."
   },
   "devDependencies": {
+    "@electron/osx-sign": "1.3.3",
     "electron": "44.4.3",
     "electron-builder": "26.15.3"
   }

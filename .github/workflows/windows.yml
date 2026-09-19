@@ -3,7 +3,7 @@ name: Windows installer
 on:
   push:
     branches: [main]
-    paths: ['windows/**', 'backend/**', 'browser-extension/**', 'document-parser/**', 'version', '.gitattributes', '.github/workflows/windows.yml']
+    paths: ['windows/**', 'macos/**', 'backend/**', 'browser-extension/**', 'document-parser/**', 'version', '.gitattributes', '.github/workflows/windows.yml']
     tags: ['windows-v*']
   workflow_dispatch:
     inputs:
@@ -35,6 +35,18 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13.7'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: macos/package-lock.json
+      - name: Install Electron tooling and test SSO isolation
+        shell: pwsh
+        run: |
+          npm ci --prefix macos --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'Electron dependencies failed' }
+          npm test --prefix macos
+          if ($LASTEXITCODE -ne 0) { throw 'Electron/SSO tests failed' }
       - name: Validate release version
         shell: pwsh
         run: |
@@ -72,7 +84,7 @@ jobs:
       - name: Build offline EXE
         shell: pwsh
         run: ./windows/build.ps1
-      - name: Verify install, uninstall/reinstall and data preservation (Server 2022, not Windows 10 1607)
+      - name: Verify Electron, services, uninstall/reinstall and data preservation (Server 2022)
         shell: pwsh
         run: ./windows/smoke-test.ps1
       - uses: actions/upload-artifact@v7

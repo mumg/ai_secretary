@@ -35,7 +35,7 @@ type gatewayState struct {
 	lastConnected *time.Time
 }
 
-const defaultGatewayAddress = "https://ai.muratov.net"
+const defaultGatewayAddress = "https://connect.ai-secretary.co"
 
 func (s *Server) gatewaySettingsDir(cfg gatewaySettings) string {
 	if cfg.IsolatedIdentity {

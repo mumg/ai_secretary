@@ -2,6 +2,7 @@ AI Секретарь — Windows
 
 Этот установщик включает компоненты с собственными лицензиями:
 
+Electron — MIT License и лицензии Chromium: файлы LICENSE и LICENSES.chromium.html в desktop.
 PostgreSQL — PostgreSQL License: https://www.postgresql.org/about/licence/
 WinSW — MIT License: https://github.com/winsw/winsw/blob/v2.12.0/LICENSE.txt
 Caddy — Apache License 2.0: https://github.com/caddyserver/caddy/blob/v2.10.2/LICENSE
