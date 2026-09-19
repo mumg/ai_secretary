@@ -108,12 +108,43 @@ class CredentialTests(unittest.TestCase):
                         self.assertIn('MACOS_SIGNING_IDENTITY=' + 'A' * 40, exported)
                         self.assertNotIn('test-secret', exported)
                     else:
-                        with self.assertRaisesRegex(ValueError, 'matching APPLE_TEAM_ID'):
+                        with self.assertRaisesRegex(ValueError, 'does not match APPLE_TEAM_ID'):
                             ci.setup(root / 'signing')
                         self.assertFalse((root / 'env').exists())
                     self.assertFalse((root / 'signing/certificate.p12').exists())
                     ci.cleanup(root / 'signing')
                     self.assertFalse((root / 'signing/search-list.json').exists())
+
+    def test_identity_parser_handles_spacing_and_duplicate_sections(self):
+        fingerprint = 'a' * 40
+        line = f'  1)\t{fingerprint}  "Developer ID Application: Name (ABCDEFGHIJ)"'
+        parsed = ci.parse_identities(f'Matching identities\n{line}\nValid identities only\n{line}\n')
+        self.assertEqual(ci.developer_id_matches(parsed, 'ABCDEFGHIJ'), ['A' * 40])
+
+    def test_identity_selection_reports_distinct_causes(self):
+        def line(name, fingerprint='A', status=''):
+            return f'  1) {fingerprint * 40} "{name}" {status}\n'
+        matching = line('Developer ID Application: Name (ABCDEFGHIJ)')
+        cases = [
+            ('', '', 'No code-signing certificate/private-key pair'),
+            ('', line('Mac Developer: Name (ABCDEFGHIJ)'), 'Wrong certificate type'),
+            (line('Apple Distribution: Name (ABCDEFGHIJ)'), line('Apple Distribution: Name (ABCDEFGHIJ)'), 'Wrong certificate type'),
+            (line('Developer ID Application: Name (OTHERTEAM1)'), line('Developer ID Application: Name (OTHERTEAM1)'), 'does not match APPLE_TEAM_ID'),
+            ('', matching.rstrip() + ' (CSSMERR_TP_CERT_EXPIRED)\n', 'macOS does not consider it valid'),
+            ('', matching.rstrip() + ' (CSSMERR_TP_NOT_TRUSTED)\n', 'macOS does not consider it valid'),
+            (matching + line('Developer ID Application: Name (ABCDEFGHIJ)', 'B'), '', 'Multiple valid'),
+        ]
+        for valid, all_identities, message in cases:
+            with self.subTest(message=message), patch.object(ci, 'command', side_effect=[valid, all_identities]), patch('builtins.print'):
+                with self.assertRaisesRegex(ValueError, message):
+                    ci.select_identity('/keychain', 'ABCDEFGHIJ')
+
+    def test_one_valid_identity_is_selected_among_old_or_unrelated_certificates(self):
+        output = f'  1) {"A" * 40} "Developer ID Application: Name (ABCDEFGHIJ)"\n'
+        output += f'  2) {"B" * 40} "Apple Development: Name (ABCDEFGHIJ)"\n'
+        with patch.object(ci, 'command', return_value=output) as command:
+            self.assertEqual(ci.select_identity('/keychain', 'ABCDEFGHIJ'), 'A' * 40)
+            command.assert_called_once()
 
 
 if __name__ == '__main__':

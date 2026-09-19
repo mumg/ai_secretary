@@ -22,6 +22,53 @@ def command(*args):
     return result.stdout
 
 
+def parse_identities(output):
+    # find-identity without -v prints matching identities and then valid ones.
+    # Deduplicate by fingerprint, and tolerate tabs/multiple spaces in output.
+    found = {}
+    for line in output.splitlines():
+        match = re.match(r'^\s*\d+\)\s+([A-Fa-f0-9]{40})\s+"([^"\n]+)"(.*)$', line)
+        if match:
+            fingerprint, name, status = match.groups()
+            found.setdefault(fingerprint.upper(), (name, status.strip()))
+    return found
+
+
+def developer_id_matches(identities, team):
+    return [fingerprint for fingerprint, (name, _) in identities.items()
+            if name.startswith('Developer ID Application: ') and name.endswith(f'({team})')]
+
+
+def select_identity(keychain, team):
+    valid = parse_identities(command('security', 'find-identity', '-v', '-p', 'codesigning', keychain))
+    matches = developer_id_matches(valid, team)
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError('Multiple valid Developer ID Application identities match APPLE_TEAM_ID; '
+                         'export only the intended certificate and its private key into the p12')
+    all_identities = parse_identities(command('security', 'find-identity', '-p', 'codesigning', keychain))
+    # Only public certificate names/fingerprints and validation status are logged.
+    # Never dump keychain contents, the p12, subprocess argv or passwords.
+    print(f'Code-signing identities: {len(all_identities)} found, {len(valid)} valid.', flush=True)
+    for fingerprint, (name, status) in all_identities.items():
+        print('Certificate identity: ' + json.dumps({'name': name, 'sha1': fingerprint,
+              'valid': fingerprint in valid, 'status': status}, ensure_ascii=True), flush=True)
+    if not all_identities:
+        raise ValueError('No code-signing certificate/private-key pair found in the imported p12. '
+                         'Export Developer ID Application together with its private key from My Certificates')
+    if developer_id_matches(all_identities, team):
+        raise ValueError('Developer ID Application matching APPLE_TEAM_ID was imported with a private key, '
+                         'but macOS does not consider it valid. Check expiration, revocation and the Apple '
+                         'Developer ID intermediate certificate chain; see the identity status above')
+    if any(name.startswith('Developer ID Application: ') for name, _ in all_identities.values()):
+        raise ValueError('Developer ID Application was found, but its team does not match APPLE_TEAM_ID. '
+                         'Use the Team ID shown in the certificate name, or export the certificate for the intended team')
+    raise ValueError('Wrong certificate type: the imported p12 contains no Developer ID Application identity. '
+                     'Mac Developer, Apple Development, Apple Distribution and Developer ID Installer '
+                     'cannot replace Developer ID Application for this DMG')
+
+
 def setup(directory):
     missing = [name for name in REQUIRED if not os.environ.get(name)]
     if missing:
@@ -50,16 +97,12 @@ def setup(directory):
         command('security', 'set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:',
                 '-s', '-k', password, keychain)
         command('security', 'list-keychains', '-d', 'user', '-s', keychain, *original)
-        identities = command('security', 'find-identity', '-v', '-p', 'codesigning', keychain)
-        matches = re.findall(r'\b([A-Fa-f0-9]{40}) "Developer ID Application: [^"\n]+ \('
-                             + re.escape(team) + r'\)"', identities)
-        if len(matches) != 1:
-            raise ValueError('The p12 must contain exactly one valid Developer ID Application identity matching APPLE_TEAM_ID')
+        identity = select_identity(keychain, team)
         profile = 'secretary-ci-notary'
         command('xcrun', 'notarytool', 'store-credentials', profile,
                 '--apple-id', os.environ['APPLE_ID'], '--team-id', team,
                 '--password', os.environ['APPLE_APP_SPECIFIC_PASSWORD'], '--keychain', keychain)
-        exported = {'MACOS_SIGNING_IDENTITY': matches[0], 'MACOS_SIGNING_TEAM_ID': team,
+        exported = {'MACOS_SIGNING_IDENTITY': identity, 'MACOS_SIGNING_TEAM_ID': team,
                     'MACOS_SIGNING_KEYCHAIN': keychain, 'MACOS_NOTARY_PROFILE': profile}
         with open(os.environ['GITHUB_ENV'], 'a') as output:
             for name, value in exported.items():

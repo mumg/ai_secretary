@@ -33,11 +33,11 @@ def main():
             '--description', 'AI Secretary Windows build tools')
     compiler = prefix / 'drive_c/InnoSetup/ISCC.exe'
     if not compiler.exists():
-        entry = json.loads((build.ROOT / 'windows/vendor.json').read_text())['innosetup']
+        entry = json.loads((build.ROOT / 'windows/vendor.json').read_text(encoding='utf-8'))['innosetup']
         installer = build.verified_download(entry, build.OUT / 'vendor')
         wine(windows(installer), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/DIR=C:\\InnoSetup')
     build.build(cross=True)
-    version = (build.ROOT / 'version').read_text().strip()
+    version = (build.ROOT / 'version').read_text(encoding='utf-8').strip()
     # electron-builder leaves resource editing to this step on macOS. Use the
     # pinned rcedit bundled by the npm lockfile; the application stays unsigned.
     wine(windows(build.ROOT / 'macos/node_modules/electron-winstaller/vendor/rcedit.exe'),
@@ -54,7 +54,7 @@ def main():
     installer = build.OUT / f'AI-Secretary-Setup-{version}-windows-x64.exe'
     with installer.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-    (build.OUT / 'SHA256SUMS').write_text(f'{digest}  {installer.name}\n')
+    (build.OUT / 'SHA256SUMS').write_text(f'{digest}  {installer.name}\n', encoding='utf-8')
     print(f'Installer ready: {installer}\nWindows installation/services have NOT been tested.', flush=True)
 
 

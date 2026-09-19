@@ -153,6 +153,27 @@ base64 -i "$HOME/Documents/developer-id.p12" | pbcopy
 Связка удаляется при завершении job, в том числе при ошибке. Секреты не передаются
 в сборки pull request.
 
+Если импорт `.p12` прошёл, но подходящий сертификат не найден, шаг
+**Import Developer ID and validate Apple credentials** выводит только публичные
+имена/отпечатки сертификатов и статус проверки. Сообщение различает причины:
+
+- **Wrong certificate type** — нужен именно `Developer ID Application`;
+  `Mac Developer`, `Apple Development`, `Apple Distribution` и
+  `Developer ID Installer` для этой сборки не подходят.
+- **does not match APPLE_TEAM_ID** — команда сертификата отличается от секрета;
+  проверьте Team ID в скобках имени сертификата.
+- **No code-signing certificate/private-key pair** — повторно экспортируйте
+  сертификат вместе с закрытым ключом из «Мои сертификаты».
+- **macOS does not consider it valid** — проверьте срок действия, отзыв и цепочку
+  доверия. Промежуточные сертификаты Developer ID доступны на
+  [официальной странице Apple PKI](https://www.apple.com/certificateauthority/).
+- **Multiple valid** — экспортируйте в `.p12` только выбранный сертификат
+  Developer ID Application с его ключом.
+
+Локальная проверка: `security find-identity -v -p codesigning`. Для анализа
+невалидных сертификатов уберите `-v`. После повторного экспорта обновите
+`MACOS_CERTIFICATE_BASE64` и `MACOS_CERTIFICATE_PASSWORD` в GitHub Secrets.
+
 Для первой проверки откройте Actions → **macOS universal DMG** → Run workflow:
 ветка **main**, **sign=true**, **publish=false**. После успешного завершения
 скачайте artifact **macos-universal-dmg**. Это подписанный universal DMG и

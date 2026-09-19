@@ -56,12 +56,12 @@ def extract(archive: Path, destination: Path, prefix: str = "", allowed: tuple[s
 
 def source_copy(destination):
     shutil.copytree(ROOT / "backend/web", destination / "backend/web", ignore=shutil.ignore_patterns("downloads"))
-    version = (ROOT / "version").read_text().strip()
+    version = (ROOT / "version").read_text(encoding="utf-8").strip()
     env = {**os.environ, "CGO_ENABLED": "0", "GOOS": "windows", "GOARCH": "amd64"}
     (destination / "setup").mkdir()
     subprocess.run(["go", "build", "-trimpath", "-ldflags", f"-s -w -X main.version={version}", "-o", str(destination / "setup/secretary-setup.exe"), "./cmd/secretary-setup"], cwd=ROOT / "windows", env=env, check=True)
     subprocess.run(["go", "build", "-trimpath", "-ldflags", f"-s -w -X main.version={version}", "-o", str(destination / "backend/improver.exe"), "./cmd/improver"], cwd=ROOT / "backend", env=env, check=True)
-    modules = subprocess.check_output(["go", "list", "-m", "all"], cwd=ROOT / "backend", text=True)
+    modules = subprocess.check_output(["go", "list", "-m", "all"], cwd=ROOT / "backend", text=True, encoding="utf-8")
     (destination / "go-modules.txt").write_text(modules, encoding="utf-8")
     shutil.copytree(ROOT / "backend/third_party", destination / "third_party")
     shutil.copytree(ROOT / "windows/third_party", destination / "third_party/windows-setup")
@@ -77,8 +77,8 @@ def source_copy(destination):
 
 
 def desktop_copy(destination):
-    version = (ROOT / "version").read_text().strip()
-    if json.loads((ROOT / "macos/package.json").read_text())['version'] != version:
+    version = (ROOT / "version").read_text(encoding="utf-8").strip()
+    if json.loads((ROOT / "macos/package.json").read_text(encoding="utf-8"))['version'] != version:
         raise RuntimeError('Electron version does not match root version')
     npm = shutil.which('npm.cmd' if os.name == 'nt' else 'npm')
     if not npm:

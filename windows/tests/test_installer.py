@@ -14,6 +14,27 @@ builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
 class InstallerBuildTests(unittest.TestCase):
+    def test_desktop_package_with_cp1252_default_file_encoding(self):
+        read_text = Path.read_text
+
+        def windows_read_text(path, encoding=None, errors=None):
+            return read_text(path, encoding=encoding or 'cp1252', errors=errors)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'Сборка'
+            desktop = output / 'electron/win-unpacked'
+            desktop.mkdir(parents=True)
+            (desktop / 'AI Secretary.exe').write_bytes(b'electron-test-executable')
+            payload = output / 'payload'
+            with patch.object(Path, 'read_text', windows_read_text), \
+                    patch.object(builder, 'OUT', output), \
+                    patch.object(builder.shutil, 'which', return_value='npm.cmd'), \
+                    patch.object(builder.subprocess, 'run') as run:
+                builder.desktop_copy(payload)
+            run.assert_called_once()
+            self.assertIn('electron-builder', run.call_args.args[0])
+            self.assertEqual((payload / 'desktop/AI Secretary.exe').read_bytes(), b'electron-test-executable')
+
     def test_archive_traversal_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             archive = Path(tmp) / 'bad.zip'
