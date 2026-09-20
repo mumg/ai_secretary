@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -58,7 +60,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class ChatActivity : ComponentActivity() {
+class ChatActivity : net.muratov.assistant.i18n.LocalizedActivity() {
     override fun onStart() {
         super.onStart()
         ChatNotificationState.visible = true
@@ -119,10 +121,10 @@ private fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Чат с Qwen") },
+                title = { Text(tr("Чат с Qwen")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Назад"))
                     }
                 },
             )
@@ -136,13 +138,13 @@ private fun ChatScreen(
                     value = input,
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Вопрос по задачам и переписке") },
+                    placeholder = { Text(tr("Вопрос по задачам и переписке")) },
                     maxLines = 5,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }),
                 )
                 IconButton(onClick = submit, enabled = input.isNotBlank()) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Отправить")
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = tr("Отправить"))
                 }
             }
         },
@@ -161,9 +163,9 @@ private fun ChatScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Спросите о задачах, письмах, сообщениях или встречах")
+                Text(tr("Спросите о задачах, письмах, сообщениях или встречах"))
                 Text(
-                    error ?: "Qwen найдёт подходящие записи в сохранённом архиве и покажет источники.",
+                    error ?: tr("Qwen найдёт подходящие записи в сохранённом архиве и покажет источники."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
                 )
@@ -220,7 +222,7 @@ private fun ChatBubble(
                 }
                 if (message.references.isNotEmpty()) {
                     Text(
-                        "Источники",
+                        tr("Источники"),
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                     )
@@ -275,7 +277,7 @@ private fun ReferenceCard(
             }
             if (reference.kind == "event" && !reference.sourceUrl.isNullOrBlank()) {
                 TextButton(onClick = { uriHandler.openUri(reference.sourceUrl) }) {
-                    Text("Открыть в источнике")
+                    Text(tr("Открыть в источнике"))
                 }
             }
         }

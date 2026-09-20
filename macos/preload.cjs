@@ -15,3 +15,14 @@ if (window === window.top && ['/admin', '/admin/'].includes(location.pathname) &
     window.postMessage({ ...message, channel: webChannel, from: 'extension', transport: 'desktop' }, location.origin);
   });
 }
+
+// Only a validated language enum crosses this channel; the main process also
+// checks the exact renderer and main frame before reading/writing preferences.
+if (window === window.top && ['/app/', '/app', '/admin', '/admin/'].includes(location.pathname) &&
+    location.protocol === 'http:' && location.hostname === '127.0.0.1') {
+  const choice = ipcRenderer.sendSync('secretary:language');
+  if (['system', 'ru', 'en', 'zh'].includes(choice)) localStorage.setItem('secretary.language', choice);
+  window.addEventListener('secretary-language', event => {
+    if (['system', 'ru', 'en', 'zh'].includes(event.detail)) ipcRenderer.sendSync('secretary:language', event.detail);
+  });
+}

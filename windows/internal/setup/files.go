@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mumg/ai_secretary/windows/internal/i18n"
 	"io"
 	"io/fs"
 	"os"
@@ -72,15 +73,15 @@ func versionParts(v string) ([3]uint64, error) {
 	var parts [3]uint64
 	a := strings.Split(strings.TrimSpace(v), ".")
 	if len(a) != 3 {
-		return parts, errors.New("некорректный номер версии")
+		return parts, errors.New(i18n.Tr("некорректный номер версии"))
 	}
 	for i, s := range a {
 		if s == "" || strings.ContainsAny(s, "+- ") {
-			return parts, errors.New("некорректный номер версии")
+			return parts, errors.New(i18n.Tr("некорректный номер версии"))
 		}
 		n, e := strconv.ParseUint(s, 10, 64)
 		if e != nil {
-			return parts, errors.New("некорректный номер версии")
+			return parts, errors.New(i18n.Tr("некорректный номер версии"))
 		}
 		parts[i] = n
 	}
@@ -108,10 +109,10 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	if !info.Mode().IsRegular() {
-		return fmt.Errorf("ожидался обычный файл: %s", src)
+		return fmt.Errorf(i18n.Tr("ожидался обычный файл: %s"), src)
 	}
 	if target, statErr := os.Stat(dst); statErr == nil && os.SameFile(info, target) {
-		return errors.New("исходный файл совпадает с целевым")
+		return errors.New(i18n.Tr("исходный файл совпадает с целевым"))
 	} else if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
 		return statErr
 	}
@@ -140,7 +141,7 @@ func copyTree(src, dst string) error {
 			return err
 		}
 		if d.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("ссылки не поддерживаются в резервной копии: %s", path)
+			return fmt.Errorf(i18n.Tr("ссылки не поддерживаются в резервной копии: %s"), path)
 		}
 		rel, err := filepath.Rel(src, path)
 		if err != nil {
@@ -164,7 +165,7 @@ func archiveProgram(root, destination string) error {
 			return err
 		}
 		if d.Type()&os.ModeSymlink != 0 {
-			return errors.New("ссылка в каталоге программы; резервная копия остановлена")
+			return errors.New(i18n.Tr("ссылка в каталоге программы; резервная копия остановлена"))
 		}
 		if d.IsDir() {
 			return nil

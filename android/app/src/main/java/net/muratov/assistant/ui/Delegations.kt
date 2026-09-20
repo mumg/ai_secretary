@@ -1,6 +1,20 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AssignmentInd
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import net.muratov.assistant.i18n.dateTimeFormatter
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -21,7 +35,7 @@ import net.muratov.assistant.data.TaskRepository
 import net.muratov.assistant.data.remote.*
 import net.muratov.assistant.notifications.observeRealtime
 
-val delegationStatuses = linkedMapOf("ASSIGNED" to "Назначено", "IN_PROGRESS" to "В работе", "IN_REVIEW" to "На проверке", "COMPLETED" to "Выполнено", "CANCELLED" to "Отменено")
+val delegationStatuses get() = linkedMapOf("ASSIGNED" to tr("Назначено"), "IN_PROGRESS" to tr("В работе"), "IN_REVIEW" to tr("На проверке"), "COMPLETED" to tr("Выполнено"), "CANCELLED" to tr("Отменено"))
 data class DelegationState(val items: List<DelegationDto> = emptyList(), val recipients: List<DelegationRecipient> = emptyList(), val query: String = "", val assignee: String = "", val status: String = "", val due: String = "", val more: Boolean = false, val loading: Boolean = false, val error: String? = null)
 class DelegationsViewModel(private val repository: TaskRepository): ViewModel() {
     private val mutable = MutableStateFlow(DelegationState())
@@ -41,7 +55,7 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
                 if(debounce) delay(300)
                 val page=repository.delegations(before.query,before.assignee,before.status,before.due,if(more) before.items.size else 0)
                 mutable.value=before.copy(items=(if(more) before.items else emptyList())+page.items,recipients=page.recipients,more=page.hasMore,loading=false)
-            } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.value=before.copy(loading=false,error=e.message ?: "Не удалось загрузить поручения") }
+            } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.value=before.copy(loading=false,error=e.message ?: tr("Не удалось загрузить поручения")) }
         }
     }
     class Factory(private val repository: TaskRepository): ViewModelProvider.Factory {
@@ -51,67 +65,95 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
 @Composable fun DelegationFilter(label: String, value: String, choices: Map<String,String>, onSelect: (String)->Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        OutlinedButton(onClick={open=true}) { Text("$label: ${choices[value] ?: value}") }
+        OutlinedButton(onClick={open=true}) { Text("${label}: ${choices[value] ?: value}") }
         DropdownMenu(expanded=open,onDismissRequest={open=false}) { choices.forEach { (key,text) -> DropdownMenuItem(text={Text(text)},onClick={open=false;onSelect(key)}) } }
     }
 }
 @Composable fun DelegationsScreen(vm: DelegationsViewModel) {
     val context=LocalContext.current
     val s by vm.state.collectAsState()
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        OutlinedTextField(value=s.query,onValueChange={vm.filters(query=it)},label={Text("Поиск по поручениям")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         var showFilters by rememberSaveable { mutableStateOf(false) }
-        Row {
-            TextButton(onClick={showFilters=true}) { Text(if(s.assignee.isNotBlank() || s.status.isNotBlank() || s.due.isNotBlank()) "Фильтры · применены" else "Фильтры") }
-            TextButton(onClick={vm.load()},enabled=!s.loading) {Text("Обновить")}
-        }
-        if(showFilters) AlertDialog(onDismissRequest={showFilters=false},title={Text("Фильтры поручений")},text={Column {
-            DelegationFilter("Исполнитель",s.assignee, linkedMapOf("" to "Все исполнители") + s.recipients.filter { it.key.isNotBlank() }.associate { it.key to (it.name.ifBlank { it.email } + if(it.name.isNotBlank() && it.email.isNotBlank()) " · ${it.email}" else "") }) { vm.filters(assignee=it) }
-            DelegationFilter("Статус",s.status,linkedMapOf("" to "Все статусы")+delegationStatuses) { vm.filters(status=it) }
-            DelegationFilter("Срок",s.due,linkedMapOf("" to "Все сроки","overdue" to "Просрочено","none" to "Без срока")) { vm.filters(due=it) }
-        }},confirmButton={TextButton(onClick={showFilters=false}) {Text("Готово")}},dismissButton={TextButton(onClick={vm.filters(assignee="",status="",due="")}) {Text("Сбросить")}})
+        if(showFilters) AlertDialog(onDismissRequest={showFilters=false},title={Text(tr("Фильтры поручений"))},text={Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DelegationFilter(tr("Исполнитель"),s.assignee, linkedMapOf("" to tr("Все исполнители")) + s.recipients.filter { it.key.isNotBlank() }.associate { it.key to (it.name.ifBlank { it.email } + if(it.name.isNotBlank() && it.email.isNotBlank()) " · ${it.email}" else "") }) { vm.filters(assignee=it) }
+            DelegationFilter(tr("Статус"),s.status,linkedMapOf("" to tr("Все статусы"))+delegationStatuses) { vm.filters(status=it) }
+            DelegationFilter(tr("Срок"),s.due,linkedMapOf("" to tr("Все сроки"),"overdue" to tr("Просрочено"),"none" to tr("Без срока"))) { vm.filters(due=it) }
+        }},confirmButton={TextButton(onClick={showFilters=false}) {Text(tr("Готово"))}},dismissButton={TextButton(onClick={vm.filters(assignee="",status="",due="")}) {Text(tr("Сбросить"))}})
         s.error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
         if(s.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        LazyColumn(modifier=Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             items(s.items,key={it.id}) { d ->
-                Card(onClick={context.startActivity(DelegationDetailActivity.intent(context,d.id))},modifier=Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(d.title,style=MaterialTheme.typography.titleMedium)
-                        Text(d.assigneeName.ifBlank { d.assigneeEmail.ifBlank { "Исполнитель не определён" } })
-                        Text("${delegationStatuses[d.status] ?: d.status} · ${d.dueAt ?: "Без срока"}")
-                        if (d.dueAt != null && d.status !in listOf("COMPLETED","CANCELLED") && runCatching { java.time.OffsetDateTime.parse(d.dueAt).toInstant().isBefore(java.time.Instant.now()) }.getOrDefault(false)) Text("Просрочено",color=MaterialTheme.colorScheme.error)
+                DelegationCard(d, onOpen = {
+                    context.startActivity(DelegationDetailActivity.intent(context, d.id))
+                })
+            }
+            if(s.items.isEmpty() && !s.loading) item {Text(tr("Поручения не найдены"), Modifier.padding(top = 24.dp))}
+            if(s.more) item {TextButton(onClick={vm.load(more=true)},enabled=!s.loading) {Text(tr("Загрузить ещё"))}}
+        }
+        FullTextSearchField(
+            query = s.query,
+            onQueryChange = { vm.filters(query = it) },
+            placeholder = tr("Поиск по поручениям"),
+            modifier = Modifier.imePadding(),
+            extraActions = {
+                val filtered = s.assignee.isNotBlank() || s.status.isNotBlank() || s.due.isNotBlank()
+                IconButton(onClick = { showFilters = true }) {
+                    BadgedBox(badge = { if (filtered) Badge() }) {
+                        Icon(Icons.Default.FilterList,
+                            contentDescription = if (filtered) tr("Фильтры · применены") else tr("Фильтры"),
+                            tint = if (filtered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-            }
-            if(s.items.isEmpty() && !s.loading) item {Text("Поручения не найдены")}
-            if(s.more) item {TextButton(onClick={vm.load(more=true)},enabled=!s.loading) {Text("Загрузить ещё")}}
-        }
+            },
+        )
     }
 }
-@Composable fun RelationshipSettings(repository: TaskRepository) {
-    var managers by rememberSaveable { mutableStateOf("") }; var reports by rememberSaveable { mutableStateOf("") }
-    var ready by remember { mutableStateOf(false) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf("") }
-    val scope=rememberCoroutineScope()
-    LaunchedEffect(repository) {
-        try {
-            val data=repository.relationships()
-            fun lines(p: List<EmployeeDto>): String = p.joinToString("\n") { "${it.name} | ${it.emails.joinToString(", ")}" }
-            managers=lines(data.managers)
-            reports=lines(data.reports)
-            ready=true
-        }
-        catch(e: CancellationException) {throw e} catch(e: Exception) {message=e.message ?: "Не удалось загрузить сотрудников"}
+@Composable
+private fun DelegationCard(delegation: DelegationDto, onOpen: () -> Unit) {
+    val due = remember(delegation.dueAt) {
+        delegation.dueAt?.let { runCatching { OffsetDateTime.parse(it) }.getOrNull() }
     }
-    Text("Сотрудники",style=MaterialTheme.typography.titleMedium)
-    Text("По одному на строку: Имя | email, второй email")
-    OutlinedTextField(managers,{managers=it},label={Text("Мои руководители")},enabled=ready,modifier=Modifier.fillMaxWidth())
-    OutlinedTextField(reports,{reports=it},label={Text("Мои подчинённые")},enabled=ready,modifier=Modifier.fillMaxWidth())
-    if(message.isNotBlank()) Text(message)
-    Button(enabled=ready && !busy,onClick={scope.launch {
-        busy=true
-        try {
-            fun parse(text: String)=text.lines().filter { it.isNotBlank() }.map { line -> val parts=line.split('|'); require(parts.size==2 && parts[0].isNotBlank()) {"Формат строки: Имя | email, второй email"}; EmployeeDto(parts[0].trim(),parts[1].split(',').map {it.trim()}.filter {it.isNotEmpty()}) }
-            repository.saveRelationships(RelationshipsDto(parse(managers),parse(reports)));message="Сохранено"
-        } catch(e: CancellationException) {throw e} catch(e: Exception) {message=e.message ?: "Не удалось сохранить"} finally {busy=false}
-    }}) {Text("Сохранить сотрудников")}
+    val overdue = delegation.status !in setOf("COMPLETED", "CANCELLED") &&
+        due?.toInstant()?.isBefore(java.time.Instant.now()) == true
+    val accent = when (delegation.status) {
+        "COMPLETED" -> MaterialTheme.colorScheme.primary
+        "CANCELLED" -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.secondary
+    }
+    Card(
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.Top) {
+            Icon(Icons.Default.AssignmentInd, contentDescription = null, tint = accent,
+                modifier = Modifier.padding(top = 2.dp, end = 12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(delegation.title, style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(delegation.assigneeName.ifBlank {
+                    delegation.assigneeEmail.ifBlank { tr("Исполнитель не определён") }
+                }, modifier = Modifier.padding(top = 3.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Surface(color = accent.copy(alpha = 0.16f), contentColor = accent,
+                    shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    Text(delegationStatuses[delegation.status] ?: delegation.status,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelMedium)
+                }
+                val deadline = due?.atZoneSameInstant(ZoneId.systemDefault())?.format(dateTimeFormatter())
+                    ?: delegation.dueAt
+                Text(deadline?.let { tr("Срок: {0}", it) } ?: tr("Без срока"),
+                    modifier = Modifier.padding(top = 6.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                if (overdue) Text(tr("Просрочено"), modifier = Modifier.padding(top = 3.dp),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
 }

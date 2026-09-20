@@ -1,5 +1,7 @@
 package net.muratov.assistant.notifications
 
+import net.muratov.assistant.i18n.tr
+
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -46,16 +48,16 @@ internal fun notificationCopy(
     payloadDescription: String? = null,
 ): NotificationCopy {
     val title = when (type) {
-        "CRITICAL_TASK" -> "Критическая задача"
-        "NEW_TASK" -> "Новая задача"
-        "TASK_CONFIRMATION_REQUIRED" -> "Нужно подтвердить задачу"
-        "TASK_REMINDER" -> "Напоминание"
-        "TASK_DUE_SOON" -> "Скоро истекает срок"
-        "TASK_OVERDUE" -> "Задача просрочена"
-        "TASK_POSSIBLY_COMPLETED" -> "Возможно, задача выполнена"
-        "DAILY_PLAN_READY" -> "План на сегодня готов"
-        "MEETING_CONTEXT_READY" -> "Контекст встречи готов"
-        else -> "Обновление задач"
+        "CRITICAL_TASK" -> tr("Критическая задача")
+        "NEW_TASK" -> tr("Новая задача")
+        "TASK_CONFIRMATION_REQUIRED" -> tr("Нужно подтвердить задачу")
+        "TASK_REMINDER" -> tr("Напоминание")
+        "TASK_DUE_SOON" -> tr("Скоро истекает срок")
+        "TASK_OVERDUE" -> tr("Задача просрочена")
+        "TASK_POSSIBLY_COMPLETED" -> tr("Возможно, задача выполнена")
+        "DAILY_PLAN_READY" -> tr("План на сегодня готов")
+        "MEETING_CONTEXT_READY" -> tr("Контекст встречи готов")
+        else -> tr("Обновление задач")
     }
     val taskTitle = (task?.title ?: payloadTitle)?.trim()?.takeIf(String::isNotEmpty)?.take(180)
     val description = (task?.description ?: payloadDescription)
@@ -64,9 +66,9 @@ internal fun notificationCopy(
         ?.takeIf(String::isNotEmpty)
         ?.take(360)
     val text = taskTitle ?: when (type) {
-        "DAILY_PLAN_READY" -> "Откройте приложение, чтобы посмотреть план"
-        "MEETING_CONTEXT_READY" -> "Нажмите, чтобы посмотреть результат подготовки встречи"
-        else -> "Откройте приложение, чтобы посмотреть изменения"
+        "DAILY_PLAN_READY" -> tr("Откройте приложение, чтобы посмотреть план")
+        "MEETING_CONTEXT_READY" -> tr("Нажмите, чтобы посмотреть результат подготовки встречи")
+        else -> tr("Откройте приложение, чтобы посмотреть изменения")
     }
     val expandedText = listOfNotNull(taskTitle, description)
         .joinToString("\n")
@@ -80,12 +82,12 @@ internal fun chatNotificationCopy(request: ChatRequestDto?): NotificationCopy {
         ?.trim()
         ?.takeIf(String::isNotEmpty)
     val query = request?.query?.trim()?.takeIf(String::isNotEmpty)
-    val text = answer?.take(180) ?: "Откройте чат, чтобы посмотреть ответ"
+    val text = answer?.take(180) ?: tr("Откройте чат, чтобы посмотреть ответ")
     val expanded = listOfNotNull(
-        query?.let { "Вопрос: ${it.take(300)}" },
-        answer?.let { "Ответ: ${it.take(800)}" },
+        query?.let { tr("Вопрос: {0}" , it.take(300)) },
+        answer?.let { tr("Ответ: {0}" , it.take(800)) },
     ).joinToString("\n\n").ifBlank { text }
-    return NotificationCopy("Ответ Qwen готов", text, expanded)
+    return NotificationCopy(tr("Ответ Qwen готов"), text, expanded)
 }
 
 class ImproverMessagingService : FirebaseMessagingService() {
@@ -108,7 +110,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
         }
         val type = message.data["type"] ?: "TASK_UPDATE"
         val objectId = message.data["object_id"] ?: type
-        Log.i("SecretaryPush", "Received $type for $objectId")
+        Log.i("SecretaryPush", "Received ${type} for ${objectId}")
         val repository = (application as ImproverApplication).container.repository
         RealtimeState.changed(listOf("all"))
         if (RealtimeState.active.value) {
@@ -151,11 +153,11 @@ class ImproverMessagingService : FirebaseMessagingService() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = when (channelId) {
-                "critical_tasks" -> "Критические задачи"
-                "reminders" -> "Напоминания"
-                "completion" -> "Проверка выполнения"
-                "meeting_context" -> "Подготовка к встречам"
-                else -> "Обновления задач"
+                "critical_tasks" -> tr("Критические задачи")
+                "reminders" -> tr("Напоминания")
+                "completion" -> tr("Проверка выполнения")
+                "meeting_context" -> tr("Подготовка к встречам")
+                else -> tr("Обновления задач")
             }
             manager.createNotificationChannel(
                 NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH),
@@ -179,7 +181,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle(copy.title)
             .setContentText(copy.text)
-            .setSubText(getString(R.string.app_name))
+            .setSubText(tr("AI Секретарь"))
             .setStyle(NotificationCompat.BigTextStyle().bigText(copy.expandedText))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -187,7 +189,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .build()
         manager.notify(objectId.hashCode(), notification)
-        Log.i("SecretaryPush", "Displayed $type for $objectId")
+        Log.i("SecretaryPush", "Displayed ${type} for ${objectId}")
     }
 
     private fun showChatNotification(objectId: String, request: ChatRequestDto?) {
@@ -197,7 +199,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
             manager.createNotificationChannel(
                 NotificationChannel(
                     channelId,
-                    "Ответы Qwen",
+                    tr("Ответы Qwen"),
                     NotificationManager.IMPORTANCE_HIGH,
                 ),
             )
@@ -213,7 +215,7 @@ class ImproverMessagingService : FirebaseMessagingService() {
             .setSmallIcon(android.R.drawable.ic_dialog_email)
             .setContentTitle(copy.title)
             .setContentText(copy.text)
-            .setSubText(getString(R.string.app_name))
+            .setSubText(tr("AI Секретарь"))
             .setStyle(NotificationCompat.BigTextStyle().bigText(copy.expandedText))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

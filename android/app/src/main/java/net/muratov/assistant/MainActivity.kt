@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.Manifest
 import android.app.Activity
 import android.app.DatePickerDialog
@@ -49,6 +51,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -81,7 +84,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import net.muratov.assistant.setup.SetupWizard
-import net.muratov.assistant.updates.UpdatePanel
 import net.muratov.assistant.updates.UpdatePrompt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -118,7 +120,11 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-class MainActivity : ComponentActivity() {
+class MainActivity : net.muratov.assistant.i18n.LocalizedActivity() {
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) recreate()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val application = application as ImproverApplication
@@ -159,7 +165,7 @@ class MainActivity : ComponentActivity() {
                     meetingsViewModel = meetingsViewModel,
                     meetingResultsViewModel = meetingResultsViewModel,
                     systemStatusViewModel = systemStatusViewModel,
-                    onSetup = { showSetup = true },
+                    onSettings = { settingsLauncher.launch(Intent(this, SettingsActivity::class.java)) },
                     onOpenTask = { taskId ->
                         startActivity(TaskDetailActivity.intent(this, taskId))
                     },
@@ -188,7 +194,7 @@ private fun ImproverScreen(
     meetingsViewModel: MeetingsViewModel,
     meetingResultsViewModel: MeetingResultsViewModel,
     systemStatusViewModel: SystemStatusViewModel,
-    onSetup: () -> Unit,
+    onSettings: () -> Unit,
     onOpenTask: (String) -> Unit,
     onOpenChat: () -> Unit,
     onOpenMeeting: (String) -> Unit,
@@ -206,6 +212,7 @@ private fun ImproverScreen(
     val taskSearchLoading by viewModel.searchLoading.collectAsState()
     val taskSearchError by viewModel.searchError.collectAsState()
     val systemStatus by systemStatusViewModel.state.collectAsState()
+    val realtimeConnected by net.muratov.assistant.notifications.RealtimeState.connected.collectAsState()
     val currentTime = rememberMinuteClock()
     val visibleTodayMeetings = remember(todayMeetings, currentTime) {
         todayMeetings.filter { meetingIsUpcoming(it, currentTime) }
@@ -214,7 +221,6 @@ private fun ImproverScreen(
     val delegationViewModel: net.muratov.assistant.ui.DelegationsViewModel = viewModel(factory = net.muratov.assistant.ui.DelegationsViewModel.Factory((context.applicationContext as ImproverApplication).container.repository))
     val delegationState by delegationViewModel.state.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
     var reminderTask by remember { mutableStateOf<TaskEntity?>(null) }
     var sortByDue by rememberSaveable { mutableStateOf(false) }
     var voiceError by remember { mutableStateOf<String?>(null) }
@@ -230,10 +236,10 @@ private fun ImproverScreen(
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
             )
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, net.muratov.assistant.i18n.Language.locale.toLanguageTag())
             putExtra(
                 RecognizerIntent.EXTRA_PROMPT,
-                "Назовите задачу, приоритет и срок выполнения",
+                tr("Назовите задачу, приоритет и срок выполнения"),
             )
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
@@ -248,7 +254,7 @@ private fun ImproverScreen(
                 ?.firstOrNull()
                 ?.trim()
             if (recognized.isNullOrEmpty()) {
-                voiceError = "Речь не распознана"
+                voiceError = tr("Речь не распознана")
             } else {
                 voiceError = null
                 viewModel.createFromVoice(recognized)
@@ -258,7 +264,7 @@ private fun ImproverScreen(
     val launchSpeech = {
         voiceError = null
         runCatching { speechLauncher.launch(speechIntent) }
-            .onFailure { voiceError = "Распознавание речи недоступно на устройстве" }
+            .onFailure { voiceError = tr("Распознавание речи недоступно на устройстве") }
         Unit
     }
     val microphonePermissionLauncher = rememberLauncherForActivityResult(
@@ -267,7 +273,7 @@ private fun ImproverScreen(
         if (granted) {
             launchSpeech()
         } else {
-            voiceError = "Разрешите доступ к микрофону для голосового добавления задачи"
+            voiceError = tr("Разрешите доступ к микрофону для голосового добавления задачи")
         }
     }
     val startVoiceCapture = {
@@ -303,39 +309,37 @@ private fun ImproverScreen(
                         Column {
                             Text(
                                 when (selectedTab) {
-                                    HomeTab.DELEGATIONS -> "Поручения"
-                                    HomeTab.TASKS -> "План на сегодня"
-                                    HomeTab.MEETINGS -> "Встречи"
-                                    HomeTab.RESULTS -> "Результаты встреч"
-                                    HomeTab.THREADS -> "Резюме переписок"
-                                    HomeTab.STATUS -> "Состояние компонентов"
+                                    HomeTab.DELEGATIONS -> tr("Поручения")
+                                    HomeTab.TASKS -> tr("План на сегодня")
+                                    HomeTab.MEETINGS -> tr("Встречи")
+                                    HomeTab.RESULTS -> tr("Результаты встреч")
+                                    HomeTab.THREADS -> tr("Резюме переписок")
                                 },
                             )
-                            Text(
-                                when (selectedTab) {
-                                    HomeTab.DELEGATIONS -> "Поручения сотрудникам из исходящих писем"
-                                    HomeTab.TASKS -> if (sortByDue) {
-                                        "По приоритету и сроку"
-                                    } else {
-                                        "По рейтингу"
-                                    }
-                                    HomeTab.MEETINGS -> "Предстоящие по времени"
-                                    HomeTab.RESULTS -> "Сначала новые"
-                                    HomeTab.THREADS -> "Сначала новые"
-                                    HomeTab.STATUS -> systemStatus.snapshot?.let {
-                                        "Обновлено ${formatStatusTime(it.generatedAt)}"
-                                    } ?: "Состояние системы"
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            val subtitle = when (selectedTab) {
+                                HomeTab.DELEGATIONS -> null
+                                HomeTab.TASKS -> if (sortByDue) tr("По приоритету и сроку") else tr("По рейтингу")
+                                HomeTab.MEETINGS -> tr("Предстоящие по времени")
+                                HomeTab.RESULTS, HomeTab.THREADS -> tr("Сначала новые")
+                            }
+                            subtitle?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     },
                     actions = {
+                        ServerConnectionIndicator(
+                            connected = if (realtimeConnected) true else systemStatus.serverReachable,
+                            onClick = onSettings,
+                        )
                         SystemHealthIndicator(
                             status = systemStatus.snapshot?.overallStatus
-                                ?: if (systemStatus.error != null) "ERROR" else "UNKNOWN",
-                            onClick = { selectTab(HomeTab.STATUS) },
+                                ?: "UNKNOWN",
+                            onClick = { context.startActivity(Intent(context, SystemStatusActivity::class.java)) },
                         )
                     },
                 )
@@ -344,33 +348,28 @@ private fun ImproverScreen(
                         selected = selectedTab == HomeTab.TASKS,
                         onClick = { selectTab(HomeTab.TASKS) },
                         modifier = Modifier.height(48.dp),
-                        content = { HomeTabLabel("Задачи") },
+                        content = { HomeTabLabel(tr("Задачи")) },
                     )
-                    Tab(selected = selectedTab == HomeTab.DELEGATIONS, onClick = { selectTab(HomeTab.DELEGATIONS) }, content = { HomeTabLabel("Поручения") })
+                    Tab(selected = selectedTab == HomeTab.DELEGATIONS, onClick = { selectTab(HomeTab.DELEGATIONS) }, content = { HomeTabLabel(tr("Поручения")) })
                     Tab(
                         selected = selectedTab == HomeTab.MEETINGS,
                         onClick = { selectTab(HomeTab.MEETINGS) },
                         modifier = Modifier.height(48.dp),
-                        content = { HomeTabLabel("Встречи") },
+                        content = { HomeTabLabel(tr("Встречи")) },
                     )
                     Tab(
                         selected = selectedTab == HomeTab.RESULTS,
                         onClick = { selectTab(HomeTab.RESULTS) },
                         modifier = Modifier.height(48.dp),
-                        content = { HomeTabLabel("Итоги") },
+                        content = { HomeTabLabel(tr("Итоги")) },
                     )
                     Tab(
                         selected = selectedTab == HomeTab.THREADS,
                         onClick = { selectTab(HomeTab.THREADS) },
                         modifier = Modifier.height(48.dp),
-                        content = { HomeTabLabel("Переписки") },
+                        content = { HomeTabLabel(tr("Переписки")) },
                     )
-                    Tab(
-                        selected = selectedTab == HomeTab.STATUS,
-                        onClick = { selectTab(HomeTab.STATUS) },
-                        modifier = Modifier.height(48.dp),
-                        content = { HomeTabLabel("Статус") },
-                    )
+
                 }
             }
         },
@@ -379,7 +378,7 @@ private fun ImproverScreen(
                 RightThumbActionBar(
                     sortByDue = sortByDue,
                     voiceProcessing = voiceProcessing,
-                    onSettings = { showSettings = true },
+                    onSettings = onSettings,
                     onSort = { sortByDue = !sortByDue },
                     onChat = onOpenChat,
                     onAdd = { showCreate = true },
@@ -387,22 +386,22 @@ private fun ImproverScreen(
                 )
             } else if (selectedTab == HomeTab.MEETINGS) {
                 SecondaryActionBar(
-                    onSettings = { showSettings = true },
+                    onSettings = onSettings,
                     onChat = onOpenChat,
                 )
             } else if (selectedTab == HomeTab.RESULTS) {
                 SecondaryActionBar(
-                    onSettings = { showSettings = true },
+                    onSettings = onSettings,
                     onChat = onOpenChat,
                 )
             } else if (selectedTab == HomeTab.THREADS) {
                 SecondaryActionBar(
-                    onSettings = { showSettings = true },
+                    onSettings = onSettings,
                     onChat = onOpenChat,
                 )
             } else {
                 SecondaryActionBar(
-                    onSettings = { showSettings = true },
+                    onSettings = onSettings,
                     onChat = onOpenChat,
                 )
             }
@@ -423,7 +422,6 @@ private fun ImproverScreen(
                 HomeTab.MEETINGS -> meetingsState.refreshing
                 HomeTab.RESULTS -> meetingResultsState.refreshing
                 HomeTab.THREADS -> threadsState.refreshing
-                HomeTab.STATUS -> systemStatus.refreshing
             }
             PullToRefreshBox(
                 isRefreshing = refreshing,
@@ -434,7 +432,6 @@ private fun ImproverScreen(
                         HomeTab.MEETINGS -> meetingsViewModel.refresh(fromPull = true)
                         HomeTab.RESULTS -> meetingResultsViewModel.refresh(fromPull = true)
                         HomeTab.THREADS -> threadsViewModel.refresh(fromPull = true)
-                        HomeTab.STATUS -> systemStatusViewModel.refresh(fromPull = true)
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -450,7 +447,7 @@ private fun ImproverScreen(
                 }
                 if (voiceProcessing) {
                     Text(
-                        "Qwen оформляет надиктованную задачу…",
+                        tr("Qwen оформляет надиктованную задачу…"),
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
@@ -459,12 +456,12 @@ private fun ImproverScreen(
                     taskSearchQuery.isBlank() && tasks.isEmpty() &&
                     visibleTodayMeetings.isEmpty() && !loading
                 ) {
-                    Text("На сегодня ничего не запланировано", Modifier.padding(top = 24.dp))
+                    Text(tr("На сегодня ничего не запланировано"), Modifier.padding(top = 24.dp))
                 } else if (
                     taskSearchQuery.isNotBlank() && displayedTasks.isEmpty() &&
                     !taskSearchLoading
                 ) {
-                    Text("По запросу задачи не найдены", Modifier.padding(top = 24.dp))
+                    Text(tr("По запросу задачи не найдены"), Modifier.padding(top = 24.dp))
                 }
                 LazyColumn(
                     modifier = Modifier.weight(1f),
@@ -473,7 +470,7 @@ private fun ImproverScreen(
                     if (taskSearchQuery.isBlank() && visibleTodayMeetings.isNotEmpty()) {
                         item {
                             Text(
-                                "Встречи сегодня",
+                                tr("Встречи сегодня"),
                                 modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                                 style = MaterialTheme.typography.titleMedium,
                             )
@@ -489,7 +486,7 @@ private fun ImproverScreen(
                         }
                         item {
                             Text(
-                                "Задачи",
+                                tr("Задачи"),
                                 modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                                 style = MaterialTheme.typography.titleMedium,
                             )
@@ -509,7 +506,7 @@ private fun ImproverScreen(
                 FullTextSearchField(
                     query = taskSearchQuery,
                     onQueryChange = viewModel::setSearchQuery,
-                    placeholder = "Поиск по задачам",
+                    placeholder = tr("Поиск по задачам"),
                 )
             }
                     HomeTab.MEETINGS -> MeetingList(
@@ -527,10 +524,7 @@ private fun ImproverScreen(
                         onOpenThread = onOpenThread,
                         modifier = Modifier.fillMaxSize(),
                     )
-                    HomeTab.STATUS -> SystemStatusTable(
-                        state = systemStatus,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+
                 }
             }
         }
@@ -543,12 +537,6 @@ private fun ImproverScreen(
                 viewModel.create(title, priority, due)
                 showCreate = false
             },
-        )
-    }
-    if (showSettings) {
-        SettingsDialog(
-            onDismiss = { showSettings = false },
-            onSetup = { showSettings = false; onSetup() },
         )
     }
     reminderTask?.let { task ->
@@ -580,7 +568,23 @@ private enum class HomeTab {
     MEETINGS,
     RESULTS,
     THREADS,
-    STATUS,
+}
+
+@Composable
+private fun ServerConnectionIndicator(connected: Boolean?, onClick: () -> Unit) {
+    val description = when (connected) {
+        true -> tr("Работает")
+        false -> tr("Нет соединения")
+        null -> tr("Проверяем сервер…")
+    }
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Default.SyncAlt,
+            contentDescription = tr("Сервер") + ": " + description,
+            tint = if (connected == null) MaterialTheme.colorScheme.onSurfaceVariant else overallStatusColor(if (connected) "OK" else "ERROR"),
+            modifier = Modifier.size(22.dp),
+        )
+    }
 }
 
 @Composable
@@ -588,15 +592,15 @@ private fun SystemHealthIndicator(status: String, onClick: () -> Unit) {
     IconButton(onClick = onClick) {
         Icon(
             imageVector = Icons.Default.Circle,
-            contentDescription = "Состояние системы: ${statusLabel(status)}",
-            tint = overallStatusColor(status),
+            contentDescription = tr("Состояние системы: {0}" , statusLabel(status)),
+            tint = if (status == "UNKNOWN") MaterialTheme.colorScheme.onSurfaceVariant else overallStatusColor(status),
             modifier = Modifier.size(22.dp),
         )
     }
 }
 
 @Composable
-private fun SystemStatusTable(state: SystemStatusUiState, modifier: Modifier = Modifier) {
+internal fun SystemStatusTable(state: SystemStatusUiState, modifier: Modifier = Modifier) {
     Column(modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
         state.error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
@@ -606,9 +610,9 @@ private fun SystemStatusTable(state: SystemStatusUiState, modifier: Modifier = M
             shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
         ) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp)) {
-                Text("Компонент", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1.05f))
-                Text("Состояние", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(0.8f))
-                Text("Данные", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1.25f))
+                Text(tr("Компонент"), style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1.05f))
+                Text(tr("Состояние"), style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(0.8f))
+                Text(tr("Данные"), style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1.25f))
             }
         }
         LazyColumn(modifier = Modifier.weight(1f)) {
@@ -619,7 +623,7 @@ private fun SystemStatusTable(state: SystemStatusUiState, modifier: Modifier = M
             if (components.isEmpty() && !state.loading) {
                 item {
                     Text(
-                        "Нет данных о компонентах",
+                        tr("Нет данных о компонентах"),
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -639,7 +643,7 @@ private fun ComponentStatusRow(component: ComponentStatusDto) {
         verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1.05f).padding(end = 6.dp)) {
-            Text(component.label, style = MaterialTheme.typography.bodyMedium)
+            Text(when (component.id) { "processing" -> tr("Обработка"); "ollama-semaphore" -> tr("Семафор LLM"); "worker-main" -> tr("Фоновая обработка"); else -> component.label }, style = MaterialTheme.typography.bodyMedium)
             Text(
                 componentTypeLabel(component.componentType),
                 style = MaterialTheme.typography.labelSmall,
@@ -673,7 +677,7 @@ private fun ComponentStatusRow(component: ComponentStatusDto) {
             }
             component.message?.let {
                 Text(
-                    it,
+                    tr(it),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (component.status == "ERROR") {
                         MaterialTheme.colorScheme.error
@@ -687,13 +691,13 @@ private fun ComponentStatusRow(component: ComponentStatusDto) {
 }
 
 private fun statusLabel(status: String): String = when (status) {
-    "OK" -> "Норма"
-    "BUSY" -> "Занят"
-    "DEGRADED" -> "Снижен"
-    "ERROR" -> "Ошибка"
-    "STALE" -> "Нет связи"
-    "DISABLED" -> "Отключён"
-    else -> "Неизвестно"
+    "OK" -> tr("Норма")
+    "BUSY" -> tr("Занят")
+    "DEGRADED" -> tr("Снижен")
+    "ERROR" -> tr("Ошибка")
+    "STALE" -> tr("Нет связи")
+    "DISABLED" -> tr("Отключён")
+    else -> tr("Неизвестно")
 }
 
 private fun statusColor(status: String): Color = when (status) {
@@ -710,47 +714,47 @@ private fun overallStatusColor(status: String): Color = when (status) {
 }
 
 private fun componentTypeLabel(type: String): String = when (type) {
-    "event_loader" -> "Загрузчик событий"
-    "external_loader" -> "Внешний загрузчик"
-    "llm" -> "Языковая модель"
-    "processing" -> "Очереди"
-    "semaphore" -> "Семафор"
-    "worker" -> "Фоновый процесс"
+    "event_loader" -> tr("Загрузчик событий")
+    "external_loader" -> tr("Внешний загрузчик")
+    "llm" -> tr("Языковая модель")
+    "processing" -> tr("Очереди")
+    "semaphore" -> tr("Семафор")
+    "worker" -> tr("Фоновый процесс")
     else -> type.replace('_', ' ')
 }
 
 private fun metricLabel(key: String): String = mapOf(
-    "capacity" to "лимит",
-    "in_use" to "занято",
-    "waiting" to "ожидает",
-    "interactive_ready" to "чатов готово",
-    "latency_ms" to "задержка, мс",
-    "model_count" to "моделей",
-    "poll_interval_seconds" to "интервал, с",
-    "seconds_since_sync" to "с последней загрузки, с",
-    "events_last_cycle" to "событий за цикл",
-    "events_loaded" to "загружено событий",
-    "candidates" to "найдено",
-    "tasks_sent" to "отправлено задач",
-    "duration_seconds" to "длительность, с",
-    "consecutive_errors" to "ошибок подряд",
-    "seconds_until_next_poll" to "до следующей загрузки, с",
-    "events_pending" to "событий в очереди",
-    "events_processing" to "событий в работе",
-    "events_failed" to "ошибок событий",
-    "events_retry_waiting" to "повторных попыток",
-    "chat_pending" to "чатов в очереди",
-    "chat_processing" to "чатов в работе",
-    "chat_failed" to "ошибок чата",
-    "contexts_pending" to "контекстов в очереди",
-    "contexts_processing" to "контекстов в работе",
-    "contexts_failed" to "ошибок контекста",
-    "tasks_active" to "активных задач",
-    "stuck" to "зависло",
+    "capacity" to tr("лимит"),
+    "in_use" to tr("занято"),
+    "waiting" to tr("ожидает"),
+    "interactive_ready" to tr("чатов готово"),
+    "latency_ms" to tr("задержка, мс"),
+    "model_count" to tr("моделей"),
+    "poll_interval_seconds" to tr("интервал, с"),
+    "seconds_since_sync" to tr("с последней загрузки, с"),
+    "events_last_cycle" to tr("событий за цикл"),
+    "events_loaded" to tr("загружено событий"),
+    "candidates" to tr("найдено"),
+    "tasks_sent" to tr("отправлено задач"),
+    "duration_seconds" to tr("длительность, с"),
+    "consecutive_errors" to tr("ошибок подряд"),
+    "seconds_until_next_poll" to tr("до следующей загрузки, с"),
+    "events_pending" to tr("событий в очереди"),
+    "events_processing" to tr("событий в работе"),
+    "events_failed" to tr("ошибок событий"),
+    "events_retry_waiting" to tr("повторных попыток"),
+    "chat_pending" to tr("чатов в очереди"),
+    "chat_processing" to tr("чатов в работе"),
+    "chat_failed" to tr("ошибок чата"),
+    "contexts_pending" to tr("контекстов в очереди"),
+    "contexts_processing" to tr("контекстов в работе"),
+    "contexts_failed" to tr("ошибок контекста"),
+    "tasks_active" to tr("активных задач"),
+    "stuck" to tr("зависло"),
 )[key] ?: key.replace('_', ' ')
 
 private fun formatMetric(value: Double): String =
-    if (value % 1.0 == 0.0) value.toLong().toString() else "%.1f".format(value)
+    if (value % 1.0 == 0.0) value.toLong().toString() else "%.1f".format(net.muratov.assistant.i18n.Language.locale, value)
 
 private fun formatStatusTime(value: String): String = runCatching {
     ZonedDateTime.parse(value)
@@ -759,11 +763,12 @@ private fun formatStatusTime(value: String): String = runCatching {
 }.getOrElse { value.take(19).replace('T', ' ') }
 
 @Composable
-private fun FullTextSearchField(
+internal fun FullTextSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    extraActions: (@Composable () -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = query,
@@ -781,10 +786,11 @@ private fun FullTextSearchField(
             Icon(Icons.Default.Search, contentDescription = null)
         },
         trailingIcon = {
-            when {
-                query.isNotEmpty() -> IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Close, contentDescription = "Очистить поиск")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = tr("Очистить поиск"))
                 }
+                extraActions?.invoke()
             }
         },
         singleLine = true,
@@ -834,9 +840,9 @@ private fun MeetingList(
                 item {
                     Text(
                         if (state.query.isBlank()) {
-                            "Предстоящих встреч нет"
+                            tr("Предстоящих встреч нет")
                         } else {
-                            "По запросу встречи не найдены"
+                            tr("По запросу встречи не найдены")
                         },
                         Modifier.padding(top = 24.dp),
                     )
@@ -852,7 +858,7 @@ private fun MeetingList(
         FullTextSearchField(
             query = state.query,
             onQueryChange = viewModel::setSearchQuery,
-            placeholder = "Поиск по встречам",
+            placeholder = tr("Поиск по встречам"),
         )
     }
 }
@@ -900,7 +906,7 @@ private fun MeetingCard(
                 }
                 if (!compact && !organizer.isNullOrBlank()) {
                     Text(
-                        "Организатор: $organizer",
+                        tr("Организатор: {0}" , organizer),
                         modifier = Modifier.padding(top = 3.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -910,7 +916,7 @@ private fun MeetingCard(
                 }
                 if (meeting.status == "CANCELLED") {
                     Text(
-                        "Отменена",
+                        tr("Отменена"),
                         modifier = Modifier.padding(top = 3.dp),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
@@ -990,9 +996,9 @@ private fun MeetingResultList(
                 item {
                     Text(
                         if (state.query.isBlank()) {
-                            "Готовых расшифровок пока нет"
+                            tr("Готовых расшифровок пока нет")
                         } else {
-                            "По запросу результаты встреч не найдены"
+                            tr("По запросу результаты встреч не найдены")
                         },
                         Modifier.padding(top = 24.dp),
                     )
@@ -1008,7 +1014,7 @@ private fun MeetingResultList(
         FullTextSearchField(
             query = state.query,
             onQueryChange = viewModel::setSearchQuery,
-            placeholder = "Поиск по итогам",
+            placeholder = tr("Поиск по итогам"),
         )
     }
 }
@@ -1046,7 +1052,7 @@ private fun MeetingResultCard(result: MeetingResultDto, onOpen: () -> Unit) {
                 )
                 if (result.calendarMeetingId != null) {
                     Text(
-                        "Связано с календарём",
+                        tr("Связано с календарём"),
                         modifier = Modifier.padding(top = 3.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
@@ -1055,10 +1061,10 @@ private fun MeetingResultCard(result: MeetingResultDto, onOpen: () -> Unit) {
                 Text(
                     when (result.analysisState) {
                         "COMPLETED" -> result.briefSummary.ifBlank {
-                            "Основные договорённости не выделены"
+                            tr("Основные договорённости не выделены")
                         }
-                        "FAILED" -> "Анализ материалов встречи завершился ошибкой"
-                        else -> "Qwen анализирует материалы встречи…"
+                        "FAILED" -> tr("Анализ материалов встречи завершился ошибкой")
+                        else -> tr("Qwen анализирует материалы встречи…")
                     },
                     modifier = Modifier.padding(top = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
@@ -1067,7 +1073,7 @@ private fun MeetingResultCard(result: MeetingResultDto, onOpen: () -> Unit) {
                 )
                 if (result.supplementCount > 0) {
                     Text(
-                        "Резюме участников: ${result.supplementCount}",
+                        tr("Резюме участников: {0}" , result.supplementCount),
                         modifier = Modifier.padding(top = 6.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFF8CE0BD),
@@ -1121,9 +1127,9 @@ private fun ConversationThreadList(
                 item {
                     Text(
                         if (state.query.isBlank()) {
-                            "Переписки пока не найдены"
+                            tr("Переписки пока не найдены")
                         } else {
-                            "По запросу переписки не найдены"
+                            tr("По запросу переписки не найдены")
                         },
                         Modifier.padding(top = 24.dp),
                     )
@@ -1139,7 +1145,7 @@ private fun ConversationThreadList(
         FullTextSearchField(
             query = state.query,
             onQueryChange = viewModel::setSearchQuery,
-            placeholder = "Поиск по перепискам",
+            placeholder = tr("Поиск по перепискам"),
         )
     }
 }
@@ -1164,13 +1170,13 @@ private fun ConversationThreadCard(
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
             Text(
-                thread.title ?: "Переписка без темы",
+                thread.title ?: tr("Переписка без темы"),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "${thread.sourceLabel} • ${thread.eventCount} сообщ.",
+                tr("{0} • {1} сообщ." , thread.sourceLabel, thread.eventCount),
                 modifier = Modifier.padding(top = 3.dp),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
@@ -1186,14 +1192,14 @@ private fun ConversationThreadCard(
                 )
             }
             Text(
-                thread.summary ?: "Резюме готовится после анализа Qwen…",
+                thread.summary ?: tr("Резюме готовится после анализа Qwen…"),
                 modifier = Modifier.padding(top = 8.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 6,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "Обновлено: ${formatThreadTimestamp(thread.lastEventAt)}",
+                tr("Обновлено: {0}" , formatThreadTimestamp(thread.lastEventAt)),
                 modifier = Modifier.padding(top = 8.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1202,8 +1208,8 @@ private fun ConversationThreadCard(
     }
 }
 
-private val threadTimestampFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-private val meetingDateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+private val threadTimestampFormatter get() = net.muratov.assistant.i18n.dateTimeFormatter()
+private val meetingDateFormatter get() = net.muratov.assistant.i18n.dateFormatter()
 private val meetingTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
@@ -1233,11 +1239,11 @@ private fun formatMeetingTime(meeting: MeetingDto): String = runCatching {
     val start = ZonedDateTime.parse(meeting.startsAt).withZoneSameInstant(ZoneId.systemDefault())
     val end = ZonedDateTime.parse(meeting.endsAt).withZoneSameInstant(ZoneId.systemDefault())
     if (meeting.allDay) {
-        "${start.format(meetingDateFormatter)} • весь день"
+        tr("{0} • весь день" , start.format(meetingDateFormatter))
     } else {
         val date = start.format(meetingDateFormatter)
         val interval = "${start.format(meetingTimeFormatter)}–${end.format(meetingTimeFormatter)}"
-        "$date • $interval"
+        "${date} • ${interval}"
     }
 }.getOrDefault(meeting.startsAt)
 
@@ -1263,10 +1269,10 @@ private fun SecondaryActionBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onSettings, modifier = Modifier.size(52.dp)) {
-                Icon(Icons.Default.Settings, contentDescription = "Настройки")
+                Icon(Icons.Default.Settings, contentDescription = tr("Настройки"))
             }
             IconButton(onClick = onChat, modifier = Modifier.size(52.dp)) {
-                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Чат с Qwen")
+                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = tr("Чат с Qwen"))
             }
         }
     }
@@ -1293,20 +1299,20 @@ private fun RightThumbActionBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onSettings, modifier = Modifier.size(52.dp)) {
-                Icon(Icons.Default.Settings, contentDescription = "Настройки")
+                Icon(Icons.Default.Settings, contentDescription = tr("Настройки"))
             }
             IconButton(onClick = onSort, modifier = Modifier.size(52.dp)) {
                 Icon(
                     Icons.AutoMirrored.Filled.Sort,
                     contentDescription = if (sortByDue) {
-                        "Сортировать по рейтингу"
+                        tr("Сортировать по рейтингу")
                     } else {
-                        "Сортировать по приоритету и сроку"
+                        tr("Сортировать по приоритету и сроку")
                     },
                 )
             }
             IconButton(onClick = onChat, modifier = Modifier.size(52.dp)) {
-                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Чат с Qwen")
+                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = tr("Чат с Qwen"))
             }
             Spacer(Modifier.width(6.dp))
             Surface(
@@ -1314,8 +1320,8 @@ private fun RightThumbActionBar(
                     .size(52.dp)
                     .combinedClickable(
                         enabled = !voiceProcessing,
-                        onClickLabel = "Добавить задачу вручную",
-                        onLongClickLabel = "Надиктовать задачу",
+                        onClickLabel = tr("Добавить задачу вручную"),
+                        onLongClickLabel = tr("Надиктовать задачу"),
                         onClick = onAdd,
                         onLongClick = onVoiceAdd,
                     ),
@@ -1332,7 +1338,7 @@ private fun RightThumbActionBar(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Icon(Icons.Default.Add, contentDescription = "Добавить задачу")
+                        Icon(Icons.Default.Add, contentDescription = tr("Добавить задачу"))
                     }
                 }
             }
@@ -1381,16 +1387,16 @@ private fun TaskCard(
                     )
                 }
                 if (task.status == "NEEDS_CONFIRMATION") {
-                    Text("Требует подтверждения", color = MaterialTheme.colorScheme.error)
+                    Text(tr("Требует подтверждения"), color = MaterialTheme.colorScheme.error)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        TextButton(onClick = onConfirm) { Text("Добавить") }
+                        TextButton(onClick = onConfirm) { Text(tr("Добавить")) }
                         RejectTaskButton(onClick = onReject)
                     }
                 } else if (task.status == "POSSIBLY_COMPLETED") {
-                    Text("Возможно выполнена — подтвердите", color = priority.accent)
+                    Text(tr("Возможно выполнена — подтвердите"), color = priority.accent)
                 }
             }
             Row(
@@ -1403,7 +1409,7 @@ private fun TaskCard(
                         .padding(top = 4.dp, end = 4.dp),
                 ) {
                     Text(
-                        task.dueAt?.let { "Срок: $it" } ?: "Срок не задан",
+                        task.dueAt?.let { tr("Срок: {0}" , formatThreadTimestamp(it)) } ?: tr("Срок не задан"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -1432,7 +1438,7 @@ private fun TaskCard(
                             shape = CircleShape,
                         ),
                 ) {
-                    Icon(Icons.Default.Alarm, contentDescription = "Добавить напоминание")
+                    Icon(Icons.Default.Alarm, contentDescription = tr("Добавить напоминание"))
                 }
                 Checkbox(
                     checked = false,
@@ -1456,17 +1462,18 @@ private data class PriorityVisual(
 )
 
 private fun priorityVisual(priority: String): PriorityVisual = when (priority.uppercase()) {
-    "CRITICAL" -> PriorityVisual("Критический", Color(0xFFFF7F79), Color(0xFF35181B))
-    "HIGH" -> PriorityVisual("Высокий", Color(0xFFFFB45E), Color(0xFF302316))
-    "LOW" -> PriorityVisual("Низкий", Color(0xFF9AA7B2), Color(0xFF1A2025))
-    else -> PriorityVisual("Обычный", Color(0xFF7CB8D8), Color(0xFF14232D))
+    "CRITICAL" -> PriorityVisual(tr("Критический"), Color(0xFFFF7F79), Color(0xFF35181B))
+    "HIGH" -> PriorityVisual(tr("Высокий"), Color(0xFFFFB45E), Color(0xFF302316))
+    "LOW" -> PriorityVisual(tr("Низкий"), Color(0xFF9AA7B2), Color(0xFF1A2025))
+    else -> PriorityVisual(tr("Обычный"), Color(0xFF7CB8D8), Color(0xFF14232D))
 }
 
 private fun visibleRankingReasons(value: String): String = value
     .split(" • ")
     .map(String::trim)
-    .filterNot { it.startsWith("приоритет:", ignoreCase = true) }
+    .filterNot { it.startsWith(tr("приоритет:"), ignoreCase = true) }
     .filter(String::isNotBlank)
+    .map { if (it.equals("срок в течение суток", ignoreCase = true)) tr("До срока меньше суток") else it }
     .joinToString(" • ")
 
 @Composable
@@ -1478,12 +1485,12 @@ private fun ReminderDialog(
     var remindAt by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Напомнить о задаче") },
+        title = { Text(tr("Напомнить о задаче")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(taskTitle)
                 DateTimeField(
-                    label = "Дата и время напоминания",
+                    label = tr("Дата и время напоминания"),
                     value = remindAt,
                     onValueChange = { remindAt = it },
                 )
@@ -1493,9 +1500,9 @@ private fun ReminderDialog(
             Button(
                 enabled = remindAt.isNotBlank(),
                 onClick = { onSave(remindAt) },
-            ) { Text("Сохранить") }
+            ) { Text(tr("Сохранить")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Отмена")) } },
     )
 }
 
@@ -1509,39 +1516,39 @@ private fun CreateTaskDialog(
     var due by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новая задача") },
+        title = { Text(tr("Новая задача")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Название") },
+                    label = { Text(tr("Название")) },
                 )
-                Text("Приоритет")
+                Text(tr("Приоритет"))
                 listOf(
-                    "LOW" to "Низкий",
-                    "NORMAL" to "Обычный",
-                    "HIGH" to "Высокий",
-                    "CRITICAL" to "Критич.",
+                    "LOW" to tr("Низкий"),
+                    "NORMAL" to tr("Обычный"),
+                    "HIGH" to tr("Высокий"),
+                    "CRITICAL" to tr("Критич."),
                 ).chunked(2).forEach { choices ->
                     Row {
                         choices.forEach { (value, label) ->
                             TextButton(onClick = { priority = value }) {
-                                Text(if (priority == value) "• $label" else label)
+                                Text(if (priority == value) "• ${label}" else label)
                             }
                         }
                     }
                 }
-                DateTimeField(label = "Срок", value = due, onValueChange = { due = it })
+                DateTimeField(label = tr("Срок"), value = due, onValueChange = { due = it })
             }
         },
         confirmButton = {
             Button(onClick = { if (title.isNotBlank()) onCreate(title, priority, due) }) {
                 Icon(Icons.Default.Check, contentDescription = null)
-                Text("Создать")
+                Text(tr("Создать"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Отмена")) } },
     )
 }
 
@@ -1554,7 +1561,7 @@ private fun DateTimeField(
     val context = LocalContext.current
     val now = ZonedDateTime.now()
     Column {
-        Text(if (value.isBlank()) "$label не задан" else "$label: $value")
+        Text(if (value.isBlank()) tr("{0} не задан" , label) else "${label}: ${value}")
         Row {
             Button(
                 onClick = {
@@ -1587,29 +1594,11 @@ private fun DateTimeField(
                         now.dayOfMonth,
                     ).show()
                 },
-            ) { Text("Выбрать") }
+            ) { Text(tr("Выбрать")) }
             if (value.isNotBlank()) {
-                TextButton(onClick = { onValueChange("") }) { Text("Очистить") }
+                TextButton(onClick = { onValueChange("") }) { Text(tr("Очистить")) }
             }
         }
     }
 }
 
-@Composable
-private fun SettingsDialog(onDismiss: () -> Unit, onSetup: () -> Unit) {
-    val application = LocalContext.current.applicationContext as ImproverApplication
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Настройки") },
-        text = {
-            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                Text(application.container.settings.serverUrl)
-                Button(onClick = onSetup) { Text("Мастер подключения") }
-                Spacer(Modifier.height(16.dp))
-                net.muratov.assistant.ui.RelationshipSettings(application.container.repository)
-                UpdatePanel(application.container.updates)
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
-    )
-}

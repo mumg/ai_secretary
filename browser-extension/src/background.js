@@ -1,3 +1,4 @@
+importScripts("translations.js", "i18n.js");
 const CHANNEL = "improver-mts-sso-v1";
 const PREFIX = "mts-flow-";
 const finishing = new Set();
@@ -28,6 +29,8 @@ function callbackCode(raw) {
   } catch { return null; }
 }
 async function send(flow, message) {
+  await SecretaryLanguageReady;
+  if (message.message) message = { ...message, message: tr(message.message) };
   try {
     const tab = await chrome.tabs.get(flow.adminTab);
     if (adminOrigin(tab.url) !== flow.origin) return;
@@ -55,7 +58,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     return;
   }
   await chrome.storage.session.set({ ["admin-" + tab.id]: origin });
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["translations.js", "i18n.js", "content.js"] });
   await chrome.action.setBadgeText({ tabId: tab.id, text: "SSO" });
 });
 chrome.runtime.onMessage.addListener((message, sender, respond) => {

@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -50,7 +52,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class MeetingResultDetailActivity : ComponentActivity() {
+class MeetingResultDetailActivity : net.muratov.assistant.i18n.LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val resultId = intent.getStringExtra(EXTRA_RESULT_ID) ?: return finish()
@@ -98,14 +100,14 @@ private fun MeetingResultDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        state.detail?.title ?: "Результат встречи",
+                        state.detail?.title ?: tr("Результат встречи"),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Назад"))
                     }
                 },
             )
@@ -122,7 +124,7 @@ private fun MeetingResultDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(state.error, color = MaterialTheme.colorScheme.error)
-                Button(onClick = onRetry) { Text("Повторить") }
+                Button(onClick = onRetry) { Text(tr("Повторить")) }
             }
 
             state.detail != null -> MeetingResultDetailContent(
@@ -146,7 +148,7 @@ private fun MeetingResultDetailContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ResultField(
-            "Когда",
+            tr("Когда"),
             formatMeetingResultPeriod(
                 detail.startsAt,
                 detail.endsAt,
@@ -154,33 +156,33 @@ private fun MeetingResultDetailContent(
                 detail.calendarMeetingId,
             ),
         )
-        ResultField("Тема", detail.title)
+        ResultField(tr("Тема"), detail.title)
         participantNames(detail.participants).takeIf(String::isNotBlank)?.let {
-            ResultField("Участники", it)
+            ResultField(tr("Участники"), it)
         }
         detail.meetingUrl?.takeIf(String::isNotBlank)?.let { url ->
             TextButton(onClick = { runCatching { uriHandler.openUri(url) } }) {
-                Text("Открыть встречу")
+                Text(tr("Открыть встречу"))
             }
         }
 
-        Text("Автоматическое резюме", style = MaterialTheme.typography.titleMedium)
+        Text(tr("Автоматическое резюме"), style = MaterialTheme.typography.titleMedium)
         MarkdownText(
                 detail.summary?.takeIf(String::isNotBlank)
                     ?: if (detail.analysisState == "COMPLETED") {
-                        "Резюме не сформировано"
+                        tr("Резюме не сформировано")
                     } else {
-                        "Qwen анализирует материалы встречи…"
+                        tr("Qwen анализирует материалы встречи…")
                     },
                 modifier = Modifier.fillMaxWidth(),
         )
-        ResultList("Решения", detail.decisions)
-        ResultList("Основные договорённости", detail.agreements)
+        ResultList(tr("Решения"), detail.decisions)
+        ResultList(tr("Основные договорённости"), detail.agreements)
 
-        Text("Резюме участников", style = MaterialTheme.typography.titleMedium)
+        Text(tr("Резюме участников"), style = MaterialTheme.typography.titleMedium)
         if (detail.participantSummaries.isEmpty()) {
             Text(
-                "Дополнительных итогов от участников пока нет",
+                tr("Дополнительных итогов от участников пока нет"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
@@ -195,9 +197,9 @@ private fun MeetingResultDetailContent(
         ) {
             Text(
                 if (detail.originType == "mts_transcript") {
-                    "Открыть расшифровку"
+                    tr("Открыть расшифровку")
                 } else {
-                    "Открыть исходное письмо"
+                    tr("Открыть исходное письмо")
                 },
             )
         }
@@ -220,7 +222,7 @@ private fun ParticipantSummaryCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                item.author?.takeIf(String::isNotBlank) ?: "Участник",
+                item.author?.takeIf(String::isNotBlank) ?: tr("Участник"),
                 style = MaterialTheme.typography.titleSmall,
             )
             Text(
@@ -231,7 +233,7 @@ private fun ParticipantSummaryCard(
             Text(item.summary, style = MaterialTheme.typography.bodyMedium)
             if (item.agreements.isNotEmpty()) {
                 Text(
-                    "Договорённости: ${item.agreements.joinToString(" • ")}",
+                    tr("Договорённости: {0}" , item.agreements.joinToString(" • ")),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -252,7 +254,7 @@ private fun ResultList(label: String, values: List<String>) {
     if (values.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, style = MaterialTheme.typography.titleSmall)
-        MarkdownText(values.joinToString("\n") { "- $it" }, Modifier.fillMaxWidth())
+        MarkdownText(values.joinToString("\n") { "- ${it}" }, Modifier.fillMaxWidth())
     }
 }
 
@@ -264,6 +266,6 @@ private fun participantNames(participants: List<Map<String, String>>): String =
 
 private fun formatResultInstant(value: String): String = runCatching {
     OffsetDateTime.parse(value).atZoneSameInstant(ZoneId.systemDefault()).format(
-        DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.forLanguageTag("ru-RU")),
+        net.muratov.assistant.i18n.dateTimeFormatter(),
     )
 }.getOrDefault(value)

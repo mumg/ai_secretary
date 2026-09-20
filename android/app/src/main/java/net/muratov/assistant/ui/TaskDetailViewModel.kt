@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import net.muratov.assistant.notifications.observeRealtime
 import kotlinx.coroutines.Job
@@ -44,7 +46,7 @@ class TaskDetailViewModel(
                     if (it is CancellationException) throw it
                     _state.value = _state.value.copy(
                         loading = false,
-                        error = it.message ?: "Не удалось загрузить задачу",
+                        error = it.message ?: tr("Не удалось загрузить задачу"),
                     )
                 }
         }
@@ -63,7 +65,7 @@ class TaskDetailViewModel(
             } catch (exception: Exception) {
                 _state.value = _state.value.copy(
                     loading = false,
-                    error = exception.message ?: "Не удалось отказаться от задачи",
+                    error = exception.message ?: tr("Не удалось отказаться от задачи"),
                 )
             }
         }

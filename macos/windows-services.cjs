@@ -1,14 +1,15 @@
 'use strict';
+const { tr } = require('./i18n.cjs');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
 function connectionOrigin(text) {
   const match = text.match(/^URL=(.+)$/m);
-  if (!match) throw Error('Не найден адрес установленного сервера');
+  if (!match) throw Error(tr("Не найден адрес установленного сервера"));
   const url = new URL(match[1].trim());
   if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || !url.port ||
       url.username || url.password || !['/app', '/app/'].includes(url.pathname) || url.search || url.hash)
-    throw Error('Недопустимый адрес локального сервера');
+    throw Error(tr("Недопустимый адрес локального сервера"));
   return url.origin;
 }
 class WindowsServices {
@@ -22,7 +23,7 @@ class WindowsServices {
     // accessible only to Administrators/SYSTEM/LocalService; the UI runs unelevated.
     const origin = connectionOrigin(await fs.readFile(path.join(this.root, 'Open.url'), 'utf8'));
     const version = (await fs.readFile(path.join(this.root, 'version'), 'utf8')).trim();
-    this.progress('Подключение к службам Windows…');
+    this.progress(tr("Подключение к службам Windows…"));
     for (let i = 0; i < 60; i++) {
       try {
         const live = await fetch(`${origin}/health/live`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
@@ -31,7 +32,7 @@ class WindowsServices {
       } catch { /* Windows SCM may still be starting the services. */ }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    throw Error('Службы AISecretary не запустились. Проверьте их в «Службах Windows» или повторите установку.');
+    throw Error(tr("Службы AISecretary не запустились. Проверьте их в «Службах Windows» или повторите установку."));
   }
 }
 module.exports = { WindowsServices, connectionOrigin };

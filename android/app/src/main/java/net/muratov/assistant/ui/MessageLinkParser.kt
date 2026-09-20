@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import java.net.URI
 
 data class MessageTextPart(
@@ -110,7 +112,7 @@ private fun compactBareLinks(value: String): List<MessageTextPart> {
             .getOrNull()
             ?.removePrefix("www.")
             ?.takeIf(String::isNotBlank)
-            ?: "Открыть ссылку"
+            ?: tr("Открыть ссылку")
         parts += MessageTextPart(display, url)
         cursor = urlEnd
     }

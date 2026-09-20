@@ -1,3 +1,4 @@
+var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m, i) => i < a.length ? String(a[i]) : m));
 (() => {
   "use strict";
   const banner = document.getElementById("version-notice");
@@ -9,15 +10,15 @@
   function render(data) {
     banner.hidden = !data.update_available;
     document.getElementById("version-notice-text").textContent = data.update_available
-      ? `Доступна новая версия ${data.latest_version}. Установлена ${data.current_version}.`
+      ? tr("Доступна новая версия {0}. Установлена {1}.", data.latest_version, data.current_version)
       : "";
     if (!details) return;
-    const messages = [`Версия исходников: ${data.current_version}.`];
+    const messages = [tr("Версия исходников: {0}.", data.current_version)];
     if (data.error) messages.push(data.error);
-    else if (!data.checked_at) messages.push("Проверяем обновления…");
-    else if (!data.update_available) messages.push("Новых версий нет.");
+    else if (!data.checked_at) messages.push(tr("Проверяем обновления…"));
+    else if (!data.update_available) messages.push(tr("Новых версий нет."));
     if (data.last_success_at) {
-      messages.push(`Последняя успешная проверка: ${new Date(data.last_success_at).toLocaleString("ru-RU")}.`);
+      messages.push(tr("Последняя успешная проверка: {0}.", new Date(data.last_success_at).toLocaleString((globalThis.SecretaryI18n?.locale || "ru-RU"))));
     }
     details.textContent = messages.join(" ");
   }
@@ -37,7 +38,7 @@
       if (!loaded && !data.checked_at) setTimeout(() => refresh(), 15000);
       loaded = true;
     } catch {
-      if (details) details.textContent = "Не удалось получить сведения о версии с сервера. Повторите проверку позже.";
+      if (details) details.textContent = tr("Не удалось получить сведения о версии с сервера. Повторите проверку позже.");
     } finally {
       busy = false;
       if (button) button.disabled = false;

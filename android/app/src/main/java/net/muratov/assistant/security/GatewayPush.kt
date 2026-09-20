@@ -1,5 +1,7 @@
 package net.muratov.assistant.security
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.system.Os
 import android.util.AtomicFile
@@ -32,7 +34,7 @@ object GatewayPush {
             client.newCall(Request.Builder().url("${identity.gateway}/api/v1/devices/${state.getString("device_id")}")
                 .header("X-Device-Key", state.getString("key"))
                 .put(body.toString().toRequestBody("application/json".toMediaType())).build()).execute().use {
-                if (!it.isSuccessful) throw java.io.IOException("Регистрация push на гейтвее: HTTP ${it.code}")
+                if (!it.isSuccessful) throw java.io.IOException(tr("Регистрация push на гейтвее: HTTP {0}" , it.code))
             }
         } finally { client.connectionPool.evictAll(); client.dispatcher.executorService.shutdown() }
     }

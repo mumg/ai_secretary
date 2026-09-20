@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  await SecretaryLanguageReady;
   const channel = "improver-mts-sso-v1";
   const notify = (message) => window.postMessage({ channel, from: "extension", ...message }, location.origin);
   const check = async () => {
@@ -19,7 +20,7 @@
     if (action === "ping") return void check();
     if (!["start", "cancel"].includes(action)) return;
     chrome.runtime.sendMessage({ action, flowId, authorizationUrl }).catch(() => {
-      notify({ action: "error", flowId, message: "Расширение отключено. Нажмите его значок в админке." });
+      notify({ action: "error", flowId, message: tr("Расширение отключено. Нажмите его значок в админке.") });
     });
   });
   chrome.runtime.onMessage.addListener((message) => {

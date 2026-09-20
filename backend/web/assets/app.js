@@ -1,3 +1,4 @@
+var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m, i) => i < a.length ? String(a[i]) : m));
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -12,49 +13,49 @@
     "status",
   ];
   const names = {
-    tasks: "План на сегодня",
-    delegations: "Поручения",
-    meetings: "Предстоящие встречи",
-    results: "Результаты встреч",
-    threads: "Резюме переписок",
-    status: "Состояние компонентов",
+    tasks: tr("План на сегодня"),
+    delegations: tr("Поручения"),
+    meetings: tr("Предстоящие встречи"),
+    results: tr("Результаты встреч"),
+    threads: tr("Резюме переписок"),
+    status: tr("Состояние компонентов"),
   };
   const searches = {
-    tasks: "задачам",
-    delegations: "поручениям",
-    meetings: "встречам",
-    results: "итогам",
-    threads: "перепискам",
+    tasks: tr("задачам"),
+    delegations: tr("поручениям"),
+    meetings: tr("встречам"),
+    results: tr("итогам"),
+    threads: tr("перепискам"),
   };
   const priorities = {
-    LOW: "Низкий",
-    NORMAL: "Обычный",
-    HIGH: "Высокий",
-    CRITICAL: "Критический",
+    LOW: tr("Низкий"),
+    NORMAL: tr("Обычный"),
+    HIGH: tr("Высокий"),
+    CRITICAL: tr("Критический"),
   };
   const statuses = {
-    ASSIGNED: "Назначено",
-    IN_REVIEW: "На проверке",
-    NEEDS_CONFIRMATION: "Нужно подтвердить",
-    NEW: "Новая",
-    IN_PROGRESS: "В работе",
-    POSSIBLY_COMPLETED: "Возможно выполнена",
-    COMPLETED: "Завершена",
-    CANCELLED: "Отменена",
-    PENDING: "В очереди",
-    PROCESSING: "Обработка",
-    READY: "Контекст готов",
-    EMPTY: "Материалы не найдены",
-    NOT_REQUESTED: "Контекст не запрошен",
-    FAILED: "Ошибка",
-    ENDED: "Встреча завершена",
-    OK: "Норма",
-    BUSY: "Занят",
-    DEGRADED: "Есть проблемы",
-    ERROR: "Ошибка",
-    STALE: "Данные устарели",
-    UNKNOWN: "Нет данных",
-    DISABLED: "Отключён",
+    ASSIGNED: tr("Назначено"),
+    IN_REVIEW: tr("На проверке"),
+    NEEDS_CONFIRMATION: tr("Нужно подтвердить"),
+    NEW: tr("Новая"),
+    IN_PROGRESS: tr("В работе"),
+    POSSIBLY_COMPLETED: tr("Возможно выполнена"),
+    COMPLETED: tr("Завершена"),
+    CANCELLED: tr("Отменена"),
+    PENDING: tr("В очереди"),
+    PROCESSING: tr("Обработка"),
+    READY: tr("Контекст готов"),
+    EMPTY: tr("Материалы не найдены"),
+    NOT_REQUESTED: tr("Контекст не запрошен"),
+    FAILED: tr("Ошибка"),
+    ENDED: tr("Встреча завершена"),
+    OK: tr("Норма"),
+    BUSY: tr("Занят"),
+    DEGRADED: tr("Есть проблемы"),
+    ERROR: tr("Ошибка"),
+    STALE: tr("Данные устарели"),
+    UNKNOWN: tr("Нет данных"),
+    DISABLED: tr("Отключён"),
   };
   const state = {
     tab: "tasks",
@@ -103,22 +104,23 @@
   const selectionKey = (s) => (s ? `${s.kind}:${s.id}` : "");
   const badge = (text, cls = "") =>
     `<span class="tag ${e(cls)}">${e(text)}</span>`;
-  const label = (s) => statuses[s] || s || "Не указано";
-  const delegationLabel = (s) => ({ COMPLETED: "Выполнено", CANCELLED: "Отменено" }[s] || label(s));
+  const componentName = c => ({ processing: tr("Обработка"), "ollama-semaphore": tr("Семафор LLM"), "worker-main": tr("Фоновая обработка") }[c.id] || c.label);
+  const label = (s) => statuses[s] || s || tr("Не указано");
+  const delegationLabel = (s) => ({ COMPLETED: tr("Выполнено"), CANCELLED: tr("Отменено") }[s] || label(s));
   const closed = (t) => ["COMPLETED", "CANCELLED"].includes(t.status);
   const date = (value, time = true) =>
     value && Number.isFinite(Date.parse(value))
-      ? new Intl.DateTimeFormat("ru-RU", {
+      ? new Intl.DateTimeFormat((globalThis.SecretaryI18n?.locale || "ru-RU"), {
           timeZone: state.zone,
           day: "numeric",
           month: "short",
           year: "numeric",
           ...(time ? { hour: "2-digit", minute: "2-digit" } : {}),
         }).format(new Date(value))
-      : "Не указано";
+      : tr("Не указано");
   const clock = (value) =>
     value
-      ? new Intl.DateTimeFormat("ru-RU", {
+      ? new Intl.DateTimeFormat((globalThis.SecretaryI18n?.locale || "ru-RU"), {
           timeZone: state.zone,
           hour: "2-digit",
           minute: "2-digit",
@@ -126,13 +128,13 @@
       : "";
   const interval = (x) =>
     x.all_day
-      ? `${date(x.starts_at, false)} · весь день`
+      ? tr("{0} · весь день", date(x.starts_at, false))
       : `${date(x.starts_at)} – ${date(x.starts_at, false) === date(x.ends_at, false) ? clock(x.ends_at) : date(x.ends_at)}`;
   const resultTime = (x) =>
     x.time_basis === "transcript"
-      ? `По временным отметкам расшифровки: ${interval(x)}`
+      ? tr("По временным отметкам расшифровки: {0}", interval(x))
       : x.time_known === false
-        ? `Время встречи неизвестно · письмо получено ${date(x.received_at)}`
+        ? tr("Время встречи неизвестно · письмо получено {0}", date(x.received_at))
         : interval(x);
   const link = (url, title) =>
     C.safeURL(url)
@@ -144,11 +146,11 @@
       : "";
   const markdown = (text) => `<div class="markdown">${C.markdown(text)}</div>`;
   const fact = (title, html) =>
-    `<div class="fact"><span>${e(title)}</span>${html || "Не указано"}</div>`;
+    `<div class="fact"><span>${e(title)}</span>${html || tr("Не указано")}</div>`;
   const head = (text) =>
     `<div class="detail-head"><span class="eyebrow">${e(text)}</span></div>`;
   function people(values) {
-    return `<div class="participants">${(values || []).map((p) => (typeof p === "string" ? `<span class="person">${e(p)}</span>` : `<span class="person">${e(p.name || p.display_name || p.address || p.email || "Участник")}${p.address || p.email ? `<small>${e(p.address || p.email)}</small>` : ""}</span>`)).join("")}</div>`;
+    return `<div class="participants">${(values || []).map((p) => (typeof p === "string" ? `<span class="person">${e(p)}</span>` : `<span class="person">${e(p.name || p.display_name || p.address || p.email || tr("Участник"))}${p.address || p.email ? `<small>${e(p.address || p.email)}</small>` : ""}</span>`)).join("")}</div>`;
   }
   function toast(message, error = false) {
     $("toast").textContent = message;
@@ -160,7 +162,7 @@
   function errorBox(id, message, retry = "") {
     $(id).hidden = !message;
     $(id).innerHTML = message
-      ? `${e(message)}${retry ? ` <button data-retry="${retry}">Повторить</button>` : ""}`
+      ? `${e(message)}${retry ? ` <button data-retry="${retry}">${tr("Повторить")}</button>` : ""}`
       : "";
   }
   async function api(path, options = {}) {
@@ -181,17 +183,17 @@
         : body.detail;
       throw new Error(
         response.status === 404
-          ? "Запись не найдена. Возможно, она была удалена."
+          ? tr("Запись не найдена. Возможно, она была удалена.")
           : response.status === 401 || response.status === 403
-            ? "Нет доступа. Проверьте клиентский сертификат."
-            : detail || `Сервер вернул ошибку ${response.status}`,
+            ? tr("Нет доступа. Проверьте клиентский сертификат.")
+            : detail || tr("Сервер вернул ошибку {0}", response.status),
       );
     }
     return response.status === 204 ? null : response.json();
   }
   function failText(err) {
     return err instanceof TypeError
-      ? "Сервер недоступен. Проверьте соединение."
+      ? tr("Сервер недоступен. Проверьте соединение.")
       : err.message;
   }
   function saveLocation(replace = false) {
@@ -251,12 +253,12 @@
     $("page-title").textContent = names[state.tab];
     $("page-sub").textContent =
       state.tab === "tasks"
-        ? "Встречи сегодня и активные задачи"
+        ? tr("Встречи сегодня и активные задачи")
         : state.tab === "status"
-          ? "Загрузчики, обработка и сервисы"
+          ? tr("Загрузчики, обработка и сервисы")
           : "";
     $("search").value = state.q;
-    $("search").placeholder = `Поиск по ${searches[state.tab] || "записям"}`;
+    $("search").placeholder = tr("Поиск по {0}", searches[state.tab] || tr("записям"));
     $("search").setAttribute("aria-label", $("search").placeholder);
     $("search-wrap").hidden = state.tab === "status";
     $("clear-search").hidden = !state.q;
@@ -281,7 +283,7 @@
     const overdue = x.due_at && Date.parse(x.due_at) < Date.now() && !closed(x);
     return {
       title: x.title,
-      sub: x.due_at ? `Срок: ${date(x.due_at)}` : "Без срока",
+      sub: x.due_at ? tr("Срок: {0}", date(x.due_at)) : tr("Без срока"),
       preview: x.description || x.evidence,
       tags:
         badge(priorities[x.priority], x.priority.toLowerCase()) +
@@ -289,7 +291,7 @@
           label(x.status),
           x.status === "NEEDS_CONFIRMATION" ? "warning" : "",
         ) +
-        (overdue ? badge("Просрочена", "error") : ""),
+        (overdue ? badge(tr("Просрочена"), "error") : ""),
     };
   }
   function card(row) {
@@ -299,12 +301,12 @@
     else if (row.kind === "delegation")
       c = {
         title: x.title,
-        sub: `${x.assignee_name || x.assignee_email || "Исполнитель не определён"} · ${date(x.due_at)}`,
+        sub: `${x.assignee_name || x.assignee_email || tr("Исполнитель не определён")} · ${date(x.due_at)}`,
         preview: x.description,
         tags:
           badge(delegationLabel(x.status)) +
           (!closed(x) && x.due_at && Date.parse(x.due_at) < Date.now()
-            ? badge("Просрочено", "error")
+            ? badge(tr("Просрочено"), "error")
             : ""),
       };
     else if (row.kind === "meeting")
@@ -312,7 +314,7 @@
         title: x.title,
         sub: interval(x),
         preview: x.location || x.source_label,
-        tags: badge(x.all_day ? "Весь день" : "Встреча", "blue"),
+        tags: badge(x.all_day ? tr("Весь день") : tr("Встреча"), "blue"),
       };
     else if (row.kind === "result")
       c = {
@@ -325,21 +327,21 @@
             x.analysis_state === "FAILED" ? "error" : "green",
           ) +
           (x.supplement_count
-            ? badge(`Дополнений: ${x.supplement_count}`)
+            ? badge(tr("Дополнений: {0}", x.supplement_count))
             : ""),
       };
     else if (row.kind === "thread")
       c = {
-        title: x.title || "Без темы",
-        sub: `${x.source_label} · ${x.event_count} сообщений · ${date(x.last_event_at)}`,
-        preview: x.summary || "Резюме ещё не сформировано.",
+        title: x.title || tr("Без темы"),
+        sub: tr("{0} · {1} сообщений · {2}", x.source_label, x.event_count, date(x.last_event_at)),
+        preview: x.summary || tr("Резюме ещё не сформировано."),
         tags: "",
       };
     else
       c = {
-        title: x.label,
+        title: componentName(x),
         sub: date(x.observed_at),
-        preview: x.message,
+        preview: tr(x.message || ""),
         tags: badge(label(x.status), C.healthClass(x.status)),
       };
     return `<button class="item${selectionKey(state.selected) === selectionKey({ kind: row.kind, id: x.id }) ? " selected" : ""}" data-open-kind="${row.kind}" data-open-id="${e(x.id)}" aria-pressed="${selectionKey(state.selected) === `${row.kind}:${x.id}`}"><span class="item-title">${e(c.title)}</span><span class="item-sub">${e(c.sub)}</span>${c.tags ? `<span class="tags">${c.tags}</span>` : ""}${c.preview ? `<span class="item-preview">${e(C.plainText(c.preview))}</span>` : ""}</button>`;
@@ -358,7 +360,7 @@
           return h + card(row);
         })
         .join("") ||
-      `<div class="empty">${!v.loaded ? "Загрузка…" : state.q ? "По запросу ничего не найдено." : "Здесь пока нет записей."}</div>`;
+      `<div class="empty">${!v.loaded ? tr("Загрузка…") : state.q ? tr("По запросу ничего не найдено.") : tr("Здесь пока нет записей.")}</div>`;
     if (html !== renderedList) {
       const focused = document.activeElement?.closest("#list [data-open-id]")
         ?.dataset.openId;
@@ -372,8 +374,8 @@
     }
     $("load-more").hidden = !v.hasMore;
     $("count").textContent = v.loaded
-      ? `${v.rows.length} записей${v.hasMore ? " · есть ещё" : ""}`
-      : "Загрузка…";
+      ? tr("{0} записей{1}", v.rows.length, v.hasMore ? tr(" · есть ещё") : "")
+      : tr("Загрузка…");
     $("list-scroll").scrollTop = scroll;
   }
   async function loadList({ more = false, quiet = false } = {}) {
@@ -388,7 +390,7 @@
     listLoading = true;
     $("load-more").disabled = true;
     if (!quiet) {
-      $("count").textContent = "Загрузка…";
+      $("count").textContent = tr("Загрузка…");
       errorBox("list-error", "");
     }
     try {
@@ -400,7 +402,7 @@
         rows = (system?.components || []).map((value) => ({
           kind: "component",
           value,
-          group: "Компоненты",
+          group: tr("Компоненты"),
         }));
       } else if (tab === "tasks") {
         const [tasks, plan] = await Promise.all([
@@ -416,9 +418,9 @@
           ...plan.meetings.map((value) => ({
             kind: "meeting",
             value,
-            group: "Встречи сегодня",
+            group: tr("Встречи сегодня"),
           })),
-          ...tasks.map((value) => ({ kind: "task", value, group: "Задачи" })),
+          ...tasks.map((value) => ({ kind: "task", value, group: tr("Задачи") })),
         ];
       } else {
         const path = {
@@ -462,7 +464,7 @@
             current = select.value;
           const seen = new Set();
           select.innerHTML =
-            '<option value="">Все исполнители</option>' +
+            `<option value="">${tr("Все исполнители")}</option>` +
             (page.recipients || [])
               .filter((p) => {
                 const key = p.assignee_email || p.assignee_name;
@@ -492,7 +494,7 @@
       v.signature = signature;
       renderList();
       errorBox("list-error", "");
-      $("updated").textContent = `Обновлено ${clock(new Date().toISOString())}`;
+      $("updated").textContent = tr("Обновлено {0}", clock(new Date().toISOString()));
       if (!state.selected && v.rows.length && tab !== "status") {
         state.selected = { kind: v.rows[0].kind, id: v.rows[0].value.id };
         saveLocation(true);
@@ -509,10 +511,10 @@
       if (err.name !== "AbortError" && serial === listSerial) {
         errorBox(
           "list-error",
-          failText(err) + " Ранее загруженные данные сохранены.",
+          failText(err) + tr(" Ранее загруженные данные сохранены."),
           "list",
         );
-        $("count").textContent = "Не удалось обновить";
+        $("count").textContent = tr("Не удалось обновить");
       }
     } finally {
       if (serial === listSerial) {
@@ -523,7 +525,7 @@
   }
   function references(refs) {
     return refs?.length
-      ? `<h3>Источники</h3><div class="references">${refs.map((r) => `<button class="source" data-open-kind="${r.meeting_result_id ? "result" : e(r.kind)}" data-open-id="${e(r.meeting_result_id || r.id)}"><strong>[${e(r.key)}] ${e(r.title)}</strong><p class="muted">${e([r.source_label, r.occurred_at ? date(r.occurred_at) : null].filter(Boolean).join(" · "))}</p><div class="item-preview">${e(r.snippet)}</div></button>`).join("")}</div>`
+      ? `<h3>${tr("Источники")}</h3><div class="references">${refs.map((r) => `<button class="source" data-open-kind="${r.meeting_result_id ? "result" : e(r.kind)}" data-open-id="${e(r.meeting_result_id || r.id)}"><strong>[${e(r.key)}] ${e(r.title)}</strong><p class="muted">${e([r.source_label, r.occurred_at ? date(r.occurred_at) : null].filter(Boolean).join(" · "))}</p><div class="item-preview">${e(r.snippet)}</div></button>`).join("")}</div>`
       : "";
   }
   function enhance(container, refs = []) {
@@ -532,7 +534,7 @@
       b.type = "button";
       b.className = "copy-code";
       b.dataset.copy = "code";
-      b.textContent = "Копировать";
+      b.textContent = tr("Копировать");
       pre.prepend(b);
     });
     if (!refs.length) return;
@@ -571,22 +573,22 @@
   }
   function sourceHTML(s) {
     if (!s)
-      return '<p class="muted">Создана вручную. Исходное сообщение отсутствует.</p>';
-    return `<article class="source"><div class="eyebrow">${e(s.source_label || s.source_id || "Первоисточник")}</div><h3>${e(s.subject || "Без темы")}</h3><p class="muted">${e(s.author || "Автор не указан")} · ${e(date(s.occurred_at))} · ${e({ INCOMING: "Входящее", OUTGOING: "Исходящее", INTERNAL: "Внутреннее" }[s.direction] || s.direction || "")}</p>${s.analysis_error ? `<p class="inline-error" role="alert">${e(s.analysis_error)}</p>` : ""}${people(s.participants)}<div class="text-body">${e(s.body || "Текст отсутствует")}</div>${link(s.source_url, "Открыть в источнике ↗")}</article>`;
+      return `<p class="muted">${tr("Создана вручную. Исходное сообщение отсутствует.")}</p>`;
+    return `<article class="source"><div class="eyebrow">${e(s.source_label || s.source_id || tr("Первоисточник"))}</div><h3>${e(s.subject || tr("Без темы"))}</h3><p class="muted">${e(s.author || tr("Автор не указан"))} · ${e(date(s.occurred_at))} · ${e({ INCOMING: tr("Входящее"), OUTGOING: tr("Исходящее"), INTERNAL: tr("Внутреннее") }[s.direction] || s.direction || "")}</p>${s.analysis_error ? `<p class="inline-error" role="alert">${e(s.analysis_error)}</p>` : ""}${people(s.participants)}<div class="text-body">${e(s.body || tr("Текст отсутствует"))}</div>${link(s.source_url, tr("Открыть в источнике ↗"))}</article>`;
   }
   function taskHTML(data) {
     const t = data.task;
     const rejectButton =
-      '<button class="icon-button task-reject" data-action="reject" title="Отказаться от задачи" aria-label="Отказаться от задачи"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></button>';
+      `<button class="icon-button task-reject" data-action="reject" title="${tr("Отказаться от задачи")}" aria-label="${tr("Отказаться от задачи")}"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></button>`;
     return (
-      head("Задача") +
-      `<h2>${e(t.title)}</h2><div class="tags">${badge(priorities[t.priority], t.priority.toLowerCase())}${badge(label(t.status))}</div><div class="actions">${!closed(t) ? `${t.status === "NEEDS_CONFIRMATION" ? '<button class="primary" data-action="confirm">Подтвердить</button>' : '<button class="primary" data-action="complete">✓ Завершить</button>'}${rejectButton}<button data-action="remind">◷ Напомнить</button>` : ""}</div><div class="facts">${fact("Срок", e(t.due_at ? date(t.due_at) : "Без срока"))}${fact("Статус", e(label(t.status)))}${fact("Приоритет", e(priorities[t.priority]))}${fact("Рейтинг", e(t.ranking_score.toFixed(2)))}</div><h3>Что нужно сделать</h3>${t.description ? markdown(t.description) : '<p class="muted">Описание не указано.</p>'}${t.ranking_reasons.length ? `<h3>Почему задача в плане</h3><ul>${t.ranking_reasons.map((r) => `<li>${e(r)}</li>`).join("")}</ul>` : ""}${t.evidence ? `<h3>Основание назначения</h3><div class="callout text-body">${e(t.evidence)}</div>` : ""}<h3>Напоминания</h3>${t.reminders.length ? `<ul>${t.reminders.map((r) => `<li>${e(date(r.remind_at))} · ${r.sent_at ? "Отправлено" : r.enabled ? "Запланировано" : "Отключено"} ${!r.sent_at ? `<button class="link-button" data-remove-reminder="${e(r.id)}">Удалить</button>` : ""}</li>`).join("")}</ul>` : '<p class="muted">Напоминания не установлены.</p>'}<h3>Первоисточник</h3>${sourceHTML(data.source)}`
+      head(tr("Задача")) +
+      `<h2>${e(t.title)}</h2><div class="tags">${badge(priorities[t.priority], t.priority.toLowerCase())}${badge(label(t.status))}</div><div class="actions">${!closed(t) ? `${t.status === "NEEDS_CONFIRMATION" ? `<button class="primary" data-action="confirm">${tr("Подтвердить")}</button>` : `<button class="primary" data-action="complete">${tr("✓ Завершить")}</button>`}${rejectButton}<button data-action="remind">${tr("◷ Напомнить")}</button>` : ""}</div><div class="facts">${fact(tr("Срок"), e(t.due_at ? date(t.due_at) : tr("Без срока")))}${fact(tr("Статус"), e(label(t.status)))}${fact(tr("Приоритет"), e(priorities[t.priority]))}${fact(tr("Рейтинг"), e(t.ranking_score.toFixed(2)))}</div><h3>${tr("Что нужно сделать")}</h3>${t.description ? markdown(t.description) : `<p class="muted">${tr("Описание не указано.")}</p>`}${t.ranking_reasons.length ? `<h3>${tr("Почему задача в плане")}</h3><ul>${t.ranking_reasons.map((r) => `<li>${e(r)}</li>`).join("")}</ul>` : ""}${t.evidence ? `<h3>${tr("Основание назначения")}</h3><div class="callout text-body">${e(t.evidence)}</div>` : ""}<h3>${tr("Напоминания")}</h3>${t.reminders.length ? `<ul>${t.reminders.map((r) => `<li>${e(date(r.remind_at))} · ${r.sent_at ? tr("Отправлено") : r.enabled ? tr("Запланировано") : tr("Отключено")} ${!r.sent_at ? `<button class="link-button" data-remove-reminder="${e(r.id)}">${tr("Удалить")}</button>` : ""}</li>`).join("")}</ul>` : `<p class="muted">${tr("Напоминания не установлены.")}</p>`}<h3>${tr("Первоисточник")}</h3>${sourceHTML(data.source)}`
     );
   }
   function delegationHTML(d) {
     return (
-      head("Поручение · выявлено ИИ") +
-      `<h2>${e(d.title)}</h2><div class="tags">${badge(delegationLabel(d.status))}</div><div class="facts">${fact("Исполнитель", e(d.assignee_name || d.assignee_email || "Не определён"))}${fact("Email", e(d.assignee_email))}${fact("Срок", e(date(d.due_at)))}</div>${markdown(d.description || "")}<h3>Ожидаемый результат</h3>${markdown(d.expected_result || "Не указан")}<h3>Основание</h3><div class="text-body">${e(d.evidence)}</div>${openButton("event", d.source_event_id, "Открыть исходное письмо")}<h3>Изменить статус</h3><div class="actions">${["ASSIGNED", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"].map((s) => `<button data-delegation-status="${s}" ${s === d.status ? "disabled" : ""}>${s === "COMPLETED" ? "Принять результат" : e(delegationLabel(s))}</button>`).join("")}</div><h3>История изменений</h3>${(d.history || []).map((h) => `<article class="source"><strong>${e((h.old_status ? delegationLabel(h.old_status) + " → " : "") + delegationLabel(h.new_status))}</strong><p>${e(date(h.created_at))} · ${h.actor === "USER" ? "Пользователь" : "ИИ"}</p><div class="text-body">${e(h.explanation)}</div>${openButton("event", h.source_event_id, "Письмо-основание")}</article>`).join("")}`
+      head(tr("Поручение · выявлено ИИ")) +
+      `<h2>${e(d.title)}</h2><div class="tags">${badge(delegationLabel(d.status))}</div><div class="facts">${fact(tr("Исполнитель"), e(d.assignee_name || d.assignee_email || tr("Не определён")))}${fact("Email", e(d.assignee_email))}${fact(tr("Срок"), e(date(d.due_at)))}</div>${markdown(d.description || "")}<h3>${tr("Ожидаемый результат")}</h3>${markdown(d.expected_result || tr("Не указан"))}<h3>${tr("Основание")}</h3><div class="text-body">${e(d.evidence)}</div>${openButton("event", d.source_event_id, tr("Открыть исходное письмо"))}<h3>${tr("Изменить статус")}</h3><div class="actions">${["ASSIGNED", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"].map((s) => `<button data-delegation-status="${s}" ${s === d.status ? "disabled" : ""}>${s === "COMPLETED" ? tr("Принять результат") : e(delegationLabel(s))}</button>`).join("")}</div><h3>${tr("История изменений")}</h3>${(d.history || []).map((h) => `<article class="source"><strong>${e((h.old_status ? delegationLabel(h.old_status) + " → " : "") + delegationLabel(h.new_status))}</strong><p>${e(date(h.created_at))} · ${h.actor === "USER" ? tr("Пользователь") : tr("ИИ")}</p><div class="text-body">${e(h.explanation)}</div>${openButton("event", h.source_event_id, tr("Письмо-основание"))}</article>`).join("")}`
     );
   }
   function meetingHTML(data) {
@@ -596,25 +598,25 @@
         ["CANCELLED", "ENDED"].includes(data.status) ||
         Date.parse(m.ends_at) <= Date.now();
     return (
-      head("Подготовка к встрече") +
-      `<h2>${e(m.title)}</h2><div class="tags">${badge(label(data.status), pending ? "blue" : data.status === "FAILED" ? "error" : "green")}</div><div class="facts">${fact(`Время · ${state.zone}`, e(interval(m)))}${fact("Организатор", people(m.organizer ? [m.organizer] : []))}${fact("Место", e(m.location))}${fact("Подключение", link(m.mts_link_url, "Открыть встречу ↗"))}</div><h3>Участники</h3>${m.attendees.length ? people(m.attendees) : '<p class="muted">Участники не указаны.</p>'}<div class="actions">${!ended ? `<button class="primary" data-action="context" ${pending ? "disabled" : ""}>${pending ? "Контекст готовится…" : data.summary ? "Обновить контекст" : "Создать контекст"}</button>` : ""}${openButton("event", m.source_event_id, "Открыть приглашение")}</div>${data.generated_at ? `<p class="muted">Подготовлено ${e(date(data.generated_at))}${pending ? " · показана предыдущая версия" : ""}${data.stale ? " · встреча изменилась, контекст устарел" : ""}</p>` : ""}${data.error ? `<p class="inline-error">${e(data.error)}</p>` : ""}${data.summary ? markdown(data.summary) : `<div class="callout">${ended ? "Сохранённого контекста нет." : pending ? "Подготовка продолжается на сервере. Можно выбрать другую запись." : "Контекст пока не запрашивался. Нажмите «Создать контекст», чтобы подготовить материалы."}</div>`}${references(data.references)}`
+      head(tr("Подготовка к встрече")) +
+      `<h2>${e(m.title)}</h2><div class="tags">${badge(label(data.status), pending ? "blue" : data.status === "FAILED" ? "error" : "green")}</div><div class="facts">${fact(tr("Время · {0}", state.zone), e(interval(m)))}${fact(tr("Организатор"), people(m.organizer ? [m.organizer] : []))}${fact(tr("Место"), e(m.location))}${fact(tr("Подключение"), link(m.mts_link_url, tr("Открыть встречу ↗")))}</div><h3>${tr("Участники")}</h3>${m.attendees.length ? people(m.attendees) : `<p class="muted">${tr("Участники не указаны.")}</p>`}<div class="actions">${!ended ? `<button class="primary" data-action="context" ${pending ? "disabled" : ""}>${pending ? tr("Контекст готовится…") : data.summary ? tr("Обновить контекст") : tr("Создать контекст")}</button>` : ""}${openButton("event", m.source_event_id, tr("Открыть приглашение"))}</div>${data.generated_at ? `<p class="muted">${tr("Подготовлено")} ${e(date(data.generated_at))}${pending ? tr(" · показана предыдущая версия") : ""}${data.stale ? tr(" · встреча изменилась, контекст устарел") : ""}</p>` : ""}${data.error ? `<p class="inline-error">${e(data.error)}</p>` : ""}${data.summary ? markdown(data.summary) : `<div class="callout">${ended ? tr("Сохранённого контекста нет.") : pending ? tr("Подготовка продолжается на сервере. Можно выбрать другую запись.") : tr("Контекст пока не запрашивался. Нажмите «Создать контекст», чтобы подготовить материалы.")}</div>`}${references(data.references)}`
     );
   }
   function resultHTML(x) {
     return (
-      head("Итоги встречи") +
-      `<h2>${e(x.title)}</h2><p class="muted">${e(resultTime(x))} · ${e(x.source_label)}</p><div class="tags">${badge(label(x.analysis_state), x.analysis_state === "FAILED" ? "error" : "green")}</div><h3>Участники</h3>${x.participants.length ? people(x.participants) : '<p class="muted">Участники не указаны.</p>'}<h3>Резюме</h3>${x.summary ? markdown(x.summary) : `<p class="muted">${x.analysis_state === "COMPLETED" ? "Резюме отсутствует." : x.analysis_state === "FAILED" ? "Анализ завершился ошибкой." : "Анализ ещё не завершён."}</p>`}<h3>Решения</h3>${x.decisions.length ? markdown(x.decisions.map((v) => `- ${v}`).join("\n")) : '<p class="muted">Решения не выделены.</p>'}<h3>Договорённости</h3>${x.agreements.length ? markdown(x.agreements.map((v) => `- ${v}`).join("\n")) : '<p class="muted">Договорённости не выделены.</p>'}<div class="actions">${openButton("event", x.source_event_id, "Открыть полный оригинал")}${openButton("meeting", x.calendar_meeting_id, "Календарная встреча")}</div>${x.participant_summaries.length ? "<h3>Дополнения участников</h3>" : ""}${x.participant_summaries.map((p) => `<article class="source"><strong>${e(p.author || "Автор не указан")}</strong><p class="muted">${e(p.source_label)} · ${e(date(p.occurred_at))}</p>${markdown(p.summary)}${p.decisions.length ? `<h4>Решения</h4>${markdown(p.decisions.map((v) => `- ${v}`).join("\n"))}` : ""}${p.agreements.length ? `<h4>Договорённости</h4>${markdown(p.agreements.map((v) => `- ${v}`).join("\n"))}` : ""}${openButton("event", p.source_event_id, "Открыть оригинал дополнения")}</article>`).join("")}`
+      head(tr("Итоги встречи")) +
+      `<h2>${e(x.title)}</h2><p class="muted">${e(resultTime(x))} · ${e(x.source_label)}</p><div class="tags">${badge(label(x.analysis_state), x.analysis_state === "FAILED" ? "error" : "green")}</div><h3>${tr("Участники")}</h3>${x.participants.length ? people(x.participants) : `<p class="muted">${tr("Участники не указаны.")}</p>`}<h3>${tr("Резюме")}</h3>${x.summary ? markdown(x.summary) : `<p class="muted">${x.analysis_state === "COMPLETED" ? tr("Резюме отсутствует.") : x.analysis_state === "FAILED" ? tr("Анализ завершился ошибкой.") : tr("Анализ ещё не завершён.")}</p>`}<h3>${tr("Решения")}</h3>${x.decisions.length ? markdown(x.decisions.map((v) => `- ${v}`).join("\n")) : `<p class="muted">${tr("Решения не выделены.")}</p>`}<h3>${tr("Договорённости")}</h3>${x.agreements.length ? markdown(x.agreements.map((v) => `- ${v}`).join("\n")) : `<p class="muted">${tr("Договорённости не выделены.")}</p>`}<div class="actions">${openButton("event", x.source_event_id, tr("Открыть полный оригинал"))}${openButton("meeting", x.calendar_meeting_id, tr("Календарная встреча"))}</div>${x.participant_summaries.length ? `<h3>${tr("Дополнения участников")}</h3>` : ""}${x.participant_summaries.map((p) => `<article class="source"><strong>${e(p.author || tr("Автор не указан"))}</strong><p class="muted">${e(p.source_label)} · ${e(date(p.occurred_at))}</p>${markdown(p.summary)}${p.decisions.length ? `<h4>${tr("Решения")}</h4>${markdown(p.decisions.map((v) => `- ${v}`).join("\n"))}` : ""}${p.agreements.length ? `<h4>${tr("Договорённости")}</h4>${markdown(p.agreements.map((v) => `- ${v}`).join("\n"))}` : ""}${openButton("event", p.source_event_id, tr("Открыть оригинал дополнения"))}</article>`).join("")}`
     );
   }
   function threadHTML(x) {
     return (
-      head("Переписка") +
-      `<h2>${e(x.title || "Без темы")}</h2><p class="muted">${e(x.source_label)} · ${x.event_count} сообщений · ${e(date(x.first_event_at))} — ${e(date(x.last_event_at))}</p>${people(x.participants)}<h3>Резюме Qwen</h3>${x.summary ? markdown(x.summary) : '<p class="muted">Резюме ещё не сформировано.</p>'}<h3>Сообщения · сначала новые</h3>${x.events.map((ev) => `<article class="source"><strong>${e(ev.subject || "Без темы")}</strong><p class="muted">${e(ev.author || "Автор не указан")} · ${e(date(ev.occurred_at))}</p>${ev.analysis_error ? `<p class="inline-error" role="alert">${e(ev.analysis_error)}</p>` : ""}<div class="text-body">${e(ev.preview)}</div>${openButton("event", ev.id, "Читать полное сообщение")}</article>`).join("")}<p class="muted">Показано ${x.events.length} из ${x.event_count}</p>${x.has_more_events ? '<button data-action="more-events">Загрузить следующие сообщения</button>' : ""}`
+      head(tr("Переписка")) +
+      `<h2>${e(x.title || tr("Без темы"))}</h2><p class="muted">${e(x.source_label)} · ${x.event_count} ${tr("сообщений ·")} ${e(date(x.first_event_at))} — ${e(date(x.last_event_at))}</p>${people(x.participants)}<h3>${tr("Резюме Qwen")}</h3>${x.summary ? markdown(x.summary) : `<p class="muted">${tr("Резюме ещё не сформировано.")}</p>`}<h3>${tr("Сообщения · сначала новые")}</h3>${x.events.map((ev) => `<article class="source"><strong>${e(ev.subject || tr("Без темы"))}</strong><p class="muted">${e(ev.author || tr("Автор не указан"))} · ${e(date(ev.occurred_at))}</p>${ev.analysis_error ? `<p class="inline-error" role="alert">${e(ev.analysis_error)}</p>` : ""}<div class="text-body">${e(ev.preview)}</div>${openButton("event", ev.id, tr("Читать полное сообщение"))}</article>`).join("")}<p class="muted">${tr("Показано")} ${x.events.length} ${tr("из")} ${x.event_count}</p>${x.has_more_events ? `<button data-action="more-events">${tr("Загрузить следующие сообщения")}</button>` : ""}`
     );
   }
   function formatMetric(value) {
     return typeof value === "number"
-      ? value.toLocaleString("ru-RU", { maximumFractionDigits: 2 })
+      ? value.toLocaleString((globalThis.SecretaryI18n?.locale || "ru-RU"), { maximumFractionDigits: 2 })
       : value;
   }
   function statusMetrics(metrics) {
@@ -635,7 +637,7 @@
     if (!metrics || metrics.events_total == null) return "";
     const n = (key) => Math.max(0, Number(metrics[key]) || 0);
     const fmt = (value, digits = 0) =>
-      new Intl.NumberFormat("ru-RU", { maximumFractionDigits: digits }).format(
+      new Intl.NumberFormat((globalThis.SecretaryI18n?.locale || "ru-RU"), { maximumFractionDigits: digits }).format(
         value,
       );
     const total = n("events_total"),
@@ -644,43 +646,43 @@
     const done = completed + excluded,
       percent = total ? Math.min(100, (done / total) * 100) : 0;
     const cards = [
-      ["Ожидают", fmt(n("events_pending")), "queue-waiting"],
-      ["В обработке", fmt(n("events_processing")), "queue-active"],
-      ["Завершено", fmt(completed), "queue-done"],
+      [tr("Ожидают"), fmt(n("events_pending")), "queue-waiting"],
+      [tr("В обработке"), fmt(n("events_processing")), "queue-active"],
+      [tr("Завершено"), fmt(completed), "queue-done"],
       [
-        "Скорость · событий/мин",
+        tr("Скорость · событий/мин"),
         fmt(n("events_rate_per_minute"), 2),
         "queue-rate",
       ],
     ];
-    return `<section class="queue-panel" aria-label="Очередь обработки">
-      <div class="queue-heading"><h3>Очередь обработки</h3><span class="tag ${state.statusLive ? "green" : "error"}" role="status">${state.statusLive ? "В реальном времени" : "Нет связи · данные устарели"}</span></div>
-      <p class="muted">Письма и события встреч · всего ${fmt(total)}</p>
+    return `<section class="queue-panel" aria-label="${tr("Очередь обработки")}">
+      <div class="queue-heading"><h3>${tr("Очередь обработки")}</h3><span class="tag ${state.statusLive ? "green" : "error"}" role="status">${state.statusLive ? tr("В реальном времени") : tr("Нет связи · данные устарели")}</span></div>
+      <p class="muted">${tr("Письма и события встреч · всего")} ${fmt(total)}</p>
       <div class="queue-cards">${cards.map(([title, value, cls]) => `<div class="queue-card ${cls}"><span>${title}</span><strong class="numbers">${value}</strong></div>`).join("")}</div>
-      <div class="queue-progress-label"><span>${total ? `Разобрано ${fmt(done)} из ${fmt(total)}` : "Очередь пуста"}</span><strong>${fmt(percent, 1)}%</strong></div>
-      <progress class="queue-progress" max="${total || 1}" value="${Math.min(done, total)}" aria-label="Доля разобранных событий"></progress>
-      <div class="queue-legend"><span>Исключено фильтрами: ${fmt(excluded)}</span><span>Ожидают повтора: ${fmt(n("events_retry_waiting"))}</span></div>
-      <p class="queue-note muted">Скорость за последние 15 минут: завершено ${fmt(n("events_completed_last_15m"))} событий. ${n("events_rate_per_minute") ? "Неудачные попытки и исключённые события в скорость не входят." : "За это время завершений не было; текущий анализ ещё может выполняться."}</p>
+      <div class="queue-progress-label"><span>${total ? tr("Разобрано {0} из {1}", fmt(done), fmt(total)) : tr("Очередь пуста")}</span><strong>${fmt(percent, 1)}%</strong></div>
+      <progress class="queue-progress" max="${total || 1}" value="${Math.min(done, total)}" aria-label="${tr("Доля разобранных событий")}"></progress>
+      <div class="queue-legend"><span>${tr("Исключено фильтрами:")} ${fmt(excluded)}</span><span>${tr("Ожидают повтора:")} ${fmt(n("events_retry_waiting"))}</span></div>
+      <p class="queue-note muted">${tr("Скорость за последние 15 минут: завершено")} ${fmt(n("events_completed_last_15m"))} ${tr("событий.")} ${n("events_rate_per_minute") ? tr("Неудачные попытки и исключённые события в скорость не входят.") : tr("За это время завершений не было; текущий анализ ещё может выполняться.")}</p>
     </section>`;
   }
   function systemHTML(selected) {
     const system = state.system;
-    if (!system) return '<p class="empty">Состояние загружается…</p>';
+    if (!system) return `<p class="empty">${tr("Состояние загружается…")}</p>`;
     const comp = selected
       ? system.components.find((x) => x.id === selected)
       : null;
-    if (selected && !comp) return '<p class="empty">Компонент не найден.</p>';
+    if (selected && !comp) return `<p class="empty">${tr("Компонент не найден.")}</p>`;
     if (comp)
       return (
-        head("Состояние компонента") +
-        `<h2>${e(comp.label)}</h2><p class="${C.healthClass(comp.status)}"><span class="dot"></span>${e(label(comp.status))}</p><p>${e(comp.message || "Сообщений нет.")}</p><div class="facts">${fact("Последнее наблюдение", e(date(comp.observed_at)))}${fact("Актуально до", e(date(comp.expires_at)))}${fact("Тип", e(comp.component_type))}${fact("Идентификатор", e(comp.id))}</div>${comp.id === "processing" ? queueHTML(comp.metrics) : ""}<h3>Показатели</h3>${metricsHTML(comp.metrics)}`
+        head(tr("Состояние компонента")) +
+        `<h2>${e(componentName(comp))}</h2><p class="${C.healthClass(comp.status)}"><span class="dot"></span>${e(label(comp.status))}</p><p>${e(tr(comp.message || "Сообщений нет."))}</p><div class="facts">${fact(tr("Последнее наблюдение"), e(date(comp.observed_at)))}${fact(tr("Актуально до"), e(date(comp.expires_at)))}${fact(tr("Тип"), e(comp.component_type))}${fact(tr("Идентификатор"), e(comp.id))}</div>${comp.id === "processing" ? queueHTML(comp.metrics) : ""}<h3>${tr("Показатели")}</h3>${metricsHTML(comp.metrics)}`
       );
     return (
-      head("Мониторинг") +
-      `<h2>${["OK", "BUSY"].includes(system.overall_status) ? "Система работает штатно" : "Есть компоненты, требующие внимания"}</h2><p class="muted">Обновлено ${e(date(system.generated_at))}. Занятость Qwen не означает сбой.</p>${queueHTML(system.components.find((c) => c.id === "processing")?.metrics)}<div class="table-wrap"><table><thead><tr><th>Компонент</th><th>Состояние</th><th>Обновлено</th><th>Показатели</th></tr></thead><tbody>${system.components
+      head(tr("Мониторинг")) +
+      `<h2>${["OK", "BUSY"].includes(system.overall_status) ? tr("Система работает штатно") : tr("Есть компоненты, требующие внимания")}</h2><p class="muted">${tr("Обновлено")} ${e(date(system.generated_at))}${tr(". Занятость Qwen не означает сбой.")}</p>${queueHTML(system.components.find((c) => c.id === "processing")?.metrics)}<div class="table-wrap"><table><thead><tr><th>${tr("Компонент")}</th><th>${tr("Состояние")}</th><th>${tr("Обновлено")}</th><th>${tr("Показатели")}</th></tr></thead><tbody>${system.components
         .map(
           (c) =>
-            `<tr><td>${openButton("component", c.id, c.label)}</td><td class="${C.healthClass(c.status)}"><span class="dot"></span>${e(label(c.status))}<p class="muted">${e(c.message || "")}</p></td><td>${e(date(c.observed_at))}</td><td class="numbers">${statusMetrics(
+            `<tr><td>${openButton("component", c.id, componentName(c))}</td><td class="${C.healthClass(c.status)}"><span class="dot"></span>${e(label(c.status))}<p class="muted">${e(tr(c.message || ""))}</p></td><td>${e(date(c.observed_at))}</td><td class="numbers">${statusMetrics(
               c.metrics,
             )
               .map(([k, v]) => `${e(k)}: ${e(formatMetric(v))}`)
@@ -709,7 +711,7 @@
     const signal = detailController.signal;
     if (!quiet && state.detailKey !== key) {
       state.detail = null;
-      setDetail('<p class="empty">Загрузка деталей…</p>');
+      setDetail(`<p class="empty">${tr("Загрузка деталей…")}</p>`);
     }
     errorBox("detail-error", "");
     try {
@@ -767,7 +769,7 @@
                   : selected.kind === "thread"
                     ? threadHTML(data)
                     : selected.kind === "event"
-                      ? head("Исходное сообщение") + sourceHTML(data)
+                      ? head(tr("Исходное сообщение")) + sourceHTML(data)
                       : systemHTML(selected.id),
           data.references,
           quiet,
@@ -800,19 +802,19 @@
     renderList();
     $("list-scroll").scrollTop = old?.scroll || 0;
     state.detailKey = "";
-    setDetail('<p class="empty">Выберите запись слева.</p>');
+    setDetail(`<p class="empty">${tr("Выберите запись слева.")}</p>`);
     await loadList();
   }
   function paintHealth(error) {
     const value = error ? "UNKNOWN" : state.system?.overall_status || "UNKNOWN";
     $("health").className = `health ${C.healthClass(value, true)}`;
     const text = error
-      ? "Нет связи с сервером"
+      ? tr("Нет связи с сервером")
       : ["OK", "BUSY"].includes(value)
-        ? "Система в норме"
+        ? tr("Система в норме")
         : label(value);
     $("health-label").textContent = text;
-    $("health").title = `${text} — открыть состояние компонентов`;
+    $("health").title = tr("{0} — открыть состояние компонентов", text);
     $("health").setAttribute("aria-label", $("health").title);
   }
   function renderStatusSnapshot() {
@@ -821,7 +823,7 @@
     v.rows = (state.system?.components || []).map((value) => ({
       kind: "component",
       value,
-      group: "Компоненты",
+      group: tr("Компоненты"),
     }));
     v.loaded = !!state.system;
     v.hasMore = false;
@@ -858,10 +860,10 @@
       ? state.chatRows
           .map(
             (r) =>
-              `<article class="chat-turn" data-request-id="${e(r.id)}"><div class="question">${e(r.query)}</div><div class="chat-meta">${e(date(r.created_at))} · ${e(label(r.status))}</div><div class="answer">${r.answer ? markdown(r.answer) : r.status === "FAILED" ? `<p class="inline-error">${e(r.error || "Не удалось получить ответ.")}</p>` : '<p class="muted">Ответ готовится на сервере…</p>'}${references(r.references)}</div></article>`,
+              `<article class="chat-turn" data-request-id="${e(r.id)}"><div class="question">${e(r.query)}</div><div class="chat-meta">${e(date(r.created_at))} · ${e(label(r.status))}</div><div class="answer">${r.answer ? markdown(r.answer) : r.status === "FAILED" ? `<p class="inline-error">${e(r.error || tr("Не удалось получить ответ."))}</p>` : `<p class="muted">${tr("Ответ готовится на сервере…")}</p>`}${references(r.references)}</div></article>`,
           )
           .join("")
-      : '<div class="empty"><h3>Что найти в архиве?</h3><p>Спросите о решении, поручении или договорённости. Ответ будет сопровождаться источниками.</p></div>';
+      : `<div class="empty"><h3>${tr("Что найти в архиве?")}</h3><p>${tr("Спросите о решении, поручении или договорённости. Ответ будет сопровождаться источниками.")}</p></div>`;
     $("chat-messages")
       .querySelectorAll(".chat-turn")
       .forEach((el, i) => enhance(el, state.chatRows[i].references));
@@ -914,7 +916,7 @@
     button.disabled = true;
     try {
       const result = await api(path, { method: "POST", ...options });
-      toast("Изменения сохранены");
+      toast(tr("Изменения сохранены"));
       await loadList({ quiet: true });
       return result;
     } catch (err) {
@@ -932,7 +934,7 @@
   }
   function closeDialog(dialog) {
     if (dialog.querySelector("[type=submit]:disabled")) {
-      toast("Дождитесь завершения сохранения.");
+      toast(tr("Дождитесь завершения сохранения."));
       return;
     }
     dialog.close();
@@ -957,9 +959,9 @@
         await navigator.clipboard.writeText(
           b.parentElement.querySelector("code").textContent,
         );
-        toast("Код скопирован");
+        toast(tr("Код скопирован"));
       } catch {
-        toast("Не удалось скопировать. Выделите текст вручную.", true);
+        toast(tr("Не удалось скопировать. Выделите текст вручную."), true);
       }
       return;
     }
@@ -1045,7 +1047,7 @@
     state.detail = null;
     $("clear-search").hidden = !state.q;
     saveLocation(true);
-    setDetail('<p class="empty">Выберите запись в результатах поиска.</p>');
+    setDetail(`<p class="empty">${tr("Выберите запись в результатах поиска.")}</p>`);
     searchTimer = setTimeout(() => {
       view().rows = [];
       view().loaded = false;
@@ -1090,7 +1092,7 @@
     button.disabled = true;
     try {
       const title = $("task-title").value.trim();
-      if (!title) throw new Error("Введите название задачи.");
+      if (!title) throw new Error(tr("Введите название задачи."));
       const task = await api("/tasks", {
         method: "POST",
         body: JSON.stringify({
@@ -1103,7 +1105,7 @@
       button.disabled = false;
       $("task-form").reset();
       closeDialog($("task-dialog"));
-      toast("Задача создана");
+      toast(tr("Задача создана"));
       await switchTab("tasks");
       await selectRecord("task", task.id);
     } catch (err) {
@@ -1122,14 +1124,14 @@
     try {
       const remind_at = C.zonedISO($("reminder-time").value, state.zone);
       if (!remind_at || Date.parse(remind_at) <= Date.now())
-        throw new Error("Укажите время в будущем.");
+        throw new Error(tr("Укажите время в будущем."));
       await api(`/tasks/${reminderTaskId}/reminders`, {
         method: "POST",
         body: JSON.stringify({ remind_at }),
       });
       button.disabled = false;
       closeDialog($("reminder-dialog"));
-      toast("Напоминание добавлено");
+      toast(tr("Напоминание добавлено"));
       await loadDetail({ quiet: true });
     } catch (err) {
       errorBox("reminder-error", failText(err));
@@ -1163,7 +1165,7 @@
     } catch (err) {
       errorBox(
         "chat-error",
-        failText(err) + " Вопрос сохранён в поле ввода.",
+        failText(err) + tr(" Вопрос сохранён в поле ввода."),
         "chat",
       );
     } finally {
@@ -1219,11 +1221,11 @@
     new Intl.DateTimeFormat("ru", { timeZone: config.timezone });
     state.zone = config.timezone;
     state.configured = true;
-    $("timezone").textContent = `Часовой пояс: ${state.zone}`;
+    $("timezone").textContent = tr("Часовой пояс: {0}", state.zone);
     document
       .querySelectorAll(".form-zone")
       .forEach(
-        (el) => (el.textContent = `Время в часовом поясе ${state.zone}`),
+        (el) => (el.textContent = tr("Время в часовом поясе {0}", state.zone)),
       );
   }
   async function refresh() {
@@ -1304,7 +1306,7 @@
   window.addEventListener("offline", () => {
     paintHealth(true);
     $("connection").textContent =
-      "Нет соединения. Показаны последние полученные данные.";
+      tr("Нет соединения. Показаны последние полученные данные.");
     $("connection").hidden = false;
   });
   document.addEventListener("visibilitychange", () => {

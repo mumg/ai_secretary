@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
+	"github.com/mumg/ai_secretary/windows/internal/i18n"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -29,7 +30,7 @@ func CreateCertificates(data string) error {
 	}
 	if count > 0 {
 		if count != len(certificateFiles) {
-			return errors.New("неполный комплект сертификатов; восстановите его из резервной копии")
+			return errors.New(i18n.Tr("неполный комплект сертификатов; восстановите его из резервной копии"))
 		}
 		return validateCertificates(dir)
 	}
@@ -96,7 +97,7 @@ func CreateCertificates(data string) error {
 	return nil
 }
 func validateCertificates(dir string) error {
-	fail := errors.New("некорректный комплект сертификатов; восстановите его из резервной копии")
+	fail := errors.New(i18n.Tr("некорректный комплект сертификатов; восстановите его из резервной копии"))
 	caPEM, err := os.ReadFile(filepath.Join(dir, "client-ca.pem"))
 	if err != nil {
 		return err

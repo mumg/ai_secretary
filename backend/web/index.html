@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="ru">
 <head>
+    <script src="/admin/assets/translations.js" defer></script>
+    <script src="/admin/assets/i18n.js" defer></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
@@ -14,7 +16,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/app/" aria-label="AI Секретарь — главная"><img class="brand-icon" src="/admin/assets/secretary-robot.svg" alt="" width="32" height="32"><span>AI Секретарь</span></a>
-    <div class="topbar-actions"><div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div><a class="app-link" href="/app/">К приложению</a></div>
+    <div class="topbar-actions"><div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div><div data-language-settings></div><a class="app-link" href="/app/">К приложению</a></div>
   </header>
 
   <div id="version-notice" class="version-notice" role="status" aria-live="polite" hidden>
@@ -128,8 +130,16 @@
       <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Анализ и рабочий день</h2></div></div>
       <form id="settingsForm" class="settings-grid">
         <fieldset><legend>Пользователь</legend>
-          <label>Мои руководители <small>По одному сотруднику на строку: Имя | email, второй email</small><textarea id="relationshipManagers" rows="4"></textarea></label>
-<label>Мои подчинённые <small>По одному сотруднику на строку: Имя | email, второй email</small><textarea id="relationshipReports" rows="4"></textarea></label>
+          <section class="relationship-section" aria-labelledby="relationshipManagersTitle">
+            <h3 id="relationshipManagersTitle">Мои руководители</h3>
+            <div class="relationship-scroll"><table class="relationship-table"><thead><tr><th scope="col">Имя</th><th scope="col">Email</th><th scope="col">Действия</th></tr></thead><tbody id="relationshipManagers"></tbody></table></div>
+            <button type="button" data-add-employee="relationshipManagers">Добавить сотрудника</button>
+          </section>
+<section class="relationship-section" aria-labelledby="relationshipReportsTitle">
+            <h3 id="relationshipReportsTitle">Мои подчинённые</h3>
+            <div class="relationship-scroll"><table class="relationship-table"><thead><tr><th scope="col">Имя</th><th scope="col">Email</th><th scope="col">Действия</th></tr></thead><tbody id="relationshipReports"></tbody></table></div>
+            <button type="button" data-add-employee="relationshipReports">Добавить сотрудника</button>
+          </section>
 <label>Имя и фамилия пользователя <small>варианты через запятую; почтовые адреса определяются из подключённых источников</small><input id="identityNames" autocomplete="off"></label>
           <label>Часовой пояс<input id="timezone" value="Europe/Moscow"></label>
 

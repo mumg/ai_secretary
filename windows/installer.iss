@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.37"
+  #define AppVersion "0.7.19"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -7,12 +7,14 @@
 
 [Setup]
 AppId={{D7C76C6A-1829-4BE8-B54E-026615D011EE}
-AppName=AI Секретарь
+VersionInfoDescription=AI Secretary Setup
+VersionInfoProductName=AI Secretary
+AppName=AI {cm:Texte97f94f593}
 AppVersion={#AppVersion}
 AppPublisher=mumg
 AppPublisherURL=https://github.com/mumg/ai_secretary
 DefaultDirName={autopf}\AI Secretary
-DefaultGroupName=AI Секретарь
+DefaultGroupName=AI {cm:Texte97f94f593}
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
@@ -27,7 +29,7 @@ SetupIconFile=assets\secretary.ico
 SetupLogging=yes
 SetupMutex=AISecretarySetup
 AllowCancelDuringInstall=no
-UninstallDisplayName=AI Секретарь
+UninstallDisplayName=AI {cm:Texte97f94f593}
 UninstallDisplayIcon={app}\secretary.ico
 CloseApplications=yes
 RestartApplications=no
@@ -36,22 +38,23 @@ UninstallLogMode=new
 LicenseFile=THIRD_PARTY.md
 
 [Languages]
-Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+Name: "chinese"; MessagesFile: "languages\ChineseSimplified.isl"
 
 [Files]
 Source: "{#PayloadDir}\setup\secretary-setup.exe"; Flags: dontcopy
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{commondesktop}\AI Секретарь"; Filename: "{app}\desktop\AI Secretary.exe"; IconFilename: "{app}\secretary.ico"
-Name: "{group}\AI Секретарь"; Filename: "{app}\desktop\AI Secretary.exe"; IconFilename: "{app}\secretary.ico"
-Name: "{group}\Настройки AI Секретаря"; Filename: "{app}\desktop\AI Secretary.exe"; Parameters: "--settings"; IconFilename: "{app}\secretary.ico"
-Name: "{group}\Новые версии"; Filename: "https://github.com/mumg/ai_secretary/releases"
-Name: "{group}\Удалить AI Секретарь"; Filename: "{uninstallexe}"
+Name: "{commondesktop}\AI {cm:Texte97f94f593}"; Filename: "{app}\desktop\AI Secretary.exe"; IconFilename: "{app}\secretary.ico"
+Name: "{group}\AI {cm:Texte97f94f593}"; Filename: "{app}\desktop\AI Secretary.exe"; IconFilename: "{app}\secretary.ico"
+Name: "{group}\{cm:Text0f43fab963}"; Filename: "{app}\desktop\AI Secretary.exe"; Parameters: "--settings"; IconFilename: "{app}\secretary.ico"
+Name: "{group}\{cm:Text445ed9ac5d}"; Filename: "https://github.com/mumg/ai_secretary/releases"
+Name: "{group}\{cm:Text860db1a699}"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\desktop\AI Secretary.exe"; Parameters: "--settings"; Description: "Открыть настройку источников и модели"; Flags: postinstall skipifsilent runasoriginaluser
+Filename: "{app}\desktop\AI Secretary.exe"; Parameters: "--settings"; Description: "{cm:Text7c627bb9c1}"; Flags: postinstall skipifsilent runasoriginaluser
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\python"
@@ -73,6 +76,8 @@ Type: files; Name: "{app}\python-packages.txt"
 Type: filesandordirs; Name: "{app}\services"
 Type: files; Name: "{app}\Open.url"
 Type: files; Name: "{app}\Settings.url"
+
+#include "languages/custom-messages.iss"
 
 [Code]
 const
@@ -112,12 +117,12 @@ begin
   try
     if not ExecAndLogOutput(Helper, Params, WorkingDir, SW_HIDE,
       ewWaitUntilTerminated, Code, @CaptureHelperOutput) then begin
-      HelperError := 'Не удалось запустить помощник: ' + SysErrorMessage(Code);
+      HelperError := CustomMessage('Text05b0276282') + SysErrorMessage(Code);
       Exit;
     end;
     Result := Code = 0;
     if not Result and (HelperError = '') then
-      HelperError := 'Помощник завершился с кодом ' + IntToStr(Code);
+      HelperError := CustomMessage('Texte44966fb86') + IntToStr(Code);
   except
     HelperError := GetExceptionMessage;
   end;
@@ -168,7 +173,7 @@ begin
   Uninstaller := '';
   if not RegKeyExists(HKLM64, UninstallKey) then Exit;
   if not RegQueryStringValue(HKLM64, UninstallKey, 'UninstallString', Command) then begin
-    Result := 'Не найдена команда удаления прежней версии. Восстановите деинсталлятор и повторите установку.';
+    Result := CustomMessage('Text0ec141610b');
     Exit;
   end;
   Uninstaller := RemoveQuotes(Trim(Command));
@@ -176,15 +181,15 @@ begin
   if (Root = '') or not FileExists(Uninstaller) or
      (CompareText(ExtractFileExt(Uninstaller), '.exe') <> 0) or
      (CompareText(Copy(ExtractFileName(Uninstaller), 1, 5), 'unins') <> 0) then begin
-    Result := 'Деинсталлятор прежней версии отсутствует или повреждён. Установка поверх неё запрещена.';
+    Result := CustomMessage('Textd1404d0083');
     Exit;
   end;
   if not SafeProgramDirectory(Root) then begin
-    Result := 'Каталоги программы и сохраняемых данных пересекаются. Удаление остановлено.';
+    Result := CustomMessage('Textfde8e15c86');
     Exit;
   end;
   if InsideDirectory(ExpandConstant('{srcexe}'), Root) then
-    Result := 'Переместите новый установщик из каталога программы, например в Загрузки, и запустите снова.';
+    Result := CustomMessage('Textf4f21c999c');
 end;
 
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
@@ -193,31 +198,31 @@ begin
   Result := MemoDirInfo;
   if RegKeyExists(HKLM64, UninstallKey) then
     Result := Result + NewLine + NewLine +
-      'Прежняя версия будет удалена, затем программа будет установлена заново.' + NewLine +
-      'База, вложения, настройки и ключи сохраняются в ' + DataRoot + '.';
+      CustomMessage('Text048dee7fe9') + NewLine +
+      CustomMessage('Text261a9933d5') + DataRoot + '.';
 end;
 
 procedure InitializeWizard;
 begin
-  ConnectionPage := CreateInputQueryPage(wpSelectDir, 'Сервер AI Секретаря',
-    'Локальная база PostgreSQL и фоновые службы',
-    'Выберите свободные порты. Подключение к AI-провайдеру и модель настраиваются в админке после установки.');
-  ConnectionPage.Add('Порт интерфейса:', False);
-  ConnectionPage.Add('Порт парсера документов:', False);
-  ConnectionPage.Add('Порт PostgreSQL:', False);
+  ConnectionPage := CreateInputQueryPage(wpSelectDir, CustomMessage('Text0dc21f2a08'),
+    CustomMessage('Text5a7290e5be'),
+    CustomMessage('Text73d110ce0e'));
+  ConnectionPage.Add(CustomMessage('Text22b0cf5280'), False);
+  ConnectionPage.Add(CustomMessage('Text22859268e3'), False);
+  ConnectionPage.Add(CustomMessage('Text4183b077b6'), False);
   ConnectionPage.Values[0] := ExpandConstant('{param:APIPORT|18000}');
   ConnectionPage.Values[1] := ExpandConstant('{param:PARSERPORT|18080}');
   ConnectionPage.Values[2] := ExpandConstant('{param:DBPORT|15432}');
-  AccessPage := CreateInputOptionPage(ConnectionPage.ID, 'Доступ к приложению',
-    'На этом компьютере или по HTTPS',
-    'Публичный доступ требует домена и перенаправления портов 80 и 443 на этот компьютер. Для доступа с телефона будет создан клиентский сертификат.', True, False);
-  AccessPage.Add('Только на этом компьютере');
-  AccessPage.Add('HTTPS для браузера и мобильного приложения');
+  AccessPage := CreateInputOptionPage(ConnectionPage.ID, CustomMessage('Text966ba0147f'),
+    CustomMessage('Text82b4e76f13'),
+    CustomMessage('Text460548bcc1'), True, False);
+  AccessPage.Add(CustomMessage('Text0f03030bff'));
+  AccessPage.Add(CustomMessage('Text6b8d686204'));
   AccessPage.SelectedValueIndex := 0;
-  HostPage := CreateInputQueryPage(AccessPage.ID, 'Публичный HTTPS-адрес',
-    'Домен вашей установки',
-    'Укажите домен без https://. Поддерживается DynDNS. Let''s Encrypt подтвердит домен через HTTP и будет продлевать серверный сертификат автоматически.');
-  HostPage.Add('Домен:', False);
+  HostPage := CreateInputQueryPage(AccessPage.ID, CustomMessage('Texta9ede6ca03'),
+    CustomMessage('Text54d4f15f33'),
+    CustomMessage('Text0e24d63576'));
+  HostPage.Add(CustomMessage('Text4f0df1f9ba'), False);
   HostPage.Values[0] := ExpandConstant('{param:PUBLICHOST|}');
   if HostPage.Values[0] <> '' then AccessPage.SelectedValueIndex := 1;
 end;
@@ -235,7 +240,7 @@ begin
   Result := True;
   if CurPageID = wpSelectDir then begin
     Result := SafeProgramDirectory(ExpandConstant('{app}'));
-    if not Result then MsgBox('Каталоги программы и сохраняемых данных не должны пересекаться.', mbError, MB_OK);
+    if not Result then MsgBox(CustomMessage('Texte21d44021c'), mbError, MB_OK);
   end;
   if CurPageID = ConnectionPage.ID then begin
     for I := 0 to 2 do begin
@@ -245,11 +250,11 @@ begin
     if (ConnectionPage.Values[0] = ConnectionPage.Values[1]) or
        (ConnectionPage.Values[0] = ConnectionPage.Values[2]) or
        (ConnectionPage.Values[1] = ConnectionPage.Values[2]) then Result := False;
-    if not Result then MsgBox('Укажите три разных порта 1024–65535.', mbError, MB_OK);
+    if not Result then MsgBox(CustomMessage('Text1099bb4343'), mbError, MB_OK);
   end;
   if CurPageID = HostPage.ID then begin
     Result := (Trim(HostPage.Values[0]) <> '') and (Pos('"', HostPage.Values[0]) = 0) and (Pos('\', HostPage.Values[0]) = 0);
-    if not Result then MsgBox('Введите публичный DNS-домен.', mbError, MB_OK);
+    if not Result then MsgBox(CustomMessage('Text4ce0ec385c'), mbError, MB_OK);
   end;
 end;
 
@@ -261,19 +266,19 @@ var
 begin
   Result := '';
   if not SafeProgramDirectory(ExpandConstant('{app}')) then begin
-    Result := 'Каталоги программы и сохраняемых данных не должны пересекаться.';
+    Result := CustomMessage('Texte21d44021c');
     Exit;
   end;
   Result := PreviousUninstaller(Root, Uninstaller);
   if Result <> '' then Exit;
   if ((Uninstaller = '') or (CompareText(Root, ExpandConstant('{app}')) <> 0)) and
      HasUninstallLog(ExpandConstant('{app}')) then begin
-    Result := 'В каталоге программы остались данные прежнего деинсталлятора. Завершите удаление прежней версии и повторите установку.';
+    Result := CustomMessage('Text269ec19cc1');
     Exit;
   end;
   if PendingProgramRemoval(Root) or PendingProgramRemoval(ExpandConstant('{app}')) then begin
     NeedsRestart := True;
-    Result := 'Удаление прежних файлов ожидает перезагрузки. Перезагрузите Windows и запустите установку снова.';
+    Result := CustomMessage('Text42b1f3d51c');
     Exit;
   end;
   SavedData := ExistingInstallation;
@@ -281,10 +286,10 @@ begin
     { Back up the OLD root using the NEW helper before running its uninstaller. }
     ExtractTemporaryFile('secretary-setup.exe');
     Helper := ExpandConstant('{tmp}\secretary-setup.exe');
-    Params := 'prepare --root ' + Q(Root) + ' --data ' + Q(DataRoot) + ' --target-version {#AppVersion}';
+    Params := 'prepare --language ' + ActiveLanguage + ' --root ' + Q(Root) + ' --data ' + Q(DataRoot) + ' --target-version {#AppVersion}';
     if not RunHelper(Helper, Params, ExpandConstant('{tmp}')) then begin
-      Result := 'Резервное копирование не завершено. Установка остановлена до замены файлов.' + #13#10
-        + HelperError + #13#10 + 'Журнал: ' + DataRoot + '\logs\installer.log';
+      Result := CustomMessage('Textde38c51af2') + #13#10
+        + HelperError + #13#10 + CustomMessage('Textf6a716fdc0') + DataRoot + '\logs\installer.log';
       Exit;
     end;
   end;
@@ -292,12 +297,12 @@ begin
     Log('Removing previous installation before installing new files; preserving ' + DataRoot);
     Params := '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=' + Q(ExpandConstant('{tmp}\ai-secretary-uninstall.log'));
     if not Exec(Uninstaller, Params, ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, Code) then begin
-      Result := 'Не удалось запустить удаление прежней версии: ' + SysErrorMessage(Code);
+      Result := CustomMessage('Text92e383e53e') + SysErrorMessage(Code);
       Exit;
     end;
     if Code <> 0 then begin
-      Result := 'Удаление прежней версии завершилось с ошибкой ' + IntToStr(Code) +
-        '. Новая версия не установлена. Данные и резервная копия сохранены.';
+      Result := CustomMessage('Text9c3147222d') + IntToStr(Code) +
+        CustomMessage('Text94b99989f8');
       Exit;
     end;
     { The uninstaller clone terminates its original process before deleting it. }
@@ -307,22 +312,22 @@ begin
     end;
     if PendingProgramRemoval(Root) then begin
       NeedsRestart := True;
-      Result := 'Для завершения удаления нужна перезагрузка. Данные сохранены; после перезагрузки запустите установщик снова.';
+      Result := CustomMessage('Text38f517609b');
       Exit;
     end;
     if FileExists(Uninstaller) or RegKeyExists(HKLM64, UninstallKey) then begin
-      Result := 'Удаление прежней версии не завершено. Установка новых файлов остановлена; повторите запуск после завершения удаления.';
+      Result := CustomMessage('Texte9a7285244');
       Exit;
     end;
     if SavedData and not ExistingInstallation then begin
-      Result := 'После удаления не найдены сохранённые настройки. Восстановите ProgramData из резервной копии перед установкой.';
+      Result := CustomMessage('Text0f57f77790');
       Exit;
     end;
     Log('Previous installation removed; persistent data preserved.');
   end;
   { Never append to or replace an orphaned uninstall log. }
   if HasUninstallLog(ExpandConstant('{app}')) then begin
-    Result := 'В каталоге программы остались данные прежнего деинсталлятора. Завершите удаление прежней версии и повторите установку.';
+    Result := CustomMessage('Text269ec19cc1');
   end;
 end;
 
@@ -334,19 +339,19 @@ begin
   if CurStep = ssPostInstall then begin
     Root := ExpandConstant('{app}');
     if not Exec(Root + '\vendor\vc_redist.x64.exe', '/install /quiet /norestart', Root, SW_HIDE, ewWaitUntilTerminated, Code) then
-      RaiseException('Не удалось запустить установку Microsoft Visual C++ Runtime.');
+      RaiseException(CustomMessage('Text19ed971018'));
     if (Code <> 0) and (Code <> 3010) and (Code <> 1638) then
-      RaiseException('Не удалось установить Microsoft Visual C++ Runtime: ' + IntToStr(Code));
+      RaiseException(CustomMessage('Text9f461460c6') + IntToStr(Code));
     RuntimeNeedsRestart := Code = 3010;
     Host := '';
     if AccessPage.SelectedValueIndex = 1 then Host := HostPage.Values[0];
-    Params := 'configure --root ' + Q(Root) + ' --data ' + Q(DataRoot)
+    Params := 'configure --language ' + ActiveLanguage + ' --root ' + Q(Root) + ' --data ' + Q(DataRoot)
       + ' --api-port ' + Q(ConnectionPage.Values[0]) + ' --parser-port ' + Q(ConnectionPage.Values[1])
       + ' --database-port ' + Q(ConnectionPage.Values[2]) + ' --public-host ' + Q(Host);
     if not RunHelper(Root + '\setup\secretary-setup.exe', Params, Root) then
-      RaiseException('Не удалось настроить службы. Данные сохранены.' + #13#10
-        + HelperError + #13#10 + 'Журнал: ' + DataRoot + '\logs\installer.log'
-        + #13#10 + 'После исправления ошибки запустите установщик повторно.');
+      RaiseException(CustomMessage('Text1f3cd0171c') + #13#10
+        + HelperError + #13#10 + CustomMessage('Textf6a716fdc0') + DataRoot + '\logs\installer.log'
+        + #13#10 + CustomMessage('Texta61b1449f7'));
   end;
 end;
 
@@ -361,9 +366,9 @@ var
 begin
   if CurUninstallStep = usUninstall then begin
     Root := ExpandConstant('{app}');
-    Params := 'remove --root ' + Q(Root) + ' --data ' + Q(DataRoot);
+    Params := 'remove --language ' + ActiveLanguage + ' --root ' + Q(Root) + ' --data ' + Q(DataRoot);
     if not RunHelper(Root + '\setup\secretary-setup.exe', Params, Root) then
-      RaiseException('Не удалось остановить и удалить службы. Файлы программы сохраняются.' + #13#10
-        + HelperError + #13#10 + 'Журнал: ' + DataRoot + '\logs\installer.log');
+      RaiseException(CustomMessage('Textec9c424d09') + #13#10
+        + HelperError + #13#10 + CustomMessage('Textf6a716fdc0') + DataRoot + '\logs\installer.log');
   end;
 end;

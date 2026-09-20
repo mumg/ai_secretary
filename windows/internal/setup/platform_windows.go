@@ -4,6 +4,7 @@ package setup
 
 import (
 	"errors"
+	"github.com/mumg/ai_secretary/windows/internal/i18n"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
@@ -11,7 +12,7 @@ import (
 
 func RequireAdministrator() error {
 	if !windows.GetCurrentProcessToken().IsElevated() {
-		return errors.New("запустите установку с правами администратора Windows")
+		return errors.New(i18n.Tr("запустите установку с правами администратора Windows"))
 	}
 	return nil
 }

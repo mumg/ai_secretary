@@ -9,6 +9,8 @@ class ImproverApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        net.muratov.assistant.i18n.Language.initialize(this)
+        net.muratov.assistant.ui.OrientationPolicy.install(this)
         container = AppContainer(this)
         net.muratov.assistant.ui.AdaptiveActivityLayout.install(this, container.settings.isConfigured)
         container.realtime.install()

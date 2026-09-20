@@ -232,3 +232,63 @@ test('gateway enrolls without invitation and rotates the identity, clearing the 
   assert.ok(writes[2].url.endsWith('/gateway/reregister'));
   assert.deepEqual(writes[2].body, {gateway: 'https://connect.ai-secretary.co'});
 });
+
+test('employee tables preserve structured records, edit, add, delete and reject duplicates', async t => {
+  const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {
+    url: 'http://localhost/admin', runScripts: 'outside-only',
+  });
+  t.after(() => dom.window.close());
+  const w = dom.window;
+  w.structuredClone = structuredClone;
+  let state = { settings: {
+    relationships: { managers: [{ name: 'Анна | <b>Иванова</b>', emails: ['anna@example.org', 'work@example.org'] }], reports: [] },
+    identity: { names: [] }, server: { timezone: 'UTC' },
+    calendar: { workday_start: '10:00', workday_end: '17:00', daily_plan_time: '08:00' },
+    communication_sources: { initial_sync_days: 30 },
+    llm: { base_url: 'http://ollama:11434', model: 'qwen', context_length: 16384, temperature: 0.1, auto_create_confidence: 0.85, possible_completion_confidence: 0.8, request_timeout_seconds: 300 },
+    worker: { batch_size: 10, ranking_interval_seconds: 900, poll_interval_seconds: 60 },
+    document_parser: { max_bytes: 1048576, max_characters: 10000, timeout_seconds: 30 },
+    notifications: { due_soon_minutes: 60, overdue_repeat_hour: 10 },
+  }};
+  const writes = [];
+  w.fetch = async (url, options = {}) => {
+    if (url.endsWith('/settings')) {
+      if (options.method === 'PUT') { const body = JSON.parse(options.body); writes.push(body); state = { settings: body.settings }; }
+      return { ok: true, json: async () => structuredClone(state) };
+    }
+    return { ok: true, json: async () => url.endsWith('/status') ? {} : [] };
+  };
+  w.eval(fs.readFileSync(path.join(root, 'assets/admin.js'), 'utf8'));
+  await settle();
+  const doc = w.document;
+  const table = doc.getElementById('relationshipManagers');
+  assert.equal(table.rows.length, 1);
+  assert.equal(table.querySelector('b'), null);
+  assert.equal(table.querySelector('input').value, 'Анна | <b>Иванова</b>');
+  assert.deepEqual(JSON.parse(JSON.stringify(w.readEmployees('relationshipManagers'))), state.settings.relationships.managers);
+  table.querySelector('input').value = 'Анна Петрова';
+  doc.querySelector('[data-add-employee="relationshipReports"]').click();
+  const report = doc.getElementById('relationshipReports').rows[0];
+  report.querySelector('[data-employee-field="name"]').value = 'Иван';
+  const addresses = report.querySelector('[data-employee-field="emails"]');
+  addresses.value = 'ivan@example.org, IVAN@example.org';
+  assert.throws(() => w.readEmployees('relationshipReports'), /без повторов/);
+  addresses.value = 'ivan@example.org, second@example.org';
+  await w.saveSettings();
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].settings.relationships.managers[0].name, 'Анна Петрова');
+  assert.deepEqual(writes[0].settings.relationships.reports[0].emails, ['ivan@example.org', 'second@example.org']);
+  doc.getElementById('relationshipReports').querySelector('button').click();
+  await w.saveSettings();
+  assert.deepEqual(writes[1].settings.relationships.reports, []);
+  const added = w.addEmployeeRow('relationshipManagers', { name: 'Другой', emails: ['ANNA@example.org'] });
+  await w.saveSettings();
+  assert.equal(writes.length, 2, 'duplicate email must prevent a request');
+  added.querySelector('[data-employee-field="emails"]').value = 'invalid';
+  await w.saveSettings();
+  assert.equal(writes.length, 2, 'invalid email must prevent a request');
+  added.querySelector('input').value = '  ';
+  added.querySelector('[data-employee-field="emails"]').value = 'other@example.org';
+  await w.saveSettings();
+  assert.equal(writes.length, 2, 'blank employee name must prevent a request');
+});

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mumg/ai_secretary/windows/internal/i18n"
 	"io"
 	"net"
 	"net/http"
@@ -53,7 +54,7 @@ func guard(fn func()) (err error) {
 			if e, ok := v.(error); ok {
 				err = e
 			} else {
-				err = errors.New("внутренняя ошибка установщика")
+				err = errors.New(i18n.Tr("внутренняя ошибка установщика"))
 			}
 		}
 	}()
@@ -85,7 +86,7 @@ func (e *Engine) stop(name string) {
 		}
 		e.Sleep(time.Second)
 	}
-	panic(fmt.Errorf("не удалось остановить %s", name))
+	panic(fmt.Errorf(i18n.Tr("не удалось остановить %s"), name))
 }
 func (e *Engine) SecureDirectory() error {
 	return guard(func() {
@@ -109,7 +110,7 @@ func (e *Engine) waitDatabase(o Options) {
 		}
 		e.Sleep(time.Second)
 	}
-	panic(errors.New("PostgreSQL не запустился; проверьте журнал AISecretaryDatabase"))
+	panic(errors.New(i18n.Tr("PostgreSQL не запустился; проверьте журнал AISecretaryDatabase")))
 }
 func (e *Engine) CheckRuntime() error {
 	return guard(func() {
@@ -173,18 +174,18 @@ func (e *Engine) configure(proposed Options) {
 		path := filepath.Join(e.Data, "secrets", n)
 		if exists(path) {
 			if must(readText(path)) == "" {
-				panic(errors.New("пустой ключ или пароль; восстановите secrets из резервной копии"))
+				panic(errors.New(i18n.Tr("пустой ключ или пароль; восстановите secrets из резервной копии")))
 			}
 			continue
 		}
 		if exists(filepath.Join(e.Data, "postgres", "PG_VERSION")) {
-			panic(errors.New("отсутствует ключ или пароль существующей установки; восстановите secrets из копии"))
+			panic(errors.New(i18n.Tr("отсутствует ключ или пароль существующей установки; восстановите secrets из копии")))
 		}
 		check(writeAtomic(path, []byte(must(secret(48)))))
 	}
 	// Refuse unsupported clusters before stopping or re-registering services.
 	if exists(filepath.Join(e.Data, "postgres", "PG_VERSION")) && must(readText(filepath.Join(e.Data, "postgres", "PG_VERSION"))) != "17" {
-		panic(errors.New("версия PostgreSQL требует отдельной миграции; каталог базы не изменён"))
+		panic(errors.New(i18n.Tr("версия PostgreSQL требует отдельной миграции; каталог базы не изменён")))
 	}
 	active := Services
 	if o.PublicHost == "" {
@@ -253,7 +254,7 @@ func (e *Engine) configure(proposed Options) {
 	for filename, path := range map[string]string{"Open.url": "/app", "Settings.url": "/admin"} {
 		check(writeAtomic(filepath.Join(e.Root, filename), []byte(fmt.Sprintf("[InternetShortcut]\r\nURL=http://127.0.0.1:%d%s\r\n", o.APIPort, path))))
 	}
-	fmt.Fprintln(e.Log, "Службы установлены. Настройте источники и модель в панели администратора.")
+	fmt.Fprintln(e.Log, i18n.Tr("Службы установлены. Настройте источники и модель в панели администратора."))
 }
 func (e *Engine) Prepare(target string) error {
 	return guard(func() {
@@ -266,7 +267,7 @@ func (e *Engine) Prepare(target string) error {
 			var installed struct{ Version string }
 			check(readJSON(filepath.Join(e.Data, "installed.json"), &installed))
 			if must(downgrade(target, installed.Version)) {
-				panic(errors.New("установка более старой версии запрещена"))
+				panic(errors.New(i18n.Tr("установка более старой версии запрещена")))
 			}
 		}
 		running := []string{}
@@ -280,7 +281,7 @@ func (e *Engine) Prepare(target string) error {
 		if !exists(filepath.Join(e.Root, "postgres", "bin", "pg_dump.exe")) {
 			for _, name := range Services {
 				if must(e.State(name)) != "missing" {
-					panic(errors.New("отсутствуют программы существующей службы; восстановите каталог программы"))
+					panic(errors.New(i18n.Tr("отсутствуют программы существующей службы; восстановите каталог программы")))
 				}
 			}
 			check(os.MkdirAll(filepath.Join(e.Data, "backups"), 0700))
@@ -299,7 +300,7 @@ func (e *Engine) Prepare(target string) error {
 				}
 			}
 			check(writeJSON(filepath.Join(e.Data, "upgrade-state.json"), map[string]string{"phase": "prepared", "backup": backup, "format": "cold-cluster"}))
-			fmt.Fprintln(e.Log, "Холодная резервная копия создана:", backup)
+			fmt.Fprintln(e.Log, i18n.Tr("Холодная резервная копия создана:"), backup)
 			return
 		}
 		prepared := false
@@ -328,7 +329,7 @@ func (e *Engine) Prepare(target string) error {
 		must(e.Run(dump))
 		info := must(os.Stat(filepath.Join(backup, "database.dump")))
 		if info.Size() == 0 {
-			panic(errors.New("пустая резервная копия базы"))
+			panic(errors.New(i18n.Tr("пустая резервная копия базы")))
 		}
 		for _, name := range []string{"connection.json", "installed.json", "secrets", "certificates", "data", "Caddyfile", "caddy"} {
 			source := filepath.Join(e.Data, name)
@@ -347,7 +348,7 @@ func (e *Engine) Prepare(target string) error {
 		e.stop("AISecretaryDatabase")
 		check(writeJSON(filepath.Join(e.Data, "upgrade-state.json"), map[string]string{"phase": "prepared", "backup": backup}))
 		prepared = true
-		fmt.Fprintln(e.Log, "Резервная копия создана:", backup)
+		fmt.Fprintln(e.Log, i18n.Tr("Резервная копия создана:"), backup)
 	})
 }
 func (e *Engine) Remove() error {
@@ -362,20 +363,20 @@ func (e *Engine) Remove() error {
 		for _, port := range []string{"80", "443"} {
 			e.Run(e.command("netsh.exe", "advfirewall", "firewall", "delete", "rule", "name=AISecretary-HTTPS-"+port))
 		}
-		fmt.Fprintln(e.Log, "Службы удалены. База, настройки и резервные копии сохранены в", e.Data)
+		fmt.Fprintln(e.Log, i18n.Tr("Службы удалены. База, настройки и резервные копии сохранены в"), e.Data)
 	})
 }
 func (e *Engine) ExportClient(output string) error {
 	return guard(func() {
 		if output == "" {
-			panic(errors.New("нужен каталог --output для экспорта сертификата"))
+			panic(errors.New(i18n.Tr("нужен каталог --output для экспорта сертификата")))
 		}
 		check(validateCertificates(filepath.Join(e.Data, "certificates")))
 		check(os.MkdirAll(output, 0700))
 		for _, name := range []string{"client.p12", "client-password.txt"} {
 			check(copyFile(filepath.Join(e.Data, "certificates", name), filepath.Join(output, name)))
 		}
-		fmt.Fprintln(e.Log, "Сертификат и пароль сохранены в", output)
+		fmt.Fprintln(e.Log, i18n.Tr("Сертификат и пароль сохранены в"), output)
 	})
 }
 func checkPorts(o Options) error {
@@ -388,7 +389,7 @@ func checkPorts(o Options) error {
 	for _, p := range []int{o.APIPort, o.ParserPort, o.DatabasePort} {
 		l, err := net.Listen("tcp4", fmt.Sprintf("127.0.0.1:%d", p))
 		if err != nil {
-			return fmt.Errorf("порт %d занят", p)
+			return fmt.Errorf(i18n.Tr("порт %d занят"), p)
 		}
 		listeners = append(listeners, l)
 	}
@@ -409,7 +410,7 @@ func waitURL(url string) error {
 		}
 		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("компонент не готов: %s; проверьте папку logs", url)
+	return fmt.Errorf(i18n.Tr("компонент не готов: %s; проверьте папку logs"), url)
 }
 func RunCommand(c Command) (string, error) {
 	timeout := c.Timeout
@@ -462,13 +463,13 @@ func RunCommand(c Command) (string, error) {
 		detail = detail[:1000]
 	}
 	if ctx.Err() != nil {
-		return "", fmt.Errorf("%s: превышено время ожидания", filepath.Base(c.Path))
+		return "", fmt.Errorf(i18n.Tr("%s: превышено время ожидания"), filepath.Base(c.Path))
 	}
 	var exit *exec.ExitError
 	if errors.As(err, &exit) {
-		return "", fmt.Errorf("%s: код %d; %s", filepath.Base(c.Path), exit.ExitCode(), detail)
+		return "", fmt.Errorf(i18n.Tr("%s: код %d; %s"), filepath.Base(c.Path), exit.ExitCode(), detail)
 	}
 	// Keep the OS error: missing files, access denial and invalid executable
 	// formats require different remedies. Do not include arguments or env.
-	return "", fmt.Errorf("не удалось запустить %s: %w", filepath.Base(c.Path), err)
+	return "", fmt.Errorf(i18n.Tr("не удалось запустить %s: %w"), filepath.Base(c.Path), err)
 }

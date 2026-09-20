@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -46,7 +48,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class TaskDetailActivity : ComponentActivity() {
+class TaskDetailActivity : net.muratov.assistant.i18n.LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val taskId = intent.getStringExtra(EXTRA_TASK_ID)
@@ -95,14 +97,14 @@ private fun TaskDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = state.detail?.task?.title ?: "Задача",
+                        text = state.detail?.task?.title ?: tr("Задача"),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Назад"))
                     }
                 },
             )
@@ -121,7 +123,7 @@ private fun TaskDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(state.error, color = MaterialTheme.colorScheme.error)
-                Button(onClick = onRetry) { Text("Повторить") }
+                Button(onClick = onRetry) { Text(tr("Повторить")) }
             }
 
             state.detail != null -> TaskDetailContent(
@@ -151,37 +153,37 @@ private fun TaskDetailContent(
         if (detail.task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED", "NEEDS_CONFIRMATION")) {
             RejectTaskButton(onClick = onReject, modifier = Modifier.align(Alignment.End))
         } else if (detail.task.status == "CANCELLED") {
-            Text("Задача отменена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("Задача отменена"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (source == null) {
-            DetailField("Источник", "Задача добавлена вручную")
+            DetailField(tr("Источник"), tr("Задача добавлена вручную"))
         } else {
-            DetailField("Источник", source.sourceLabel)
+            DetailField(tr("Источник"), source.sourceLabel)
             val (eventDate, eventTime) = eventDateTime(source.occurredAt)
-            DetailField("Дата", eventDate)
-            DetailField("Время", eventTime)
+            DetailField(tr("Дата"), eventDate)
+            DetailField(tr("Время"), eventTime)
             source.subject?.takeIf(String::isNotBlank)?.let {
-                DetailField("Тема", it)
+                DetailField(tr("Тема"), it)
             }
         }
 
-        DetailField("Краткая выжимка", briefSummary(detail))
+        DetailField(tr("Краткая выжимка"), briefSummary(detail))
 
         source?.let {
-            DetailField("Тип", sourceTypeLabel(it.sourceType, it.eventType))
+            DetailField(tr("Тип"), sourceTypeLabel(it.sourceType, it.eventType))
             it.author?.takeIf(String::isNotBlank)?.let { author ->
-                DetailField("Отправитель", author)
+                DetailField(tr("Отправитель"), author)
             }
             val participants = participantText(it.participants)
-            if (participants.isNotEmpty()) DetailField("Участники", participants)
+            if (participants.isNotEmpty()) DetailField(tr("Участники"), participants)
             it.sourceUrl?.takeIf(String::isNotBlank)?.let { url ->
                 TextButton(onClick = { runCatching { uriHandler.openUri(url) } }) {
-                    Text("Открыть в источнике")
+                    Text(tr("Открыть в источнике"))
                 }
             }
-            Text("Оригинал сообщения", style = MaterialTheme.typography.titleMedium)
+            Text(tr("Оригинал сообщения"), style = MaterialTheme.typography.titleMedium)
             LinkedMessageText(
-                it.body.ifBlank { "Текст сообщения пуст" },
+                it.body.ifBlank { tr("Текст сообщения пуст") },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -199,14 +201,14 @@ private fun DetailField(label: String, value: String) {
 }
 
 private fun sourceTypeLabel(sourceType: String, eventType: String): String = when (sourceType) {
-    "imap" -> "Письмо · IMAP"
-    "exchange" -> "Письмо · Exchange"
+    "imap" -> tr("Письмо · IMAP")
+    "exchange" -> tr("Письмо · Exchange")
     "mts_link" -> if (eventType == "meeting_transcript") {
-        "Расшифровка встречи · МТС Линк"
+        tr("Расшифровка встречи · МТС Линк")
     } else {
-        "Сообщение · МТС Линк"
+        tr("Сообщение · МТС Линк")
     }
-    else -> "$eventType · $sourceType"
+    else -> "${eventType} · ${sourceType}"
 }
 
 private fun briefSummary(detail: TaskDetailDto): String {
@@ -222,7 +224,7 @@ private fun participantText(participants: List<Map<String, String>>): String =
         val name = participant["name"].orEmpty().trim()
         val address = participant["address"].orEmpty().trim()
         when {
-            name.isNotEmpty() && address.isNotEmpty() -> "$name <$address>"
+            name.isNotEmpty() && address.isNotEmpty() -> "${name} <${address}>"
             address.isNotEmpty() -> address
             else -> name
         }
@@ -230,7 +232,7 @@ private fun participantText(participants: List<Map<String, String>>): String =
 
 private fun eventDateTime(value: String): Pair<String, String> = runCatching {
     val local = OffsetDateTime.parse(value).atZoneSameInstant(ZoneId.systemDefault())
-    val locale = Locale.forLanguageTag("ru-RU")
-    local.format(DateTimeFormatter.ofPattern("dd.MM.yyyy", locale)) to
+    val locale = net.muratov.assistant.i18n.Language.locale
+    local.format(net.muratov.assistant.i18n.dateFormatter()) to
         local.format(DateTimeFormatter.ofPattern("HH:mm", locale))
 }.getOrElse { value to "—" }

@@ -236,7 +236,11 @@ func (s *Server) taskRoutes() {
 		m := q.body()
 		textField(m, "label", 1, 255, true)
 		textField(m, "fcm_token", 10, 10000, true)
-		q.exec("INSERT INTO devices (id,label,fcm_token,active,last_seen_at) VALUES ($1,$2,$3,true,now()) ON CONFLICT(fcm_token) DO UPDATE SET label=EXCLUDED.label,active=true,last_seen_at=now(),updated_at=now()", newID(), m["label"], m["fcm_token"])
+		if m["language"] == nil {
+			m["language"] = "ru"
+		}
+		enum(m, "language", "ru", "en", "zh")
+		q.exec("INSERT INTO devices (id,label,fcm_token,language,active,last_seen_at) VALUES ($1,$2,$3,$4,true,now()) ON CONFLICT(fcm_token) DO UPDATE SET label=EXCLUDED.label,language=EXCLUDED.language,active=true,last_seen_at=now(),updated_at=now()", newID(), m["label"], m["fcm_token"], m["language"])
 		return project("DeviceRead", q.one("SELECT * FROM devices WHERE fcm_token=$1", m["fcm_token"]))
 	})
 	s.route("GET /api/v1/events/{id}", false, func(q *request) any { return project("EventRead", q.get("communication_events", q.id("id"))) })

@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import net.muratov.assistant.notifications.observeRealtime
 import androidx.lifecycle.ViewModelProvider
@@ -84,7 +86,7 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
                 repository.createFromText(text)
                 updateSearch()
             } catch (exception: Exception) {
-                error.value = exception.message ?: "Не удалось оформить голосовую задачу"
+                error.value = exception.message ?: tr("Не удалось оформить голосовую задачу")
             } finally {
                 voiceProcessing.value = false
             }
@@ -120,7 +122,7 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            searchError.value = exception.message ?: "Не удалось выполнить поиск задач"
+            searchError.value = exception.message ?: tr("Не удалось выполнить поиск задач")
         } finally {
             searchLoading.value = false
         }
@@ -130,7 +132,7 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
         viewModelScope.launch {
             loading.value = true
             error.value = null
-            runCatching { block() }.onFailure { error.value = it.message ?: "Ошибка соединения" }
+            runCatching { block() }.onFailure { error.value = it.message ?: tr("Ошибка соединения") }
             loading.value = false
             onFinished()
         }

@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -46,7 +48,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class ConversationThreadDetailActivity : ComponentActivity() {
+class ConversationThreadDetailActivity : net.muratov.assistant.i18n.LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val threadId = intent.getStringExtra(EXTRA_THREAD_ID) ?: return finish()
@@ -94,14 +96,14 @@ private fun ConversationThreadDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        state.detail?.title ?: "Переписка",
+                        state.detail?.title ?: tr("Переписка"),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Назад"))
                     }
                 },
             )
@@ -118,7 +120,7 @@ private fun ConversationThreadDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(state.error, color = MaterialTheme.colorScheme.error)
-                Button(onClick = onRetry) { Text("Повторить") }
+                Button(onClick = onRetry) { Text(tr("Повторить")) }
             }
 
             state.detail != null -> ConversationThreadDetailContent(
@@ -145,30 +147,30 @@ private fun ConversationThreadDetailContent(
                 Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                DetailField("Источник", detail.sourceLabel)
+                DetailField(tr("Источник"), detail.sourceLabel)
                 DetailField(
-                    "Период",
+                    tr("Период"),
                     "${formatThreadDate(detail.firstEventAt)} — " +
                         formatThreadDate(detail.lastEventAt),
                 )
                 participantNames(detail.participants).takeIf(String::isNotBlank)?.let {
-                    DetailField("Участники", it)
+                    DetailField(tr("Участники"), it)
                 }
-                Text("Резюме Qwen", style = MaterialTheme.typography.titleMedium)
+                Text(tr("Резюме Qwen"), style = MaterialTheme.typography.titleMedium)
                 SelectionContainer {
                     Text(
                         detail.summary?.takeIf(String::isNotBlank)
-                            ?: "Резюме переписки пока не сформировано",
+                            ?: tr("Резюме переписки пока не сформировано"),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 Text(
-                    "Сообщения (${detail.eventCount})",
+                    tr("Сообщения ({0})" , detail.eventCount),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (detail.hasMoreEvents) {
                     Text(
-                        "Показаны 100 последних сообщений",
+                        tr("Показаны 100 последних сообщений"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -206,7 +208,7 @@ private fun ConversationEventCard(
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             Text(
-                event.subject?.takeIf(String::isNotBlank) ?: "Сообщение без темы",
+                event.subject?.takeIf(String::isNotBlank) ?: tr("Сообщение без темы"),
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -226,13 +228,13 @@ private fun ConversationEventCard(
                 )
             }
             Text(
-                event.preview.ifBlank { "Текст сообщения пуст" },
+                event.preview.ifBlank { tr("Текст сообщения пуст") },
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 6,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "Открыть оригинал",
+                tr("Открыть оригинал"),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -255,8 +257,8 @@ private fun participantNames(participants: List<Map<String, String>>): String = 
     .joinToString(", ")
 
 private fun directionLabel(direction: String): String = when (direction) {
-    "OUTGOING" -> "Исходящее"
-    "INCOMING" -> "Входящее"
+    "OUTGOING" -> tr("Исходящее")
+    "INCOMING" -> tr("Входящее")
     else -> direction
 }
 

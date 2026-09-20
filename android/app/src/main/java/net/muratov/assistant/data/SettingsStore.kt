@@ -1,5 +1,7 @@
 package net.muratov.assistant.data
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import net.muratov.assistant.setup.normalizeServerUrl
 
@@ -16,7 +18,7 @@ class SettingsStore(context: Context) {
     fun saveConnection(url: String, alias: String?) {
         require(normalizeServerUrl(url) != null)
         check(preferences.edit().putString("server_url", normalizeServerUrl(url))
-            .putString("certificate_alias", alias).commit()) { "Не удалось сохранить настройки подключения" }
+            .putString("certificate_alias", alias).commit()) { tr("Не удалось сохранить настройки подключения") }
     }
 
     var certificateAlias: String?

@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -85,7 +87,7 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
             } catch (error: Exception) {
                 localRequests[temporaryId] = LocalRequest(
                     query,
-                    error.message ?: "Не удалось отправить вопрос",
+                    error.message ?: tr("Не удалось отправить вопрос"),
                 )
                 _state.value = _state.value.copy(messages = renderedMessages())
             }
@@ -104,7 +106,7 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
             if (!silent || _state.value.messages.isEmpty()) {
                 _state.value = _state.value.copy(
                     loading = false,
-                    error = error.message ?: "Не удалось загрузить чат",
+                    error = error.message ?: tr("Не удалось загрузить чат"),
                 )
             }
         }
@@ -116,7 +118,7 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
                 ChatMessageUi("user", request.query, requestId = id),
                 ChatMessageUi(
                     role = "assistant",
-                    content = request.error ?: "В очереди…",
+                    content = request.error ?: tr("В очереди…"),
                     failed = request.error != null,
                     pending = request.error == null,
                     requestId = id,
@@ -134,22 +136,22 @@ class ChatViewModel(private val repository: TaskRepository) : ViewModel() {
             )
             "PROCESSING" -> ChatMessageUi(
                 role = "assistant",
-                content = "Qwen анализирует архив…",
+                content = tr("Qwen анализирует архив…"),
                 pending = true,
                 requestId = request.id,
             )
             "FAILED" -> ChatMessageUi(
                 role = "assistant",
-                content = request.error ?: "Не удалось получить ответ",
+                content = request.error ?: tr("Не удалось получить ответ"),
                 failed = true,
                 requestId = request.id,
             )
             else -> ChatMessageUi(
                 role = "assistant",
                 content = if (request.error.isNullOrBlank()) {
-                    "В очереди…"
+                    tr("В очереди…")
                 } else {
-                    "LLM временно недоступна, запрос будет повторён автоматически…"
+                    tr("LLM временно недоступна, запрос будет повторён автоматически…")
                 },
                 pending = true,
                 requestId = request.id,

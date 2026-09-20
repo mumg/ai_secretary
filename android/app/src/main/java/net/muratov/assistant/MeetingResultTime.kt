@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -14,16 +16,16 @@ internal fun formatMeetingResultPeriod(
 ): String = runCatching {
     val start = OffsetDateTime.parse(startsAt).atZoneSameInstant(zone)
     val end = OffsetDateTime.parse(endsAt).atZoneSameInstant(zone)
-    val locale = Locale.forLanguageTag("ru-RU")
-    val dateTime = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", locale)
+    val locale = net.muratov.assistant.i18n.Language.locale
+    val dateTime = net.muratov.assistant.i18n.dateTimeFormatter()
     val startText = start.format(dateTime)
     // Unlinked email results store the message timestamp in both interval fields.
     if (originType == "email_followup" && calendarMeetingId == null && start.isEqual(end)) {
-        "Письмо получено $startText · время встречи неизвестно"
+        tr("Письмо получено {0} · время встречи неизвестно" , startText)
     } else if (!end.isAfter(start)) {
-        "$startText · время окончания неизвестно"
+        tr("{0} · время окончания неизвестно" , startText)
     } else if (start.toLocalDate() != end.toLocalDate()) {
-        "$startText — ${end.format(dateTime)}"
+        "${startText} — ${end.format(dateTime)}"
     } else {
         val sameMinute = start.hour == end.hour && start.minute == end.minute
         val startFormat = if (sameMinute) {
@@ -37,4 +39,4 @@ internal fun formatMeetingResultPeriod(
         )
         "${start.format(startFormat)} — ${end.format(endFormat)}"
     }
-}.getOrDefault("Время встречи неизвестно")
+}.getOrDefault(tr("Время встречи неизвестно"))

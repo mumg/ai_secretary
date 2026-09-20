@@ -9,13 +9,14 @@ const wait = () => new Promise((resolve) => setTimeout(resolve, 15));
 async function settle() {
   for (let i = 0; i < 4; i++) await wait();
 }
-function setup(t, api = createAPI(), hash = "") {
+function setup(t, api = createAPI(), hash = "", language = "ru") {
   const dom = new JSDOM(fs.readFileSync(path.join(root, "app.html"), "utf8"), {
     url: `http://localhost/app/${hash}`,
     runScripts: "outside-only",
     pretendToBeVisual: true,
   });
   const w = dom.window;
+  w.localStorage.setItem("secretary.language", language);
   w.fetch = api.handle;
   w.AbortController = AbortController;
   w.structuredClone = structuredClone;
@@ -51,6 +52,8 @@ function setup(t, api = createAPI(), hash = "") {
     this.open = false;
   };
   for (const file of [
+    "translations.js",
+    "i18n.js",
     "markdown-it.min.js",
     "app-core.js",
     "realtime.js",
@@ -425,3 +428,17 @@ test("delegations filter, search, manual acceptance, history and source links", 
   click(d,'#detail [data-open-kind="event"]');await settle();
   assert.ok(api.calls.some(c=>c.path==='/events/event1'));
 });
+
+for (const [language, tasks, delegations] of [['en', 'Tasks', 'Delegations'], ['zh', '任务', '委派任务']]) {
+  test(`localized application renders ${language} without translating archive text`, async t => {
+    const api = createAPI();
+    api.data.tasks[0].title = 'Настройки';
+    const { w } = setup(t, api, '', language);
+    await settle();
+    assert.equal(w.document.documentElement.lang, language === 'zh' ? 'zh-CN' : 'en');
+    assert.ok(w.document.getElementById('tabs').textContent.includes(delegations));
+    assert.ok(w.document.getElementById('list').textContent.includes('Настройки'));
+    assert.ok(!w.document.getElementById('tabs').textContent.includes('Поручения'));
+    assert.equal(w.document.querySelector('[data-language-settings] select'), null, 'language settings are managed in the admin panel');
+  });
+}

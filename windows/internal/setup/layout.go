@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/mumg/ai_secretary/windows/internal/i18n"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -30,7 +31,7 @@ func (o Options) Validate() (Options, error) {
 	seen := map[int]bool{}
 	for _, p := range []int{o.APIPort, o.ParserPort, o.DatabasePort} {
 		if p < 1024 || p > 65535 || seen[p] {
-			return o, errors.New("укажите три разных порта от 1024 до 65535")
+			return o, errors.New(i18n.Tr("укажите три разных порта от 1024 до 65535"))
 		}
 		seen[p] = true
 	}
@@ -38,11 +39,11 @@ func (o Options) Validate() (Options, error) {
 	if o.PublicHost != "" {
 		valid := regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
 		if len(o.PublicHost) > 253 || !valid.MatchString(o.PublicHost) {
-			return o, errors.New("для HTTPS нужен публичный DNS-домен без протокола и пути")
+			return o, errors.New(i18n.Tr("для HTTPS нужен публичный DNS-домен без протокола и пути"))
 		}
 		for _, s := range []string{".local", ".localhost", ".invalid"} {
 			if strings.HasSuffix(o.PublicHost, s) {
-				return o, errors.New("нужен публичный DNS-домен")
+				return o, errors.New(i18n.Tr("нужен публичный DNS-домен"))
 			}
 		}
 	}

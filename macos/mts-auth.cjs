@@ -1,4 +1,5 @@
 'use strict';
+const { tr } = require('./i18n.cjs');
 
 const crypto = require('node:crypto');
 const CHANNEL = 'secretary:mts-sso';
@@ -65,21 +66,21 @@ class MtsAuth {
     if (message.action !== 'start') return;
     let url;
     try { url = loginURL(message.authorizationUrl); }
-    catch { this.send({ action: 'error', flowId: message.flowId, message: 'Недопустимый адрес входа МТС Линк.' }); return; }
+    catch { this.send({ action: 'error', flowId: message.flowId, message: tr("Недопустимый адрес входа МТС Линк.") }); return; }
     // One active flow per admin window. Finishing immediately clears the active
     // slot; cleanup of the old isolated session may continue asynchronously.
     void this.finish({ action: 'cancelled' });
     const partition = this.session.fromPartition(`mts-sso-${crypto.randomUUID()}`, { cache: false });
     partition.setPermissionRequestHandler((_web, _permission, callback) => callback(false));
     partition.setPermissionCheckHandler(() => false);
-    const popup = new this.BrowserWindow({ width: 650, height: 830, parent: this.owner, title: 'Вход в МТС Линк',
+    const popup = new this.BrowserWindow({ width: 650, height: 830, parent: this.owner, title: tr("Вход в МТС Линк"),
       autoHideMenuBar: true, webPreferences: { session: partition, sandbox: true, contextIsolation: true,
         nodeIntegration: false, webviewTag: false, webSecurity: true, safeDialogs: true } });
     popup.removeMenu();
     const flow = { id: message.flowId, popup, partition, timer: null };
     this.flow = flow;
     const end = result => { if (this.flow === flow) void this.finish(result); };
-    flow.timer = setTimeout(() => end({ action: 'error', message: 'Время входа истекло. Начните вход заново.' }), 15 * 60000);
+    flow.timer = setTimeout(() => end({ action: 'error', message: tr("Время входа истекло. Начните вход заново.") }), 15 * 60000);
     // Capture the HTTPS Location header before Chromium can launch the native
     // MTS application. Do not register/replace the system-wide mtslink handler.
     partition.webRequest.onHeadersReceived({ urls: [`${GATEWAY}/sso/*`] }, (details, callback) => {
@@ -108,13 +109,13 @@ class MtsAuth {
       return { action: 'deny' };
     });
     popup.webContents.on('did-navigate', (_event, target) => {
-      try { popup.setTitle(`Вход в МТС Линк — ${new URL(target).hostname}`); } catch { /* no URLs/tokens in logs */ }
+      try { popup.setTitle(tr("Вход в МТС Линк — {0}", new URL(target).hostname)); } catch { /* no URLs/tokens in logs */ }
     });
     popup.on('closed', () => end({ action: 'cancelled' }));
     this.send({ action: 'opened', flowId: flow.id });
     void popup.loadURL(url).catch(() => {
       // Redirect cancellation also rejects loadURL; a completed flow is already gone.
-      end({ action: 'error', message: 'Не удалось открыть страницу входа. Проверьте подключение и повторите попытку.' });
+      end({ action: 'error', message: tr("Не удалось открыть страницу входа. Проверьте подключение и повторите попытку.") });
     });
   }
   async finish(message) {

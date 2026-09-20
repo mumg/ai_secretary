@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import net.muratov.assistant.notifications.observeRealtime
 import kotlinx.coroutines.Job
@@ -46,7 +48,7 @@ class MeetingResultDetailViewModel(
                 if (exception is CancellationException) throw exception
                 mutableState.value.copy(
                     loading = false,
-                    error = exception.message ?: "Не удалось загрузить результат встречи",
+                    error = exception.message ?: tr("Не удалось загрузить результат встречи"),
                 )
             }
         }

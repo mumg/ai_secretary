@@ -1,4 +1,6 @@
 'use strict';
+const language = require('./i18n.cjs');
+const { tr } = language;
 
 const electron = require('electron');
 const { app, BrowserWindow, Menu, dialog, shell, session } = electron;
@@ -36,9 +38,13 @@ async function status(text) {
   if (!window || window.isDestroyed() || !window.webContents.getURL().startsWith('file:')) return;
   await window.webContents.executeJavaScript(`document.getElementById('status').textContent = ${JSON.stringify(text)}`).catch(() => {});
 }
+async function localizeSplash() {
+  const values = ['AI Секретарь', 'Запуск локального сервера…', 'При первом запуске подготовка может занять несколько минут.'].map(value => tr(value));
+  await window.webContents.executeJavaScript(`(() => { const v = ${JSON.stringify(values)}; document.documentElement.lang = ${JSON.stringify(language.language)}; document.title = v[0]; document.querySelector('h1').textContent = v[0]; document.querySelectorAll('p').forEach((p, i) => p.textContent = v[i + 1]); })()`);
+}
 function createWindow() {
   window = new BrowserWindow({ width: 1320, height: 900, minWidth: 800, minHeight: 600,
-    title: 'AI Секретарь', show: false, backgroundColor: '#f5f7fa',
+    title: tr("AI Секретарь"), show: false, backgroundColor: '#f5f7fa',
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false,
       contextIsolation: true, sandbox: true, webviewTag: false, webSecurity: true }
   });
@@ -56,13 +62,13 @@ function createWindow() {
   });
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   new MtsAuth(electron, window, () => origin);
-  return window.loadFile(splash);
+  return window.loadFile(splash).then(() => localizeSplash());
 }
 async function start() {
   if (busy) return;
   busy = true;
   try {
-    if (!window) await createWindow(); else await window.loadFile(splash);
+    if (!window) await createWindow(); else { await window.loadFile(splash); await localizeSplash(); }
     origin = await services.ensure();
     if (window && !window.isDestroyed()) {
       await window.loadURL(`${origin}${process.argv.includes('--settings') && !smoke ? '/admin' : '/app/'}`);
@@ -71,7 +77,7 @@ async function start() {
         await window.webContents.executeJavaScript(`new Promise((resolve, reject) => {
           let attempts = 0;
           const check = () => {
-            if (document.getElementById('updated')?.textContent.startsWith('Обновлено') &&
+            if (document.getElementById('updated')?.textContent &&
                 document.getElementById('list-error')?.hidden) return resolve(true);
             if (++attempts > 60) return reject(new Error('Application data did not load'));
             setTimeout(check, 500);
@@ -103,24 +109,24 @@ async function start() {
     }
   } catch (error) {
     if (smoke) { console.error(error); app.exit(1); return; }
-    await status('Не удалось запустить сервер. Откройте журналы или перезапустите приложение.');
-    const result = await dialog.showMessageBox({ type: 'error', title: 'AI Секретарь', message: 'Не удалось запустить службы',
-      detail: error.message, buttons: ['Закрыть', 'Открыть журналы'], defaultId: 0 });
+    await status(tr("Не удалось запустить сервер. Откройте журналы или перезапустите приложение."));
+    const result = await dialog.showMessageBox({ type: 'error', title: tr("AI Секретарь"), message: tr("Не удалось запустить службы"),
+      detail: error.message, buttons: [tr("Закрыть"), tr("Открыть журналы")], defaultId: 0 });
     if (result.response === 1) await shell.openPath(path.join(services.data, 'logs'));
   } finally { busy = false; }
 }
 async function stopAndQuit(remove = false) {
   if (busy) return;
-  const result = await dialog.showMessageBox({ type: 'question', message: remove ? 'Удалить фоновые службы?' : 'Остановить сервер и закрыть приложение?',
-    detail: remove ? 'Данные и резервные копии сохранятся. Следующий запуск приложения восстановит службы.' :
-      'Обработка данных и удалённое подключение остановятся. Службы запустятся при следующем входе в macOS или запуске приложения.',
-    buttons: ['Отмена', remove ? 'Удалить службы' : 'Остановить'], cancelId: 0, defaultId: 0 });
+  const result = await dialog.showMessageBox({ type: 'question', message: remove ? tr("Удалить фоновые службы?") : tr("Остановить сервер и закрыть приложение?"),
+    detail: remove ? tr("Данные и резервные копии сохранятся. Следующий запуск приложения восстановит службы.") :
+      tr("Обработка данных и удалённое подключение остановятся. Службы запустятся при следующем входе в macOS или запуске приложения."),
+    buttons: [tr("Отмена"), remove ? tr("Удалить службы") : tr("Остановить")], cancelId: 0, defaultId: 0 });
   if (result.response !== 1) return;
   busy = true;
   try {
     if (remove) await services.uninstall(); else await services.lock(() => services.stopAll());
     app.quit();
-  } catch (error) { dialog.showErrorBox('Не удалось остановить службы', error.message); }
+  } catch (error) { dialog.showErrorBox(tr("Не удалось остановить службы"), error.message); }
   finally { busy = false; }
 }
 
@@ -135,8 +141,14 @@ else {
   });
   app.on('window-all-closed', () => app.quit());
   app.whenReady().then(async () => {
+    language.configure(app);
+    electron.ipcMain.on('secretary:language', (event, value) => {
+      if (event.sender !== window?.webContents || event.senderFrame !== event.sender.mainFrame || !internal(event.senderFrame.url)) { event.returnValue = null; return; }
+      if (value !== undefined) language.set(value);
+      event.returnValue = language.preference;
+    });
     if (!isWindows && app.isPackaged && process.execPath.startsWith('/Volumes/')) {
-      dialog.showErrorBox('Установка AI Секретаря', 'Перетащите AI Secretary в папку «Программы», затем запустите его оттуда.');
+      dialog.showErrorBox(tr("Установка AI Секретаря"), tr("Перетащите AI Secretary в папку «Программы», затем запустите его оттуда."));
       app.quit(); return;
     }
     const canWriteClipboard = (contents, permission, requestingURL) =>
@@ -166,5 +178,5 @@ else {
       app.quit(); return;
     }
     await start();
-  }).catch(error => { dialog.showErrorBox('AI Секретарь', error.message); app.quit(); });
+  }).catch(error => { dialog.showErrorBox(tr("AI Секретарь"), error.message); app.quit(); });
 }

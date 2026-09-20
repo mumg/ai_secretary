@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -44,7 +46,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class EventDetailActivity : ComponentActivity() {
+class EventDetailActivity : net.muratov.assistant.i18n.LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val eventId = intent.getStringExtra(EXTRA_EVENT_ID) ?: return finish()
@@ -88,14 +90,14 @@ private fun EventDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        state.event?.subject ?: "Источник",
+                        state.event?.subject ?: tr("Источник"),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Назад"))
                     }
                 },
             )
@@ -112,7 +114,7 @@ private fun EventDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(state.error, color = MaterialTheme.colorScheme.error)
-                Button(onClick = onRetry) { Text("Повторить") }
+                Button(onClick = onRetry) { Text(tr("Повторить")) }
             }
 
             state.event != null -> EventDetailContent(
@@ -135,21 +137,21 @@ private fun EventDetailContent(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        EventField("Источник", sourceLabel ?: event.sourceId)
-        EventField("Дата и время", formatEventDate(event.occurredAt))
-        event.subject?.takeIf(String::isNotBlank)?.let { EventField("Тема", it) }
-        event.author?.takeIf(String::isNotBlank)?.let { EventField("Автор", it) }
+        EventField(tr("Источник"), sourceLabel ?: event.sourceId)
+        EventField(tr("Дата и время"), formatEventDate(event.occurredAt))
+        event.subject?.takeIf(String::isNotBlank)?.let { EventField(tr("Тема"), it) }
+        event.author?.takeIf(String::isNotBlank)?.let { EventField(tr("Автор"), it) }
         val participants = event.participants.joinToString(", ") {
             it["name"] ?: it["address"].orEmpty()
         }.trim().trim(',')
-        if (participants.isNotBlank()) EventField("Участники", participants)
-        EventField("Тип", "${event.sourceType} · ${event.eventType}")
+        if (participants.isNotBlank()) EventField(tr("Участники"), participants)
+        EventField(tr("Тип"), "${event.sourceType} · ${event.eventType}")
         event.sourceUrl?.takeIf(String::isNotBlank)?.let { url ->
-            TextButton(onClick = { uriHandler.openUri(url) }) { Text("Открыть в источнике") }
+            TextButton(onClick = { uriHandler.openUri(url) }) { Text(tr("Открыть в источнике")) }
         }
-        Text("Оригинал", style = MaterialTheme.typography.titleMedium)
+        Text(tr("Оригинал"), style = MaterialTheme.typography.titleMedium)
         LinkedMessageText(
-            event.body.ifBlank { "Текст сообщения пуст" },
+            event.body.ifBlank { tr("Текст сообщения пуст") },
             modifier = Modifier.fillMaxWidth(),
         )
     }

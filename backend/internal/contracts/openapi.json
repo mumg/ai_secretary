@@ -3674,6 +3674,16 @@
             "type": "string",
             "minLength": 10,
             "title": "Fcm Token"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "ru",
+              "en",
+              "zh"
+            ],
+            "default": "ru",
+            "description": "Language of generic mobile notifications; older clients default to Russian."
           }
         },
         "type": "object",

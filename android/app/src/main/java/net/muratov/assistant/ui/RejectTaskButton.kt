@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
@@ -21,11 +23,11 @@ fun RejectTaskButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     TooltipBox(
         modifier = modifier,
         positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-        tooltip = { PlainTooltip { Text("Отказаться от задачи") } },
+        tooltip = { PlainTooltip { Text(tr("Отказаться от задачи")) } },
         state = rememberTooltipState(),
     ) {
         IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Default.Block, contentDescription = "Отказаться от задачи")
+            Icon(Icons.Default.Block, contentDescription = tr("Отказаться от задачи"))
         }
     }
 }

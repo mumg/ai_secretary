@@ -208,3 +208,11 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
   #toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+.relationship-section { min-width: 0; margin-bottom: 20px; }
+.relationship-scroll { overflow-x: auto; margin-bottom: 10px; }
+.relationship-table { width: 100%; border-collapse: collapse; }
+.relationship-table th { text-align: left; }
+.relationship-table td, .relationship-table th { padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.relationship-table input { width: 100%; min-width: 130px; box-sizing: border-box; }
+.relationship-table td:last-child { width: 1%; white-space: nowrap; }

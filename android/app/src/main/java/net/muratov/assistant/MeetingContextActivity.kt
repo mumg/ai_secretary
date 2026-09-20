@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -38,7 +40,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class MeetingContextActivity : ComponentActivity() {
+class MeetingContextActivity : net.muratov.assistant.i18n.LocalizedActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,9 +54,9 @@ class MeetingContextActivity : ComponentActivity() {
                 val state by model.state.collectAsState()
                 val detail = state.detail
                 Scaffold(topBar = {
-                    TopAppBar(title = { Text("Подготовка к встрече") }, navigationIcon = {
+                    TopAppBar(title = { Text(tr("Подготовка к встрече")) }, navigationIcon = {
                         IconButton(onClick = ::finish) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Назад"))
                         }
                     })
                 }) { padding ->
@@ -63,7 +65,7 @@ class MeetingContextActivity : ComponentActivity() {
                         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                         state.error?.let {
                             Text(it, color = MaterialTheme.colorScheme.error)
-                            Button(onClick = { model.load() }) { Text("Повторить") }
+                            Button(onClick = { model.load() }) { Text(tr("Повторить")) }
                         }
                         if (detail != null) {
                             Text(detail.meeting.title, style = MaterialTheme.typography.headlineSmall)
@@ -77,23 +79,23 @@ class MeetingContextActivity : ComponentActivity() {
                             when (detail.status) {
                                 "PENDING", "PROCESSING" -> {
                                     LinearProgressIndicator(Modifier.fillMaxWidth())
-                                    Text(if (detail.status == "PENDING") "Контекст готовится в фоне…"
-                                         else "Анализируем предыдущие встречи и переписки…")
+                                    Text(if (detail.status == "PENDING") tr("Контекст готовится в фоне…")
+                                         else tr("Анализируем предыдущие встречи и переписки…"))
                                 }
-                                "FAILED" -> Text(detail.error ?: "Не удалось подготовить контекст",
+                                "FAILED" -> Text(detail.error ?: tr("Не удалось подготовить контекст"),
                                     color = MaterialTheme.colorScheme.error)
-                                "CANCELLED" -> Text("Встреча отменена")
-                                "ENDED" -> Text("Встреча завершилась")
-                                "NOT_REQUESTED" -> Text("Контекст ещё не запрашивался. Нажмите кнопку, чтобы подготовить его.")
+                                "CANCELLED" -> Text(tr("Встреча отменена"))
+                                "ENDED" -> Text(tr("Встреча завершилась"))
+                                "NOT_REQUESTED" -> Text(tr("Контекст ещё не запрашивался. Нажмите кнопку, чтобы подготовить его."))
                             }
-                            detail.generatedAt?.let { Text("Обновлено: ${formatContextTime(it)}",
+                            detail.generatedAt?.let { Text(tr("Обновлено: {0}" , formatContextTime(it)),
                                 style = MaterialTheme.typography.labelMedium) }
                             detail.summary?.let { summary ->
-                                Text("Контекст и договорённости", style = MaterialTheme.typography.titleMedium)
+                                Text(tr("Контекст и договорённости"), style = MaterialTheme.typography.titleMedium)
                                 MarkdownText(summary, Modifier.fillMaxWidth())
                             }
                             if (detail.references.isNotEmpty()) {
-                                Text("Источники", style = MaterialTheme.typography.titleMedium)
+                                Text(tr("Источники"), style = MaterialTheme.typography.titleMedium)
                                 detail.references.forEach { reference ->
                                     Card(onClick = {
                                         val resultId = reference.meetingResultId
@@ -114,13 +116,13 @@ class MeetingContextActivity : ComponentActivity() {
                             }
                             TextButton(onClick = { startActivity(EventDetailActivity.intent(
                                 this@MeetingContextActivity, detail.meeting.sourceEventId, detail.meeting.sourceLabel,
-                            )) }) { Text("Открыть приглашение") }
+                            )) }) { Text(tr("Открыть приглашение")) }
                             if (detail.status !in setOf("CANCELLED", "ENDED")) Button(
                                 onClick = { model.load(refresh = true) },
                                 enabled = !state.loading && !meetingContextPending(detail.status),
-                            ) { Text(if (detail.summary == null) "Создать контекст" else "Обновить контекст") }
+                            ) { Text(if (detail.summary == null) tr("Создать контекст") else tr("Обновить контекст")) }
                             if (meetingContextPending(detail.status)) {
-                                Text("Можно закрыть экран — по готовности придёт уведомление.",
+                                Text(tr("Можно закрыть экран — по готовности придёт уведомление."),
                                     style = MaterialTheme.typography.bodySmall)
                             }
                         }

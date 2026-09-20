@@ -1,5 +1,7 @@
 package net.muratov.assistant.setup
 
+import net.muratov.assistant.i18n.tr
+
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -52,51 +54,52 @@ fun SetupWizard(
                     step = 2
                 } catch (cancelled: CancellationException) { throw cancelled
                 } catch (_: Exception) {
-                    error = "Не удалось прочитать ключ. Используйте действующий QR-код прямого подключения или гейтвея из настроек AI Секретаря."
+                    error = tr("Не удалось прочитать ключ. Используйте действующий QR-код прямого подключения или гейтвея из настроек AI Секретаря.")
                 } finally { busy = false }
             }
         }
     }
     val scan: () -> Unit = {
         scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-            .setPrompt("Наведите камеру на QR-код в настройках AI Секретаря")
+            .setPrompt(tr("Наведите камеру на QR-код в настройках AI Секретаря"))
             .setBeepEnabled(false).setBarcodeImageEnabled(false).setOrientationLocked(false)
             .setCaptureActivity(IdentityCaptureActivity::class.java))
     }
     val certificateLabel = when {
-        GatewayIdentity.isAlias(alias) -> "Через гейтвей · ключ сохранён в приложении"
-        AppClientIdentity.isAppAlias(alias) -> "Ключ сохранён в приложении"
-        alias != null -> "Ранее выбранный сертификат Android"
-        else -> "Без клиентского сертификата"
+        GatewayIdentity.isAlias(alias) -> tr("Через гейтвей · ключ сохранён в приложении")
+        AppClientIdentity.isAppAlias(alias) -> tr("Ключ сохранён в приложении")
+        alias != null -> tr("Ранее выбранный сертификат Android")
+        else -> tr("Без клиентского сертификата")
     }
     BackHandler(enabled = step > 0 && !busy) { step--; error = null }
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text("Настройка AI Секретаря", style = MaterialTheme.typography.headlineMedium)
-            Text("Шаг ${step + 1} из 3", style = MaterialTheme.typography.labelLarge)
+            net.muratov.assistant.i18n.LanguageSetting()
+            Text(tr("Настройка AI Секретаря"), style = MaterialTheme.typography.headlineMedium)
+            Text(tr("Шаг {0} из 3" , step + 1), style = MaterialTheme.typography.labelLarge)
             when (step) {
                 0 -> {
-                    Text("Подключите свой сервер")
-                    Button(enabled = !busy, onClick = scan) { Text("Сканировать QR-код") }
-                    Text("QR-код автоматически определит способ подключения: напрямую или через гейтвей. Для прямого подключения можно ввести HTTPS-адрес вручную.")
+                    Text(tr("Подключите свой сервер"))
+                    Button(enabled = !busy, onClick = scan) { Text(tr("Сканировать QR-код")) }
+                    Text(tr("QR-код автоматически определит способ подключения: напрямую или через гейтвей. Для прямого подключения можно ввести HTTPS-адрес вручную."))
                     OutlinedTextField(url, { url = it; error = null }, modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Адрес сервера") }, placeholder = { Text("https://assistant.example.org") },
+                        label = { Text(tr("Адрес сервера")) }, placeholder = { Text("https://assistant.example.org") },
                         singleLine = true, isError = url.isNotBlank() && normalized == null,
-                        supportingText = { Text("HTTPS, без пути, логина и параметров. Допускается порт.") })
+                        supportingText = { Text(tr("HTTPS, без пути, логина и параметров. Допускается порт.")) })
                 }
                 1 -> {
-                    Text("Ключ доступа")
-                    Text("Отсканируйте QR-код из раздела «Мобильное приложение» в настройках сервера. Ключ останется в закрытом каталоге приложения и не будет установлен в систему. Для сервера без mTLS этот шаг можно пропустить.")
+                    Text(tr("Ключ доступа"))
+                    Text(tr("Отсканируйте QR-код из раздела «Мобильное приложение» в настройках сервера. Ключ останется в закрытом каталоге приложения и не будет установлен в систему. Для сервера без mTLS этот шаг можно пропустить."))
                     Text(certificateLabel)
-                    Button(enabled = !busy, onClick = scan) { Text("Сканировать QR-код") }
-                    if (alias != null) TextButton(enabled = !busy, onClick = { alias = null }) { Text("Подключаться без сертификата") }
+                    Button(enabled = !busy, onClick = scan) { Text(tr("Сканировать QR-код")) }
+                    if (alias != null) TextButton(enabled = !busy, onClick = { alias = null }) { Text(tr("Подключаться без сертификата")) }
                 }
                 2 -> {
-                    Text("Проверка подключения")
+                    Text(tr("Проверка подключения"))
                     Text(normalized.orEmpty())
                     Text(certificateLabel)
-                    Text("Проверим доступ к API сервера, затем сохраним настройки и откроем приложение.")
+                    Text(tr("Проверим доступ к API сервера, затем сохраним настройки и откроем приложение."))
                 }
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -115,14 +118,14 @@ fun SetupWizard(
                             onComplete()
                         } catch (cancelled: CancellationException) { throw cancelled
                         } catch (failure: Exception) {
-                            error = "Не удалось подключиться. Проверьте адрес, сеть и сертификат. ${failure.message.orEmpty().take(160)}"
+                            error = tr("Не удалось подключиться. Проверьте адрес, сеть и сертификат. {0}" , failure.message.orEmpty().take(160))
                         } finally { busy = false }
                     }
                 }
-            }) { Text(if (step < 2) "Далее" else "Проверить и начать") }
+            }) { Text(if (step < 2) tr("Далее") else tr("Проверить и начать")) }
             Row {
-                if (step > 0) TextButton(enabled = !busy, onClick = { step--; error = null }) { Text("Назад") }
-                onCancel?.let { cancel -> TextButton(enabled = !busy, onClick = cancel) { Text("Отмена") } }
+                if (step > 0) TextButton(enabled = !busy, onClick = { step--; error = null }) { Text(tr("Назад")) }
+                onCancel?.let { cancel -> TextButton(enabled = !busy, onClick = cancel) { Text(tr("Отмена")) } }
             }
         }
     }
@@ -133,15 +136,15 @@ private suspend fun checkServerConnection(activity: Activity, url: String, alias
         val client = ApiFactory.client(activity, url, alias).newBuilder()
             .callTimeout(25, TimeUnit.SECONDS).followRedirects(false).build()
         try {
-            client.newCall(okhttp3.Request.Builder().url("$url/api/v1/system/status").build())
+            client.newCall(okhttp3.Request.Builder().url("${url}/api/v1/system/status").build())
                 .execute().use { response ->
                     if (!response.isSuccessful) throw java.io.IOException("HTTP ${response.code}")
                     val source = response.body.source()
                     source.request(262_145)
-                    require(source.buffer.size <= 262_144) { "Некорректный ответ сервера" }
+                    require(source.buffer.size <= 262_144) { tr("Некорректный ответ сервера") }
                     val status = org.json.JSONObject(source.buffer.readUtf8())
                     require(status.has("overall_status") && status.optJSONArray("components") != null) {
-                        "Сервер не вернул статус AI Секретаря"
+                        tr("Сервер не вернул статус AI Секретаря")
                     }
                 }
         } finally {

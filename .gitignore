@@ -61,3 +61,4 @@ ios/build/
 ios/GoogleService-Info.plist
 ios/**/*.xcuserstate
 ios/**/xcuserdata/
+/android/rustore/

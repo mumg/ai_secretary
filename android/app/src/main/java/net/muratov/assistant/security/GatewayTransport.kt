@@ -1,5 +1,7 @@
 package net.muratov.assistant.security
 
+import net.muratov.assistant.i18n.tr
+
 import okhttp3.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
@@ -68,11 +70,11 @@ object GatewayTransport {
                 bridge = local.accept().apply { tcpNoDelay = true }
             } finally { local.close() }
             try {
-                websocket = client.newWebSocket(Request.Builder().url("$gateway/api/v1/tunnels/client")
+                websocket = client.newWebSocket(Request.Builder().url("${gateway}/api/v1/tunnels/client")
                     .header("Sec-WebSocket-Protocol", "ai-secretary-tunnel.v1").build(), object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
                         if (response.header("Sec-WebSocket-Protocol") != "ai-secretary-tunnel.v1") {
-                            failure = IOException("Некорректный протокол гейтвея"); webSocket.cancel()
+                            failure = IOException(tr("Некорректный протокол гейтвея")); webSocket.cancel()
                         }
                         opened.countDown()
                     }
@@ -84,10 +86,10 @@ object GatewayTransport {
                     override fun onMessage(webSocket: WebSocket, text: String) { webSocket.cancel(); close() }
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                         val message = when (response?.code) {
-                            429 -> "Достигнут лимит соединений со шлюзом (HTTP 429)"
-                            503 -> "Сервер не подключён к шлюзу (HTTP 503)"
-                            null -> "Соединение со шлюзом прервано"
-                            else -> "Шлюз отклонил подключение (HTTP ${response.code})"
+                            429 -> tr("Достигнут лимит соединений со шлюзом (HTTP 429)")
+                            503 -> tr("Сервер не подключён к шлюзу (HTTP 503)")
+                            null -> tr("Соединение со шлюзом прервано")
+                            else -> tr("Шлюз отклонил подключение (HTTP {0})" , response.code)
                         }
                         failure = IOException(message, t)
                         opened.countDown(); finishTransport()
@@ -95,9 +97,9 @@ object GatewayTransport {
                     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, null); finishTransport() }
                     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { finishTransport() }
                 })
-                if (!opened.await((if (timeout > 0) timeout else 25000).toLong(), TimeUnit.MILLISECONDS)) throw IOException("Гейтвей не ответил вовремя")
+                if (!opened.await((if (timeout > 0) timeout else 25000).toLong(), TimeUnit.MILLISECONDS)) throw IOException(tr("Гейтвей не ответил вовремя"))
                 failure?.let { throw it }
-                if (isClosed) throw IOException("Соединение закрыто")
+                if (isClosed) throw IOException(tr("Соединение закрыто"))
                 thread(name = "gateway-tls-bridge", isDaemon = true) {
                     try {
                         val input = bridge!!.getInputStream()
@@ -115,7 +117,7 @@ object GatewayTransport {
                     } catch (_: Exception) { /* Closing propagates the failure to OkHttp. */ }
                     finally { finishTransport() }
                 }
-            } catch (error: Exception) { close(); throw IOException("Не удалось открыть туннель: ${error.message}", error) }
+            } catch (error: Exception) { close(); throw IOException(tr("Не удалось открыть туннель: {0}" , error.message), error) }
         }
         private fun finishTransport() {
             // Let OkHttp drain bytes already received before observing EOF.

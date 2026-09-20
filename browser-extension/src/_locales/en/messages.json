@@ -1,0 +1,11 @@
+{
+  "appName": {
+    "message": "AI Secretary"
+  },
+  "description": {
+    "message": "Corporate MTS Link sign-in for AI Secretary."
+  },
+  "actionTitle": {
+    "message": "AI Secretary — connect MTS Link sign-in"
+  }
+}

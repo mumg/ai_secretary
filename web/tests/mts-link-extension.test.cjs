@@ -29,7 +29,11 @@ function harness() {
       async sendCommand(target, method, params) { commands.push([method, target, params]); } },
     alarms: { onAlarm: event(), async create() {}, async clear() {} }
   };
+  chrome.i18n = { getUILanguage: () => 'ru-RU' };
+  chrome.storage.local = { get: async () => ({ language: 'ru' }) };
+  chrome.storage.onChanged = event();
   const ctx = vm.createContext({ chrome, URL });
+  ctx.importScripts = (...files) => files.forEach(file => vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../../browser-extension/src', file), 'utf8'), ctx));
   vm.runInContext(background, ctx);
   const flowId = '12345678-1234-1234-1234-123456789abc';
   async function start(url = 'https://gw.mts-link.ru/sso/saml/login?returnUrl=mtslink%3A%2F%2Fmobile%2Flogin', sender = { tab: admin, url: admin.url, frameId: 0 }) {

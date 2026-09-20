@@ -1,5 +1,7 @@
 package net.muratov.assistant.security
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.util.AtomicFile
 import android.system.Os
@@ -29,18 +31,18 @@ object AppClientIdentity {
     private fun parse(payload: String): Identity {
         val compact = payload.startsWith(CompactIdentity.DIRECT_PREFIX)
         val fields = if (compact) CompactIdentity.fields(payload, CompactIdentity.DIRECT_PREFIX, 3) else null
-        require(payload.length <= 8192 && (compact || payload.startsWith(QR_PREFIX))) { "Это не QR-код подключения AI Секретаря" }
+        require(payload.length <= 8192 && (compact || payload.startsWith(QR_PREFIX))) { tr("Это не QR-код подключения AI Секретаря") }
         val json = if (compact) null else JSONObject(payload.removePrefix(QR_PREFIX)).also {
-            require(it.getInt("v") == 1) { "Обновите приложение для чтения этого QR-кода" }
+            require(it.getInt("v") == 1) { tr("Обновите приложение для чтения этого QR-кода") }
         }
         val server = normalizeServerUrl(fields?.get(0)?.toString(Charsets.UTF_8) ?: json!!.getString("server"))
-        require(server != null) { "В QR-коде некорректный HTTPS-адрес сервера" }
+        require(server != null) { tr("В QR-коде некорректный HTTPS-адрес сервера") }
         val certBytes = fields?.get(1) ?: Base64.getDecoder().decode(json!!.getString("cert"))
         val cert = CertificateFactory.getInstance("X.509").generateCertificate(certBytes.inputStream()) as X509Certificate
         require(cert.encoded.contentEquals(certBytes))
         cert.checkValidity()
         require(cert.basicConstraints == -1 && cert.extendedKeyUsage?.contains("1.3.6.1.5.5.7.3.2") == true) {
-            "QR-код не содержит клиентский сертификат"
+            tr("QR-код не содержит клиентский сертификат")
         }
         val key = if (fields != null) CompactIdentity.key(fields[2], cert) else KeyFactory.getInstance("EC").generatePrivate(
             PKCS8EncodedKeySpec(Base64.getDecoder().decode(json!!.getString("key"))),
@@ -48,20 +50,20 @@ object AppClientIdentity {
         val challenge = "AI Secretary identity validation".toByteArray()
         val signature = Signature.getInstance("SHA256withECDSA").run { initSign(key); update(challenge); sign() }
         require(Signature.getInstance("SHA256withECDSA").run { initVerify(cert.publicKey); update(challenge); verify(signature) }) {
-            "Ключ не соответствует сертификату"
+            tr("Ключ не соответствует сертификату")
         }
         return Identity(server, key, cert)
     }
 
     private fun directory(context: Context) = File(context.noBackupFilesDir, "client-identities").apply {
-        check(isDirectory || mkdirs()) { "Не удалось открыть каталог ключей приложения" }
+        check(isDirectory || mkdirs()) { tr("Не удалось открыть каталог ключей приложения") }
         Os.chmod(absolutePath, 448) // 0700
     }
 
     private fun file(context: Context, alias: String): File {
         val id = alias.removePrefix(PREFIX)
-        require(isAppAlias(alias) && id.matches(Regex("[a-f0-9]{64}"))) { "Некорректный идентификатор ключа" }
-        return File(directory(context), "$id.json")
+        require(isAppAlias(alias) && id.matches(Regex("[a-f0-9]{64}"))) { tr("Некорректный идентификатор ключа") }
+        return File(directory(context), "${id}.json")
     }
 
     fun importQR(context: Context, payload: String): Imported {
@@ -81,9 +83,9 @@ object AppClientIdentity {
 
     fun keyManagers(context: Context, baseUrl: String, alias: String): Array<KeyManager> {
         val identityFile = file(context, alias)
-        require(identityFile.length() <= 8192) { "Некорректный файл ключа" }
+        require(identityFile.length() <= 8192) { tr("Некорректный файл ключа") }
         val identity = parse(AtomicFile(identityFile).openRead().use { it.readBytes().toString(Charsets.UTF_8) })
-        require(identity.server == normalizeServerUrl(baseUrl)) { "Этот ключ выдан для другого сервера. Отсканируйте его QR-код." }
+        require(identity.server == normalizeServerUrl(baseUrl)) { tr("Этот ключ выдан для другого сервера. Отсканируйте его QR-код.") }
         val password = CharArray(0)
         val store = KeyStore.getInstance("PKCS12").apply {
             load(null, password)

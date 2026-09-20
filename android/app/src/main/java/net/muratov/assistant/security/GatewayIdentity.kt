@@ -1,5 +1,7 @@
 package net.muratov.assistant.security
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.system.Os
 import android.util.AtomicFile
@@ -38,7 +40,7 @@ object GatewayIdentity {
     private fun validateKey(key: PrivateKey, cert: X509Certificate): PrivateKey {
         val challenge = "AI Secretary gateway validation".toByteArray()
         val signature = Signature.getInstance("SHA256withECDSA").run { initSign(key); update(challenge); sign() }
-        require(Signature.getInstance("SHA256withECDSA").run { initVerify(cert.publicKey); update(challenge); verify(signature) }) { "Ключ не соответствует сертификату" }
+        require(Signature.getInstance("SHA256withECDSA").run { initVerify(cert.publicKey); update(challenge); verify(signature) }) { tr("Ключ не соответствует сертификату") }
         return key
     }
     private fun parseCompact(payload: String): Identity {
@@ -49,7 +51,7 @@ object GatewayIdentity {
         require(uris.size == 1)
         val id = Regex("spiffe://ai-secretary-gateway/installations/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/roles/client")
             .matchEntire(uris.single())?.groupValues?.get(1)
-        require(id != null) { "Сертификат не соответствует роли или UID" }
+        require(id != null) { tr("Сертификат не соответствует роли или UID") }
         require(fields[3].size == 32)
         val innerClient = cert(fields[4], "1.3.6.1.5.5.7.3.2")
         return Identity(gateway, id, cert, validateKey(CompactIdentity.key(fields[2], cert), cert), fields[3],
@@ -57,13 +59,13 @@ object GatewayIdentity {
     }
     internal fun parse(payload: String): Identity {
         if (payload.startsWith(CompactIdentity.GATEWAY_PREFIX)) return parseCompact(payload)
-        require(payload.length <= 8192 && payload.startsWith(QR_PREFIX)) { "Обновите приложение для чтения этого QR-кода" }
+        require(payload.length <= 8192 && payload.startsWith(QR_PREFIX)) { tr("Обновите приложение для чтения этого QR-кода") }
         val raw = InflaterInputStream(decode(payload.removePrefix(QR_PREFIX)).inputStream()).use { input ->
             val out = java.io.ByteArrayOutputStream()
             val chunk = ByteArray(1024)
             while (true) {
                 val n = input.read(chunk); if (n < 0) break
-                require(out.size() + n <= 16 * 1024) { "Слишком большой QR-пакет" }
+                require(out.size() + n <= 16 * 1024) { tr("Слишком большой QR-пакет") }
                 out.write(chunk, 0, n)
             }
             out.toByteArray()
@@ -75,7 +77,7 @@ object GatewayIdentity {
         require(id.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")))
         val cert = cert(json.getString("cert"), "1.3.6.1.5.5.7.3.2")
         val uris = cert.subjectAlternativeNames.orEmpty().filter { it[0] == 6 }.map { it[1] }
-        require(uris == listOf("spiffe://ai-secretary-gateway/installations/$id/roles/client")) { "Сертификат не соответствует роли или UID" }
+        require(uris == listOf("spiffe://ai-secretary-gateway/installations/${id}/roles/client")) { tr("Сертификат не соответствует роли или UID") }
         val innerServer = cert(json.getString("inner_server"), "1.3.6.1.5.5.7.3.1")
         require(innerServer.subjectAlternativeNames.orEmpty().any { it[0] == 2 && it[1] == "secretary.internal" })
         val innerClient = cert(json.getString("inner_client"), "1.3.6.1.5.5.7.3.2")
@@ -102,7 +104,7 @@ object GatewayIdentity {
     fun load(context: Context, baseUrl: String, alias: String): Identity {
         val file = file(context, alias); require(file.length() <= 8192)
         val identity = parse(AtomicFile(file).openRead().use { it.readBytes().toString(Charsets.UTF_8) })
-        require(identity.gateway == normalizeServerUrl(baseUrl)) { "Ключ выдан для другого гейтвея" }
+        require(identity.gateway == normalizeServerUrl(baseUrl)) { tr("Ключ выдан для другого гейтвея") }
         return identity
     }
     fun retainOnly(context: Context, alias: String?) {

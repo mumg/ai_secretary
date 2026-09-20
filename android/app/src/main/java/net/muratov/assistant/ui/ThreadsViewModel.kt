@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import net.muratov.assistant.notifications.observeRealtime
 import androidx.lifecycle.ViewModelProvider
@@ -100,7 +102,7 @@ class ThreadsViewModel(private val repository: TaskRepository) : ViewModel() {
             mutableState.value = current.copy(
                 loading = false,
                 refreshing = false,
-                error = exception.message ?: "Не удалось загрузить переписки",
+                error = exception.message ?: tr("Не удалось загрузить переписки"),
             )
         }
     }

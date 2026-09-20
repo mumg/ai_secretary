@@ -1,8 +1,47 @@
+var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m, i) => i < a.length ? String(a[i]) : m));
 const $ = (id) => document.getElementById(id);
 let settingsState = null;
 let sourcesState = [];
 let tagsState = [];
 let editingSourceId = null;
+
+function addEmployeeRow(id, person = {name: "", emails: []}) {
+  const row = document.createElement("tr");
+  for (const [key, label, value] of [["name", "Имя", person.name], ["emails", "Email", person.emails.join(", ")]]) {
+    const cell = row.insertCell();
+    const input = document.createElement("input");
+    input.dataset.employeeField = key;
+    input.setAttribute("aria-label", tr(label));
+    input.required = true;
+    input.value = value;
+    if (key === "name") input.maxLength = 200;
+    else { input.type = "email"; input.multiple = true; input.placeholder = tr("Email через запятую"); }
+    cell.append(input);
+  }
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.textContent = tr("Удалить");
+  remove.onclick = () => row.remove();
+  row.insertCell().append(remove);
+  $(id).append(row);
+  return row;
+}
+function readEmployees(id) {
+  const seen = new Set();
+  const rows = [...$(id).rows];
+  if (rows.length > 200) throw Error(tr("Не более 200 сотрудников в списке"));
+  return rows.map(row => {
+    const name = row.querySelector('[data-employee-field="name"]').value.trim();
+    const emails = row.querySelector('[data-employee-field="emails"]').value.split(",").map(v => v.trim().toLowerCase());
+    if (!name) throw Error(tr("Укажите имя сотрудника"));
+    if (emails.length > 20 || new Set(emails).size !== emails.length || emails.some(email => !email || seen.has(email))) throw Error(tr("Укажите корректные email без повторов"));
+    emails.forEach(email => seen.add(email));
+    return {name, emails};
+  });
+}
+document.querySelectorAll("[data-add-employee]").forEach(button => {
+  button.onclick = () => addEmployeeRow(button.dataset.addEmployee).querySelector("input").focus();
+});
 
 async function request(path, options = {}) {
   const response = await fetch(`/api/v1/admin${path}`, {
@@ -14,7 +53,7 @@ async function request(path, options = {}) {
     const detail = Array.isArray(body.detail)
       ? body.detail.map((item) => item.msg || String(item)).join("; ")
       : body.detail;
-    throw new Error(detail || `Ошибка ${response.status}`);
+    throw new Error(detail || tr("Ошибка {0}", response.status));
   }
   return response.status === 204 ? null : response.json();
 }
@@ -50,8 +89,8 @@ function populateSettings(data) {
   $("saveDirectSettings").disabled = localWeb;
   $("createMobileIdentity").disabled = localWeb;
   $("deploymentHint").textContent = localWeb
-    ? "Локальная установка. Мобильный доступ через шлюз настраивается в разделе «Удалённое подключение»."
-    : "Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён клиентским сертификатом.";
+    ? tr("Локальная установка. Мобильный доступ через шлюз настраивается в разделе «Удалённое подключение».")
+    : tr("Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён клиентским сертификатом.");
   $("devicesMetric").hidden = localWeb;
   $("statusMetrics").classList.toggle("local-web", localWeb);
   $("firebaseSettings").hidden = localWeb;
@@ -59,10 +98,11 @@ function populateSettings(data) {
   $("notificationsEyebrow").textContent = localWeb ? "WEB" : "FCM";
   $("dueSoonSetting").hidden = false;
   $("overdueSetting").hidden = false;
-  $("scheduleLegend").textContent = localWeb ? "Обработка" : "Сроки";
+  $("scheduleLegend").textContent = localWeb ? tr("Обработка") : tr("Сроки");
   $("publicUrl").disabled = localWeb;
   for (const [key, id] of [["managers", "relationshipManagers"], ["reports", "relationshipReports"]]) {
-    setValue(id, (s.relationships?.[key] || []).map(p => `${p.name} | ${p.emails.join(", ")}`).join("\n"));
+    $(id).replaceChildren();
+    for (const person of s.relationships?.[key] || []) addEmployeeRow(id, person);
   }
   setValue("identityNames", (s.identity.names || []).join(", "));
   setValue("timezone", s.server.timezone);
@@ -77,7 +117,7 @@ function populateSettings(data) {
   setValue("llmProvider", s.llm.provider || "ollama");
   setValue("llmApiKey", "");
   $("clearLlmApiKey").checked = false;
-  $("llmKeyState").textContent = data.llm_api_key_configured ? "Ключ сохранён" : "Ключ не настроен";
+  $("llmKeyState").textContent = data.llm_api_key_configured ? tr("Ключ сохранён") : tr("Ключ не настроен");
   setValue("llmModel", s.llm.model);
   setValue("contextLength", s.llm.context_length);
   setValue("temperature", s.llm.temperature);
@@ -94,23 +134,19 @@ function populateSettings(data) {
   setValue("overdueHour", s.notifications.overdue_repeat_hour);
   setValue("rankingInterval", s.worker.ranking_interval_seconds);
   setValue("pollInterval", s.worker.poll_interval_seconds);
-  $("firebaseState").textContent = data.firebase_configured ? "Ключ настроен" : "Ключ не настроен";
+  $("firebaseState").textContent = data.firebase_configured ? tr("Ключ настроен") : tr("Ключ не настроен");
   $("firebaseState").classList.toggle("ok", data.firebase_configured);
 }
 
 async function saveSettings() {
   try {
-    if (!settingsState) throw new Error("Настройки ещё не загружены");
+    if (!settingsState) throw new Error(tr("Настройки ещё не загружены"));
     const fields = document.querySelectorAll("#analysis input, #notifications input");
     if (![...fields].every((field) => field.reportValidity())) return;
     const s = structuredClone(settingsState);
     s.relationships = {};
     for (const [key, id] of [["managers", "relationshipManagers"], ["reports", "relationshipReports"]]) {
-      s.relationships[key] = $(id).value.split("\n").filter(v => v.trim()).map(line => {
-        const [name, addresses, extra] = line.split("|");
-        if (!name?.trim() || !addresses?.trim() || extra !== undefined) throw Error("Укажите сотрудника в формате: Имя | email, второй email");
-        return {name: name.trim(), emails: addresses.split(",").map(v => v.trim()).filter(Boolean)};
-      });
+      s.relationships[key] = readEmployees(id);
     }
     s.identity.names = csv($("identityNames").value);
     s.server.timezone = $("timezone").value.trim();
@@ -150,16 +186,16 @@ async function saveSettings() {
     populateSettings(result);
     const scan = result.filter_reconciliation;
     const scanMessage = scan
-      ? ` Архив проверен: исключено ${scan.skipped + scan.ignored}, возвращено в очередь ${scan.requeued}.`
+      ? tr(" Архив проверен: исключено {0}, возвращено в очередь {1}.", scan.skipped + scan.ignored, scan.requeued)
       : "";
-    toast(`Настройки сохранены.${scanMessage}`);
+    toast(tr("Настройки сохранены.{0}", scanMessage));
     loadStatus();
   } catch (error) { toast(error.message, true); }
 }
 
-const sourceKind = { imap: "IMAP", exchange: "Exchange EWS", mts_link: "МТС Линк", external_tasks: "Внешний API задач" };
+const sourceKind = { imap: "IMAP", exchange: "Exchange EWS", mts_link: tr("МТС Линк"), external_tasks: tr("Внешний API задач") };
 function sourceEndpoint(source) {
-  return source.settings.host || source.settings.ews_url || source.settings.base_url || "Адрес не указан";
+  return source.settings.host || source.settings.ews_url || source.settings.base_url || tr("Адрес не указан");
 }
 function escapeText(value) {
   const node = document.createElement("span"); node.textContent = value ?? ""; return node.innerHTML;
@@ -170,17 +206,17 @@ function escapeAttr(value) {
 function renderSources() {
   const list = $("sourceList");
   if (!sourcesState.length) {
-    list.innerHTML = '<div class="empty">Источников пока нет. Подключите почту или коммуникационную платформу.</div>';
+    list.innerHTML = `<div class="empty">${tr("Источников пока нет. Подключите почту или коммуникационную платформу.")}</div>`;
     return;
   }
   list.innerHTML = sourcesState.map((source) => `
     <article class="source-card">
-      <div class="source-card-header"><div><h3>${escapeText(source.label)}</h3><p>${sourceKind[source.source_type] || source.source_type}</p></div><span class="badge ${source.enabled ? "" : "off"}">${source.enabled ? "ВКЛЮЧЁН" : "ВЫКЛЮЧЕН"}</span></div>
+      <div class="source-card-header"><div><h3>${escapeText(source.label)}</h3><p>${sourceKind[source.source_type] || source.source_type}</p></div><span class="badge ${source.enabled ? "" : "off"}">${source.enabled ? tr("ВКЛЮЧЁН") : tr("ВЫКЛЮЧЕН")}</span></div>
       ${source.tags.length ? `<div class="source-tags">${source.tags.map((tag) => `<span>${escapeText(tag.name)}</span>`).join("")}</div>` : ""}
-      <div class="source-details"><div>Подключение<strong>${escapeText(sourceEndpoint(source))}</strong></div><div>Последняя синхронизация<strong>${source.last_sync_at ? new Date(source.last_sync_at).toLocaleString() : "ещё не запускалась"}</strong></div></div>
-      ${source.source_type === "mts_link" ? `<p class="credential-state">${source.refresh_token_configured ? "SSO подключён · токены обновляются автоматически" : "Автоматическое обновление токенов не настроено"}</p>` : ""}
-      ${source.last_error ? `<div class="source-error">Последняя ошибка: ${escapeText(source.last_error)}</div>` : ""}
-      <div class="card-actions">${source.source_type === "mts_link" ? `<button data-action="mts-sso" data-id="${source.id}">Войти через SSO</button>` : ""}<button data-action="test" data-id="${source.id}">Проверить</button><button data-action="edit" data-id="${source.id}">Изменить</button><button class="danger" data-action="delete" data-id="${source.id}">Удалить</button></div>
+      <div class="source-details"><div>${tr("Подключение")}<strong>${escapeText(sourceEndpoint(source))}</strong></div><div>${tr("Последняя синхронизация")}<strong>${source.last_sync_at ? new Date(source.last_sync_at).toLocaleString() : tr("ещё не запускалась")}</strong></div></div>
+      ${source.source_type === "mts_link" ? `<p class="credential-state">${source.refresh_token_configured ? tr("SSO подключён · токены обновляются автоматически") : tr("Автоматическое обновление токенов не настроено")}</p>` : ""}
+      ${source.last_error ? `<div class="source-error">${tr("Последняя ошибка:")} ${escapeText(source.last_error)}</div>` : ""}
+      <div class="card-actions">${source.source_type === "mts_link" ? `<button data-action="mts-sso" data-id="${source.id}">${tr("Войти через SSO")}</button>` : ""}<button data-action="test" data-id="${source.id}">${tr("Проверить")}</button><button data-action="edit" data-id="${source.id}">${tr("Изменить")}</button><button class="danger" data-action="delete" data-id="${source.id}">${tr("Удалить")}</button></div>
     </article>`).join("");
 }
 
@@ -191,14 +227,14 @@ async function loadSources() {
 function renderTags() {
   const list = $("tagList");
   if (!tagsState.length) {
-    list.innerHTML = '<div class="empty">Справочник пуст. Добавьте первый тег.</div>';
+    list.innerHTML = `<div class="empty">${tr("Справочник пуст. Добавьте первый тег.")}</div>`;
     return;
   }
   list.innerHTML = tagsState.map((tag) => `
     <article class="tag-row" data-tag-id="${tag.id}">
-      <input class="tag-name" maxlength="100" value="${escapeAttr(tag.name)}" aria-label="Название тега">
-      <span class="tag-usage">Источников: ${tag.source_count}</span>
-      <div class="card-actions"><button data-tag-action="save" data-id="${tag.id}">Сохранить</button><button class="danger" data-tag-action="delete" data-id="${tag.id}">Удалить</button></div>
+      <input class="tag-name" maxlength="100" value="${escapeAttr(tag.name)}" aria-label="${tr("Название тега")}">
+      <span class="tag-usage">${tr("Источников:")} ${tag.source_count}</span>
+      <div class="card-actions"><button data-tag-action="save" data-id="${tag.id}">${tr("Сохранить")}</button><button class="danger" data-tag-action="delete" data-id="${tag.id}">${tr("Удалить")}</button></div>
     </article>`).join("");
 }
 
@@ -214,7 +250,7 @@ async function createTag(event) {
   try {
     await request("/tags", { method: "POST", body: JSON.stringify({ name }) });
     input.value = "";
-    toast("Тег добавлен");
+    toast(tr("Тег добавлен"));
     await loadTags();
   } catch (error) { toast(error.message, true); }
 }
@@ -226,23 +262,23 @@ async function tagAction(event) {
   if (!tag) return;
   if (button.dataset.tagAction === "delete") {
     const suffix = tag.source_count
-      ? ` Он будет снят с ${tag.source_count} источник(ов).`
+      ? tr(" Он будет снят с {0} источник(ов).", tag.source_count)
       : "";
-    if (!confirm(`Удалить тег «${tag.name}»?${suffix}`)) return;
+    if (!confirm(tr("Удалить тег «{0}»?{1}", tag.name, suffix))) return;
     try {
       await request(`/tags/${tag.id}`, { method: "DELETE" });
-      toast("Тег удалён");
+      toast(tr("Тег удалён"));
       await Promise.all([loadTags(), loadSources()]);
     } catch (error) { toast(error.message, true); }
     return;
   }
   const row = button.closest(".tag-row");
   const name = row.querySelector(".tag-name").value.trim();
-  if (!name) return toast("Название тега не может быть пустым", true);
+  if (!name) return toast(tr("Название тега не может быть пустым"), true);
   button.disabled = true;
   try {
     await request(`/tags/${tag.id}`, { method: "PUT", body: JSON.stringify({ name }) });
-    toast("Тег сохранён");
+    toast(tr("Тег сохранён"));
     await Promise.all([loadTags(), loadSources()]);
   } catch (error) { toast(error.message, true); }
   finally { button.disabled = false; }
@@ -252,7 +288,7 @@ function renderSourceTagPicker(selectedTags = []) {
   const selected = new Set(selectedTags.map((tag) => tag.id));
   const picker = $("sourceTagPicker");
   if (!tagsState.length) {
-    picker.innerHTML = '<p class="hint">Справочник пуст. Сначала добавьте тег во вкладке «Теги».</p>';
+    picker.innerHTML = `<p class="hint">${tr("Справочник пуст. Сначала добавьте тег во вкладке «Теги».")}</p>`;
     return;
   }
   picker.innerHTML = tagsState.map((tag) => `
@@ -260,17 +296,17 @@ function renderSourceTagPicker(selectedTags = []) {
 }
 
 function sourceFields(type, values = {}) {
-  if (type === "external_tasks") return `<p class="hint">Задачи загружаются через защищённый API по идентификатору источника. Пароль или токен не требуется; доступ защищён клиентским сертификатом.</p>`;
+  if (type === "external_tasks") return `<p class="hint">${tr("Задачи загружаются через защищённый API по идентификатору источника. Пароль или токен не требуется; доступ защищён клиентским сертификатом.")}</p>`;
   if (type === "imap") return `
-    <div class="inline"><label>IMAP-сервер<input data-setting="host" value="${escapeAttr(values.host || "")}" required></label><label>Порт<input data-setting="port" type="number" value="${Number(values.port) || 993}" required></label></div>
-    <label class="toggle"><input data-setting="tls" type="checkbox" ${values.tls !== false ? "checked" : ""}><span>TLS включён</span></label>
-    <label>Имя пользователя<input data-setting="username" value="${escapeAttr(values.username || "")}" required></label>
-    <div class="inline"><label>Входящие<input data-setting="inbox_folder" value="${escapeAttr(values.inbox_folder || "INBOX")}"></label><label>Отправленные<input data-setting="sent_folder" value="${escapeAttr(values.sent_folder || "Sent")}"></label></div>`;
+    <div class="inline"><label>${tr("IMAP-сервер")}<input data-setting="host" value="${escapeAttr(values.host || "")}" required></label><label>${tr("Порт")}<input data-setting="port" type="number" value="${Number(values.port) || 993}" required></label></div>
+    <label class="toggle"><input data-setting="tls" type="checkbox" ${values.tls !== false ? "checked" : ""}><span>${tr("TLS включён")}</span></label>
+    <label>${tr("Имя пользователя")}<input data-setting="username" value="${escapeAttr(values.username || "")}" required></label>
+    <div class="inline"><label>${tr("Входящие")}<input data-setting="inbox_folder" value="${escapeAttr(values.inbox_folder || "INBOX")}"></label><label>${tr("Отправленные")}<input data-setting="sent_folder" value="${escapeAttr(values.sent_folder || "Sent")}"></label></div>`;
   if (type === "exchange") return `
     <label>URL EWS<input data-setting="ews_url" type="url" value="${escapeAttr(values.ews_url || "")}" placeholder="https://mail.example.ru/EWS/Exchange.asmx" required></label>
-    <label>Основной почтовый адрес<input data-setting="primary_smtp_address" type="email" value="${escapeAttr(values.primary_smtp_address || "")}" required></label>
-    <div class="inline"><label>Имя пользователя<input data-setting="username" value="${escapeAttr(values.username || "")}" required></label><label>Аутентификация<select data-setting="auth_type"><option value="ntlm">NTLM</option><option value="basic">Basic</option><option value="digest">Digest</option></select></label></div>`;
-  return `<label>URL шлюза МТС Линк<input data-setting="base_url" type="url" value="${escapeAttr(values.base_url || "https://gw.mts-link.ru")}" required></label><label>Интервал опроса, секунд<input data-setting="poll_interval_seconds" type="number" min="10" value="${Number(values.poll_interval_seconds) || 900}" required></label><section class="mts-auth-options"><p id="sourceMtsExtensionStatus" role="status" aria-live="polite">Проверяем расширение «AI Секретарь»…</p><button type="button" id="sourceMtsSso" class="primary" disabled>Войти через SSO</button><p id="sourceMtsSsoHint" class="hint" hidden>SSO сохранит access token и refresh token для автоматического обновления. Перед входом настройки источника сохранятся.</p><div id="sourceMtsFallback" hidden><p>Введите access token ниже или установите расширение «AI Секретарь» для входа через корпоративный SSO.</p><details><summary>Установить расширение «AI Секретарь»</summary><p class="hint"><a href="/api/v1/admin/mts-link/extension.zip">Скачать расширение</a>. Распакуйте архив, откройте chrome://extensions или edge://extensions, включите режим разработчика и выберите «Загрузить распакованное расширение». Затем нажмите значок «AI Секретарь» на этой странице.</p></details><p class="hint">Если расширение уже установлено, нажмите его значок в панели браузера, чтобы подключить к странице.</p><button type="button" id="sourceMtsRecheck">Проверить ещё раз</button></div><p class="hint">Access token, введённый вручную, действует только 84 часа с момента выдачи, а не сохранения в админке. Затем его нужно заменить. Замена вручную отключает автоматическое обновление токенов.</p></section>`;
+    <label>${tr("Основной почтовый адрес")}<input data-setting="primary_smtp_address" type="email" value="${escapeAttr(values.primary_smtp_address || "")}" required></label>
+    <div class="inline"><label>${tr("Имя пользователя")}<input data-setting="username" value="${escapeAttr(values.username || "")}" required></label><label>${tr("Аутентификация")}<select data-setting="auth_type"><option value="ntlm">NTLM</option><option value="basic">Basic</option><option value="digest">Digest</option></select></label></div>`;
+  return `<label>${tr("URL шлюза МТС Линк")}<input data-setting="base_url" type="url" value="${escapeAttr(values.base_url || "https://gw.mts-link.ru")}" required></label><label>${tr("Интервал опроса, секунд")}<input data-setting="poll_interval_seconds" type="number" min="10" value="${Number(values.poll_interval_seconds) || 900}" required></label><section class="mts-auth-options"><p id="sourceMtsExtensionStatus" role="status" aria-live="polite">${tr("Проверяем расширение «AI Секретарь»…")}</p><button type="button" id="sourceMtsSso" class="primary" disabled>${tr("Войти через SSO")}</button><p id="sourceMtsSsoHint" class="hint" hidden>${tr("SSO сохранит access token и refresh token для автоматического обновления. Перед входом настройки источника сохранятся.")}</p><div id="sourceMtsFallback" hidden><p>${tr("Введите access token ниже или установите расширение «AI Секретарь» для входа через корпоративный SSO.")}</p><details><summary>${tr("Установить расширение «AI Секретарь»")}</summary><p class="hint"><a href="/api/v1/admin/mts-link/extension.zip">${tr("Скачать расширение")}</a>${tr(". Распакуйте архив, откройте chrome://extensions или edge://extensions, включите режим разработчика и выберите «Загрузить распакованное расширение». Затем нажмите значок «AI Секретарь» на этой странице.")}</p></details><p class="hint">${tr("Если расширение уже установлено, нажмите его значок в панели браузера, чтобы подключить к странице.")}</p><button type="button" id="sourceMtsRecheck">${tr("Проверить ещё раз")}</button></div><p class="hint">${tr("Access token, введённый вручную, действует только 84 часа с момента выдачи, а не сохранения в админке. Затем его нужно заменить. Замена вручную отключает автоматическое обновление токенов.")}</p></section>`;
 }
 
 const MTS_LINK_DEFAULT_PATTERN = String.raw`^https://mts\.mts-link\.ru/j/MTC/(?P<meeting_id>\d+)(?:/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$`;
@@ -284,7 +320,7 @@ function openSourceDialog(source = null) {
   sourceLinkCheckSerial++;
   editingSourceId = source?.id || null;
   setSourceFormError();
-  $("sourceDialogTitle").textContent = source ? "Изменить источник" : "Подключить источник";
+  $("sourceDialogTitle").textContent = source ? tr("Изменить источник") : tr("Подключить источник");
   $("sourceType").value = source?.source_type || "imap";
   $("sourceType").disabled = Boolean(source);
   setValue("sourceId", source?.id || ""); $("sourceId").readOnly = Boolean(source);
@@ -298,7 +334,7 @@ function openSourceDialog(source = null) {
   $("sourceLinkRules").open = Boolean(patterns.length);
   $("sourceLinkTestUrl").value = "";
   $("sourceLinkTestResult").textContent = "";
-  $("credentialHint").textContent = source?.credential_configured ? "оставьте пустым, чтобы сохранить текущий" : "обязателен при первом подключении";
+  $("credentialHint").textContent = source?.credential_configured ? tr("оставьте пустым, чтобы сохранить текущий") : tr("обязателен при первом подключении");
   $("sourceFields").innerHTML = sourceFields($("sourceType").value, source?.settings || {});
   const authType = document.querySelector('#sourceFields [data-setting="auth_type"]');
   if (authType) authType.value = source?.settings?.auth_type || "ntlm";
@@ -326,16 +362,16 @@ let sourceLinkCheckSerial = 0;
 async function testSourceLink() {
   const serial = ++sourceLinkCheckSerial;
   const url = $("sourceLinkTestUrl").value.trim();
-  if (!url) { $("sourceLinkTestResult").textContent = "Введите ссылку для проверки."; return; }
-  $("sourceLinkTestResult").textContent = "Проверяем…";
+  if (!url) { $("sourceLinkTestResult").textContent = tr("Введите ссылку для проверки."); return; }
+  $("sourceLinkTestResult").textContent = tr("Проверяем…");
   const body = { source_id: $("sourceId").value.trim() || "new_source", source_type: $("sourceType").value,
     patterns: listValuesByLine($("sourceLinkPatterns").value), url };
   try {
     const data = await request("/source-link-preview", { method: "POST", body: JSON.stringify(body) });
     if (serial !== sourceLinkCheckSerial) return;
     $("sourceLinkTestResult").textContent = data.matches.length
-      ? data.matches.map(match => `Источник: ${$("sourceType").selectedOptions[0].textContent} (${match.source_id}); meeting_id: ${match.meeting_id}`).join("\n")
-      : "Ни одно правило не подошло к ссылке.";
+      ? data.matches.map(match => tr("Источник: {0} ({1}); meeting_id: {2}", $("sourceType").selectedOptions[0].textContent, match.source_id, match.meeting_id)).join("\n")
+      : tr("Ни одно правило не подошло к ссылке.");
   } catch (error) { if (serial === sourceLinkCheckSerial) $("sourceLinkTestResult").textContent = error.message; }
 }
 
@@ -344,17 +380,17 @@ async function saveSource(event) {
   setSourceFormError();
   const submit = $("sourceSubmit");
   submit.disabled = true;
-  submit.textContent = "Сохраняем…";
+  submit.textContent = tr("Сохраняем…");
   const tag_ids = [...document.querySelectorAll('#sourceTagPicker input[type="checkbox"]:checked')].map((input) => input.value);
   const payload = { id: $("sourceId").value.trim(), label: $("sourceLabel").value.trim(), source_type: $("sourceType").value, enabled: $("sourceEnabled").checked, settings: readSourceSettings(), credential: $("sourceCredential").value || null, tag_ids };
   try {
     await request(editingSourceId ? `/sources/${editingSourceId}` : "/sources", { method: editingSourceId ? "PUT" : "POST", body: JSON.stringify(payload) });
-    $("sourceDialog").close(); toast("Источник сохранён"); await Promise.all([loadSources(), loadTags()]); loadStatus();
+    $("sourceDialog").close(); toast(tr("Источник сохранён")); await Promise.all([loadSources(), loadTags()]); loadStatus();
   } catch (error) {
     setSourceFormError(error.message);
   } finally {
     submit.disabled = false;
-    submit.textContent = "Сохранить источник";
+    submit.textContent = tr("Сохранить источник");
   }
 }
 
@@ -364,21 +400,21 @@ async function sourceAction(event) {
   if (button.dataset.action === "edit") return openSourceDialog(source);
   if (button.dataset.action === "mts-sso") return openMtsSso(source);
   if (button.dataset.action === "delete") {
-    if (!confirm(`Удалить источник «${source.label}» вместе со всеми его переписками, задачами и вложениями? Ручные задачи сохранятся.`)) return;
-    try { await request(`/sources/${source.id}`, { method: "DELETE" }); toast("Источник и связанные данные удалены"); await loadSources(); loadStatus(); } catch (error) { toast(error.message, true); }
+    if (!confirm(tr("Удалить источник «{0}» вместе со всеми его переписками, задачами и вложениями? Ручные задачи сохранятся.", source.label))) return;
+    try { await request(`/sources/${source.id}`, { method: "DELETE" }); toast(tr("Источник и связанные данные удалены")); await loadSources(); loadStatus(); } catch (error) { toast(error.message, true); }
     return;
   }
-  button.disabled = true; button.textContent = "Проверяем…";
-  try { await request(`/sources/${source.id}/test`, { method: "POST" }); toast("Подключение работает"); } catch (error) { toast(error.message, true); }
-  finally { button.disabled = false; button.textContent = "Проверить"; await loadSources(); }
+  button.disabled = true; button.textContent = tr("Проверяем…");
+  try { await request(`/sources/${source.id}/test`, { method: "POST" }); toast(tr("Подключение работает")); } catch (error) { toast(error.message, true); }
+  finally { button.disabled = false; button.textContent = tr("Проверить"); await loadSources(); }
 }
 
 async function loadStatus() {
   try {
     const status = await request("/status");
-    $("healthDot").classList.add("ok"); $("healthText").textContent = "Сервер работает";
+    $("healthDot").classList.add("ok"); $("healthText").textContent = tr("Сервер работает");
     $("metricSources").textContent = status.sources; $("metricTasks").textContent = status.tasks; $("metricDevices").textContent = status.devices; $("metricOllama").textContent = status.ollama;
-  } catch (_) { $("healthText").textContent = "Сервер недоступен"; }
+  } catch (_) { $("healthText").textContent = tr("Сервер недоступен"); }
 }
 
 function registerModelContextTools() {
@@ -396,8 +432,8 @@ function registerModelContextTools() {
 
   register({
     name: "read_communication_sources",
-    title: "Прочитать источники Improver",
-    description: "Возвращает настроенные IMAP, Exchange и МТС Линк адаптеры без секретов.",
+    title: tr("Прочитать источники Improver"),
+    description: tr("Возвращает настроенные IMAP, Exchange и МТС Линк адаптеры без секретов."),
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute() {
@@ -410,8 +446,8 @@ function registerModelContextTools() {
 
   register({
     name: "save_communication_source",
-    title: "Сохранить источник Improver",
-    description: "Создаёт или обновляет один адаптер переписки и обновляет видимый список.",
+    title: tr("Сохранить источник Improver"),
+    description: tr("Создаёт или обновляет один адаптер переписки и обновляет видимый список."),
     inputSchema: {
       type: "object",
       properties: {
@@ -431,7 +467,7 @@ function registerModelContextTools() {
       if (!input || typeof input !== "object" || Array.isArray(input) ||
           !input.id || !input.label || !input.source_type ||
           !input.settings || typeof input.settings !== "object" || Array.isArray(input.settings)) {
-        throw new Error("Неверные параметры источника");
+        throw new Error(tr("Неверные параметры источника"));
       }
       const current = await request("/sources");
       const exists = current.some((source) => source.id === input.id);
@@ -479,14 +515,14 @@ async function createMobileIdentity(event) {
   button.disabled = true;
   $("mobileIdentityError").textContent = "";
   try {
-    if (settingsState?.server?.public_url && $("publicUrl").value.trim().replace(/\/$/, "") !== settingsState.server.public_url.replace(/\/$/, "")) throw new Error("Сначала сохраните адрес прямого подключения");
+    if (settingsState?.server?.public_url && $("publicUrl").value.trim().replace(/\/$/, "") !== settingsState.server.public_url.replace(/\/$/, "")) throw new Error(tr("Сначала сохраните адрес прямого подключения"));
     const result = await request("/mobile-identity", {
       method: "POST", cache: "no-store",
       body: JSON.stringify({}),
     });
     if (serial !== mobileQRSerial || document.hidden) return;
     $("mobileIdentityQR").src = result.qr_image;
-    $("mobileIdentityInfo").textContent = `${result.server_url} · Сертификат действует до ${new Date(result.expires_at).toLocaleDateString("ru-RU")}`;
+    $("mobileIdentityInfo").textContent = tr("{0} · Сертификат действует до {1}", result.server_url, new Date(result.expires_at).toLocaleDateString((globalThis.SecretaryI18n?.locale || "ru-RU")));
     $("mobileIdentityResult").hidden = false;
     mobileQRTimer = setTimeout(hideMobileIdentity, 120_000);
   } catch (error) {
@@ -527,7 +563,7 @@ $("sourceLinkTestUrl").addEventListener("input", () => { sourceLinkCheckSerial++
 $("sourceLinkExample").addEventListener("click", () => {
   sourceLinkCheckSerial++;
   $("sourceLinkPatterns").value = MTS_LINK_DEFAULT_PATTERN;
-  $("sourceLinkTestResult").textContent = "Пример добавлен. Проверьте ссылку и сохраните источник.";
+  $("sourceLinkTestResult").textContent = tr("Пример добавлен. Проверьте ссылку и сохраните источник.");
 });
 $("sourceList").addEventListener("click", sourceAction);
 $("tagCreateForm").addEventListener("submit", createTag);
@@ -543,9 +579,9 @@ loadStatus();
 async function saveDirectSettings(event) {
   event.preventDefault();
   try {
-    if (!settingsState) throw new Error("Настройки ещё не загружены");
+    if (!settingsState) throw new Error(tr("Настройки ещё не загружены"));
     const url = new URL($("publicUrl").value.trim());
-    if (url.protocol !== "https:" || url.username || url.password || (url.pathname !== "/" && url.pathname !== "") || url.search || url.hash) throw new Error("Укажите HTTPS-адрес без пути и параметров");
+    if (url.protocol !== "https:" || url.username || url.password || (url.pathname !== "/" && url.pathname !== "") || url.search || url.hash) throw new Error(tr("Укажите HTTPS-адрес без пути и параметров"));
     const result = await request("/settings", { method: "PUT", body: JSON.stringify({
       settings: { server: { public_url: url.origin } },
       firebase_credentials_json: $("firebaseJson").value.trim() || null,
@@ -553,10 +589,10 @@ async function saveDirectSettings(event) {
     $("firebaseJson").value = "";
     settingsState.server.public_url = result.settings.server.public_url;
     $("publicUrl").value = result.settings.server.public_url;
-    $("firebaseState").textContent = result.firebase_configured ? "Ключ настроен" : "Ключ не настроен";
+    $("firebaseState").textContent = result.firebase_configured ? tr("Ключ настроен") : tr("Ключ не настроен");
     $("firebaseState").classList.toggle("ok", result.firebase_configured);
     hideMobileIdentity();
-    toast("Настройки прямого подключения сохранены");
+    toast(tr("Настройки прямого подключения сохранены"));
   } catch (error) { toast(error.message, true); }
 }
 $("directSettingsForm").addEventListener("submit", saveDirectSettings);
@@ -566,15 +602,15 @@ function renderGateway(state) {
   const previous = gatewayState;
   if (previous && previous.installation_id !== state.installation_id) hideMobileIdentity();
   gatewayState = state;
-  const labels = { not_configured: "Шлюз не настроен", enrollment_incomplete: "Регистрация не завершена", paused: "Доступ приостановлен", reconnecting: "Подключение к шлюзу…", connected: "Сервер подключён к шлюзу" };
-  $("gatewayStatus").textContent = labels[state.state] || "Состояние неизвестно";
+  const labels = { not_configured: tr("Шлюз не настроен"), enrollment_incomplete: tr("Регистрация не завершена"), paused: tr("Доступ приостановлен"), reconnecting: tr("Подключение к шлюзу…"), connected: tr("Сервер подключён к шлюзу") };
+  $("gatewayStatus").textContent = labels[state.state] || tr("Состояние неизвестно");
   $("gatewayUID").value = state.installation_id || "";
   // Polling must not overwrite an address the user is editing.
   if (state.gateway && (!previous || previous.gateway !== state.gateway)) $("gatewayAddress").value = state.gateway;
   const ready = Boolean(state.qr_available);
   const incomplete = state.state === "enrollment_incomplete";
   $("gatewayToggle").hidden = !ready;
-  $("gatewayToggle").textContent = state.enabled ? "Приостановить доступ" : "Возобновить доступ";
+  $("gatewayToggle").textContent = state.enabled ? tr("Приостановить доступ") : tr("Возобновить доступ");
   $("gatewayShowQR").disabled = gatewayBusy || !ready;
   $("gatewayReregister").hidden = !ready && !incomplete;
   $("gatewayRecovery").hidden = !ready && !incomplete;
@@ -602,7 +638,7 @@ async function gatewayAction(path, body, method = "POST") {
   $("gatewayAddress").disabled = true;
   try {
     renderGateway(await request(path, { method, body: body ? JSON.stringify(body) : undefined }));
-    if (path === "/gateway/reregister") toast("Новый UID и сертификаты получены. Подключите устройства по новому QR-коду");
+    if (path === "/gateway/reregister") toast(tr("Новый UID и сертификаты получены. Подключите устройства по новому QR-коду"));
   } catch (error) { $("gatewayError").textContent = error.message; }
   finally {
     gatewayBusy = false;

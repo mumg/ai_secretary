@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -54,7 +56,7 @@ class MeetingContextViewModel(
                 throw cancelled
             } catch (error: Exception) {
                 mutableState.value = mutableState.value.copy(
-                    loading = false, error = error.message ?: "Не удалось загрузить контекст встречи",
+                    loading = false, error = error.message ?: tr("Не удалось загрузить контекст встречи"),
                 )
             }
         }

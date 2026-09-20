@@ -1,5 +1,7 @@
 package net.muratov.assistant.data
 
+import net.muratov.assistant.i18n.tr
+
 import android.content.Context
 import android.os.Build
 import com.google.firebase.messaging.FirebaseMessaging
@@ -176,9 +178,9 @@ class TaskRepository(
         val response = api().chatStream(ChatQueryRequest(query = query, history = history))
         if (!response.isSuccessful) {
             val detail = response.errorBody()?.string()?.take(1000)
-            error(detail ?: "Сервер вернул HTTP ${response.code()}")
+            error(detail ?: tr("Сервер вернул HTTP {0}" , response.code()))
         }
-        val body = response.body() ?: error("Сервер вернул пустой поток")
+        val body = response.body() ?: error(tr("Сервер вернул пустой поток"))
         val reader = body.charStream().buffered()
         try {
             while (true) {

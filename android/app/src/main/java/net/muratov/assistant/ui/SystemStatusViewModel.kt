@@ -1,5 +1,7 @@
 package net.muratov.assistant.ui
 
+import net.muratov.assistant.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -20,12 +22,14 @@ data class SystemStatusUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val refreshing: Boolean = false,
+    val serverReachable: Boolean? = null,
 )
 
 class SystemStatusViewModel(private val repository: TaskRepository) : ViewModel() {
     private val mutableState = MutableStateFlow(SystemStatusUiState())
     val state: StateFlow<SystemStatusUiState> = mutableState.asStateFlow()
     private var requestInProgress = false
+    private var consecutiveFailures = 0
 
     init {
         observeRealtime("status", "tasks", "events", "chat", "contexts") { refresh() }
@@ -48,15 +52,24 @@ class SystemStatusViewModel(private val repository: TaskRepository) : ViewModel(
         requestInProgress = true
         mutableState.value = mutableState.value.copy(loading = true, error = null)
         try {
-            mutableState.value = SystemStatusUiState(snapshot = repository.systemStatus())
+            val snapshot = repository.systemStatus()
+            consecutiveFailures = 0
+            mutableState.value = SystemStatusUiState(snapshot = snapshot, serverReachable = true)
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
+            consecutiveFailures++
             mutableState.value = mutableState.value.copy(
                 loading = false,
                 refreshing = false,
-                error = exception.message ?: "Не удалось получить состояние системы",
+                error = exception.message ?: tr("Не удалось получить состояние системы"),
+                // A reconnect while resuming is not yet a confirmed outage.
+                serverReachable = if (consecutiveFailures >= 2) false else null,
             )
+            if (consecutiveFailures == 1) viewModelScope.launch {
+                delay(3_000)
+                if (RealtimeState.active.value) load()
+            }
         } finally {
             requestInProgress = false
             mutableState.value = mutableState.value.copy(loading = false, refreshing = false)

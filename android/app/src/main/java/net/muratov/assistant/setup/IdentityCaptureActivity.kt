@@ -9,6 +9,7 @@ import com.journeyapps.barcodescanner.camera.CameraSettings
 import com.journeyapps.barcodescanner.camera.FitCenterStrategy
 
 class IdentityCaptureActivity : CaptureActivity() {
+    override fun attachBaseContext(base: android.content.Context) = super.attachBaseContext(net.muratov.assistant.i18n.Language.wrap(base))
     private var decoder: IdentityQRDecoderFactory? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)

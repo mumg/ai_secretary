@@ -113,14 +113,66 @@ func (s *Server) delegationRoutes() {
 	})
 }
 
+func meetingDelegationSource(event M) bool {
+	if event["event_type"] == "meeting_transcript" {
+		return true
+	}
+	signal := obj(obj(event, "analysis_result"), "meeting_result")
+	return event["event_type"] == "email" && boolean(signal, "detected") && num(signal, "confidence") >= .78
+}
+
+// A model verdict alone is insufficient: the assignment must be grounded in
+// the user's own transcript turn (or explicit attribution in meeting minutes).
+func meetingAssignmentByUser(event, candidate M, names, addresses []string) bool {
+	proof := clean(str(candidate, "assignment_evidence"))
+	evidence := clean(str(candidate, "evidence"))
+	name, email := clean(str(candidate, "assigner_name")), clean(str(candidate, "assigner_email"))
+	identity := name
+	if email != "" {
+		identity = email
+	}
+	if len([]rune(proof)) < 8 || evidence == "" || !strings.Contains(clean(str(event, "body")), proof) || ownerIdentity(identity, names, addresses, roster(event)) != "user" {
+		return false
+	}
+	if event["event_type"] == "meeting_transcript" {
+		body := str(event, "body")
+		headers := patterns["assignment__TRANSCRIPT_TURN"]
+		found := false
+		for header := matchPattern("assignment__TRANSCRIPT_TURN", body); header != nil; {
+			next, _ := headers.FindNextMatch(header)
+			end := len([]rune(body))
+			if next != nil {
+				end = next.Index
+			}
+			turn := clean(string([]rune(body)[header.Index:end]))
+			if strings.Contains(turn, proof) && strings.Contains(turn, evidence) {
+				if ownerIdentity(header.GroupByName("speaker").String(), names, addresses, roster(event)) != "user" {
+					return false
+				}
+				found = true
+			}
+			header = next
+		}
+		return found
+	}
+	// The sender/organizer of incoming minutes need not be the assigner.
+	return strings.Contains(proof, evidence) && ((name != "" && hasName(proof, name)) || (email != "" && strings.Contains(strings.ToLower(proof), strings.ToLower(email))))
+}
+
 func (q *request) analyzeDelegations(event, payload M) {
-	if event["event_type"] != "email" {
+	meeting := meetingDelegationSource(event)
+	if event["event_type"] != "email" && !meeting {
 		return
 	}
 	// Serialize matching and status changes. This also prevents simultaneous replies from creating duplicates.
 	q.exec("SELECT pg_advisory_xact_lock(726941832)")
-	existing := q.rows(`SELECT d.* FROM delegations d JOIN communication_events e ON e.id=d.source_event_id WHERE e.source_id=$1 AND (($2::text IS NOT NULL AND e.thread_external_id=$2) OR e.id=$3) ORDER BY d.created_at DESC LIMIT 100`, event["source_id"], event["thread_external_id"], event["id"])
-	if event["direction"] != "OUTGOING" && len(existing) == 0 {
+	existing := q.rows(`SELECT d.* FROM delegations d JOIN communication_events e ON e.id=d.source_event_id WHERE (e.source_id=$1 AND (($2::text IS NOT NULL AND e.thread_external_id=$2) OR e.id=$3)) OR ($4 AND EXISTS (
+        SELECT 1 FROM meeting_results current_result JOIN meeting_results related ON
+        (current_result.calendar_meeting_id IS NOT NULL AND related.calendar_meeting_id=current_result.calendar_meeting_id)
+        OR COALESCE(related.parent_result_id,related.id)=COALESCE(current_result.parent_result_id,current_result.id)
+        WHERE current_result.source_event_id=$3 AND related.source_event_id=e.id
+    )) ORDER BY d.created_at DESC LIMIT 100`, event["source_id"], event["thread_external_id"], event["id"], meeting)
+	if event["direction"] != "OUTGOING" && !meeting && len(existing) == 0 {
 		return
 	}
 	for _, d := range existing {
@@ -128,7 +180,13 @@ func (q *request) analyzeDelegations(event, payload M) {
 	}
 	input := pick(payload, "current_datetime", "timezone", "workday", "user_identity", "direction", "subject", "author", "participants", "body", "attachments_text", "previous_events_in_thread", "relationships")
 	input["existing_delegations"] = existing
-	result := must(q.llm(str(obj(llmDefinitions, "prompts"), "delegations"), input, "DelegationAnalysis", nil))
+	input["event_type"] = event["event_type"]
+	input["is_meeting_result"] = meeting
+	schema := "DelegationAnalysis"
+	if meeting {
+		schema = "MeetingDelegationAnalysis"
+	}
+	result := must(q.llm(str(obj(llmDefinitions, "prompts"), "delegations"), input, schema, nil))
 	q.applyDelegationAnalysis(event, result, existing, str(payload, "body"))
 }
 func (q *request) applyDelegationAnalysis(event, result M, existing []M, body string) {
@@ -142,6 +200,12 @@ func (q *request) applyDelegationAnalysis(event, result M, existing []M, body st
 		if evidence == "" || !strings.Contains(clean(body), evidence) {
 			continue
 		}
+		if meetingDelegationSource(event) {
+			names, addresses := q.identity()
+			if !meetingAssignmentByUser(event, c, names, addresses) {
+				continue
+			}
+		}
 		var target M
 		for _, d := range existing {
 			if d["id"] == c["delegation_id"] {
@@ -149,7 +213,7 @@ func (q *request) applyDelegationAnalysis(event, result M, existing []M, body st
 				break
 			}
 		}
-		if event["direction"] == "OUTGOING" {
+		if event["direction"] == "OUTGOING" || meetingDelegationSource(event) {
 			// Replies can refer to existing work; only an explicit new assignment creates a record.
 			if target != nil {
 				if len(q.rows("SELECT id FROM delegation_history WHERE delegation_id=$1 AND source_event_id=$2", target["id"], event["id"])) == 0 {
@@ -199,11 +263,20 @@ func (q *request) applyDelegationAnalysis(event, result M, existing []M, body st
 					}
 				}
 			}
-			_, own := q.identity()
+			ownNames, own := q.identity()
 			self := false
 			for _, a := range own {
 				if strings.EqualFold(a, email) {
 					self = true
+				}
+			}
+			if meetingDelegationSource(event) {
+				for _, ownName := range ownNames {
+					self = self || (name != "" && strings.EqualFold(clean(ownName), name))
+				}
+				// Meeting attendees are not automatically assignees.
+				if name == "" && email == "" {
+					continue
 				}
 			}
 			if self {

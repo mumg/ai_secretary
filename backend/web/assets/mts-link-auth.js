@@ -1,3 +1,4 @@
+var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m, i) => i < a.length ? String(a[i]) : m));
 const mtsSsoChannel = "improver-mts-sso-v1";
 let mtsExtensionReady = false;
 let mtsNativeSSO = false;
@@ -33,10 +34,10 @@ function renderMtsExtension(checking = false) {
   const ready = mtsExtensionReady;
   const status = $("sourceMtsExtensionStatus");
   if (status) {
-    status.textContent = checking ? "Проверяем доступность входа…" : ready
-      ? mtsNativeSSO ? "Вход через МТС Линк доступен в приложении. Расширение не требуется."
-        : "Расширение «AI Секретарь» подключено. Доступен вход через SSO."
-      : "Расширение «AI Секретарь» не обнаружено на этой странице.";
+    status.textContent = checking ? tr("Проверяем доступность входа…") : ready
+      ? mtsNativeSSO ? tr("Вход через МТС Линк доступен в приложении. Расширение не требуется.")
+        : tr("Расширение «AI Секретарь» подключено. Доступен вход через SSO.")
+      : tr("Расширение «AI Секретарь» не обнаружено на этой странице.");
     $("sourceMtsSso").disabled = !ready;
     $("sourceMtsSsoHint").hidden = !ready;
     $("sourceMtsFallback").hidden = checking || ready;
@@ -48,7 +49,7 @@ function renderMtsExtension(checking = false) {
 function checkMtsExtension() {
   clearTimeout(mtsExtensionCheckTimer);
   mtsExtensionReady = false;
-  $("credentialLabel").textContent = $("sourceType").value === "mts_link" ? "Access token" : "Пароль или токен";
+  $("credentialLabel").textContent = $("sourceType").value === "mts_link" ? "Access token" : tr("Пароль или токен");
   renderMtsExtension(true);
   mtsExtensionCheckTimer = setTimeout(() => renderMtsExtension(), 800);
   mtsBridge("ping");
@@ -68,14 +69,14 @@ function cancelMtsLogin() {
 function openMtsSso(source, enableSource = source.enabled) {
   cancelMtsLogin();
   mtsLogin = { sourceId: source.id, source, enableSource };
-  $("mtsSsoTitle").textContent = `Вход МТС Линк — ${source.label}`;
+  $("mtsSsoTitle").textContent = tr("Вход МТС Линк — {0}", source.label);
   const email = savedMtsEmail(source.id);
   $("mtsSsoEmail").value = email ?? "";
   if (email === null && source.credential_configured) void restoreMtsEmail(mtsLogin);
   $("mtsSsoChoices").replaceChildren();
   $("mtsSsoFind").disabled = !mtsExtensionReady;
   $("mtsSsoCancel").disabled = false;
-  mtsMessage(mtsExtensionReady ? "Введите рабочий email для корпоративного SSO." : "Нажмите значок расширения в панели браузера на этой странице.");
+  mtsMessage(mtsExtensionReady ? tr("Введите рабочий email для корпоративного SSO.") : tr("Нажмите значок расширения в панели браузера на этой странице."));
   $("mtsSsoDialog").showModal();
   checkMtsExtension();
 }
@@ -87,7 +88,7 @@ async function mtsSsoFromSourceForm() {
   setSourceFormError();
   try {
     const settings = readSourceSettings();
-    if (settings.base_url !== "https://gw.mts-link.ru") throw new Error("SSO поддерживается для шлюза https://gw.mts-link.ru");
+    if (settings.base_url !== "https://gw.mts-link.ru") throw new Error(tr("SSO поддерживается для шлюза https://gw.mts-link.ru"));
     const existing = sourcesState.find(s => s.id === editingSourceId);
     const desiredEnabled = $("sourceEnabled").checked;
     const credential = $("sourceCredential").value || null;
@@ -114,12 +115,12 @@ async function findMtsOrganizations(event) {
   rememberMtsEmail();
   $("mtsSsoFind").disabled = true;
   $("mtsSsoChoices").replaceChildren();
-  mtsMessage("Ищем способы корпоративного входа…");
+  mtsMessage(tr("Ищем способы корпоративного входа…"));
   try {
     const data = await request(`/sources/${login.sourceId}/mts-link/organizations`, { method: "POST", body: JSON.stringify({ email }) });
     if (mtsLogin !== login) return;
-    if (!data.choices.length) { mtsMessage("Для этого email не найдены способы SAML/OAuth. Проверьте адрес.", true); return; }
-    mtsMessage("Выберите организацию. Вход откроется в отдельном окне.");
+    if (!data.choices.length) { mtsMessage(tr("Для этого email не найдены способы SAML/OAuth. Проверьте адрес."), true); return; }
+    mtsMessage(tr("Выберите организацию. Вход откроется в отдельном окне."));
     for (const choice of data.choices) {
       const button = document.createElement("button");
       button.type = "button";
@@ -137,7 +138,7 @@ async function startMtsLogin(login, email, choice) {
   login.busy = true;
   $("mtsSsoFind").disabled = true;
   $("mtsSsoChoices").querySelectorAll("button").forEach(b => { b.disabled = true; });
-  mtsMessage("Открываем корпоративный вход…");
+  mtsMessage(tr("Открываем корпоративный вход…"));
   try {
     const data = await request(`/sources/${login.sourceId}/mts-link/start`, {
       method: "POST", body: JSON.stringify({ email, organization_id: choice.organization_id,
@@ -170,35 +171,35 @@ window.addEventListener("message", async event => {
     renderMtsExtension();
     if (mtsLogin && !mtsLogin.busy) {
       $("mtsSsoFind").disabled = false;
-      mtsMessage(mtsNativeSSO ? "Введите рабочий email для входа в МТС Линк." : "Расширение подключено. Введите рабочий email.");
+      mtsMessage(mtsNativeSSO ? tr("Введите рабочий email для входа в МТС Линк.") : tr("Расширение подключено. Введите рабочий email."));
     }
     return;
   }
   if (message.action === "unavailable") {
     mtsExtensionReady = false;
     renderMtsExtension();
-    if (mtsLogin) mtsMessage("Расширение недоступно. Нажмите его значок на этой странице или введите access token вручную.", true);
+    if (mtsLogin) mtsMessage(tr("Расширение недоступно. Нажмите его значок на этой странице или введите access token вручную."), true);
     return;
   }
   const login = mtsLogin;
   if (!login?.flowId || message.flowId !== login.flowId) return;
-  if (message.action === "opened") return mtsMessage("Выполните корпоративный вход в открывшемся окне.");
+  if (message.action === "opened") return mtsMessage(tr("Выполните корпоративный вход в открывшемся окне."));
   if (message.action === "error" || message.action === "cancelled") {
-    mtsMessage(message.message || "Окно входа закрыто. Можно попробовать снова.", true);
+    mtsMessage(message.message || tr("Окно входа закрыто. Можно попробовать снова."), true);
     resetMtsAttempt();
     return;
   }
   if (message.action !== "complete" || !login.ticket || login.completing) return;
   login.completing = true;
   $("mtsSsoCancel").disabled = true;
-  mtsMessage("Сохраняем подключение на сервере…");
+  mtsMessage(tr("Сохраняем подключение на сервере…"));
   try {
     await request(`/sources/${login.sourceId}/mts-link/finish`, {
       method: "POST", body: JSON.stringify({ ticket: login.ticket, auth_code: message.authCode })
     });
     mtsLogin = null;
     $("mtsSsoDialog").close();
-    toast("МТС Линк подключён. Обновление access token настроено.");
+    toast(tr("МТС Линк подключён. Обновление access token настроено."));
     await loadSources();
     loadStatus();
   } catch (error) {

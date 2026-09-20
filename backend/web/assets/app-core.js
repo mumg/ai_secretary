@@ -1,3 +1,4 @@
+var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m, i) => i < a.length ? String(a[i]) : m));
 /* Pure formatting helpers shared by the live UI and its contract tests. */
 (() => {
   "use strict";
@@ -25,7 +26,7 @@
   const md = window.markdownit({ html: false, breaks: true, linkify: false });
   md.validateLink = (value) => !!safeURL(value);
   md.renderer.rules.image = (tokens, idx) =>
-    escape(tokens[idx].content || "Изображение");
+    escape(tokens[idx].content || tr("Изображение"));
   const linkOpen =
     md.renderer.rules.link_open ||
     ((tokens, idx, options, env, self) =>
@@ -51,7 +52,7 @@
   function zonedISO(value, timeZone) {
     if (!value) return null;
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value))
-      throw new Error("Укажите дату и время.");
+      throw new Error(tr("Укажите дату и время."));
     const [y, mo, d, h, mi] = value.split(/\D/).map(Number);
     const target = Date.UTC(y, mo - 1, d, h, mi);
     const parts = (date) =>
@@ -77,7 +78,7 @@
       guess += delta;
     }
     throw new Error(
-      "Это время отсутствует в выбранном часовом поясе. Укажите другое время.",
+      tr("Это время отсутствует в выбранном часовом поясе. Укажите другое время."),
     );
   }
   window.SecretaryCore = {

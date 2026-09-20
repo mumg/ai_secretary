@@ -1,5 +1,7 @@
 package net.muratov.assistant.security
 
+import net.muratov.assistant.i18n.tr
+
 import java.io.ByteArrayOutputStream
 import java.math.BigInteger
 import java.security.KeyFactory
@@ -16,7 +18,7 @@ internal object CompactIdentity {
     private const val ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:"
 
     fun fields(payload: String, prefix: String, count: Int): List<ByteArray> {
-        require(payload.length <= 8192 && payload.startsWith(prefix)) { "Некорректный QR-код" }
+        require(payload.length <= 8192 && payload.startsWith(prefix)) { tr("Некорректный QR-код") }
         val text = payload.removePrefix(prefix)
         require(text.isNotEmpty() && text.length % 3 != 1)
         val zipped = ByteArrayOutputStream()
@@ -42,9 +44,9 @@ internal object CompactIdentity {
             val buffer = ByteArray(1024)
             while (!inflater.finished()) {
                 val n = inflater.inflate(buffer)
-                require(out.size() + n <= 16384) { "Слишком большой QR-пакет" }
+                require(out.size() + n <= 16384) { tr("Слишком большой QR-пакет") }
                 out.write(buffer, 0, n)
-                require(n > 0 || inflater.finished()) { "Повреждённый QR-пакет" }
+                require(n > 0 || inflater.finished()) { tr("Повреждённый QR-пакет") }
             }
             require(inflater.remaining == 0)
         } finally { inflater.end() }
@@ -63,7 +65,7 @@ internal object CompactIdentity {
 
     fun key(scalar: ByteArray, cert: X509Certificate): PrivateKey {
         require(scalar.size == 32)
-        val public = cert.publicKey as? ECPublicKey ?: error("Требуется ключ EC")
+        val public = cert.publicKey as? ECPublicKey ?: error(tr("Требуется ключ EC"))
         require(public.params.order == BigInteger("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551", 16))
         val value = BigInteger(1, scalar)
         require(value.signum() > 0 && value < public.params.order)

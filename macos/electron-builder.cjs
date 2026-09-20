@@ -3,10 +3,11 @@ module.exports = {
   productName: 'AI Secretary',
   artifactName: 'AI-Secretary-${version}-mac-universal.${ext}',
   directories: { output: '../dist/macos', buildResources: 'assets' },
-  files: ['main.cjs', 'services.cjs', 'windows-services.cjs', 'mts-auth.cjs', 'preload.cjs', 'splash.html', 'package.json'],
+  files: ['i18n.cjs', 'translations.json', 'main.cjs', 'services.cjs', 'windows-services.cjs', 'mts-auth.cjs', 'preload.cjs', 'splash.html', 'package.json'],
   // sign.cjs copies the already-universal server payload after merging Electron.
   // Otherwise @electron/universal runs `file` on thousands of server files twice.
   asar: true,
+  extraResources: [{ from: 'assets/locales', to: '.' }],
   mac: {
     target: [{ target: 'dir', arch: ['universal'] }],
     category: 'public.app-category.productivity',
@@ -20,7 +21,7 @@ module.exports = {
     extendInfo: {
       // Electron resolves Helper apps using CFBundleName. Leave that name
       // aligned with productName; localize only the user-visible display name.
-      CFBundleDisplayName: 'AI Секретарь',
+      CFBundleDisplayName: 'AI Secretary',
       NSHumanReadableCopyright: 'AI Secretary contributors'
     }
   },

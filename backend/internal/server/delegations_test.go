@@ -3,10 +3,12 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -149,5 +151,108 @@ func TestDelegationEvidenceAndUncertainStatus(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMeetingResultDelegationsAndReplay(t *testing.T) {
+	for _, kind := range []string{"meeting_transcript", "email"} {
+		t.Run(kind, func(t *testing.T) {
+			s := testServer(t)
+			call(t, s, "POST", "/api/v1/admin/sources", M{"id": "meeting", "label": "Meeting", "source_type": "imap", "enabled": false, "settings": M{"username": "me@example.test"}}, 201)
+			quote := "Иван Петров, подготовь отчёт к 25 сентября."
+			body := "00:00:01 · Максим Муратов\n" + quote + "\n00:01:00 · Анна Иванова\nПётр, подготовь презентацию."
+			if kind == "email" {
+				quote = "Максим Муратов поручил Ивану Петрову подготовить отчёт к 25 сентября."
+				body = quote
+			}
+			event := call(t, s, "POST", "/api/v1/events", M{"source_id": "meeting", "source_type": "imap", "external_id": "result", "event_type": kind, "direction": "INCOMING", "author": "organizer@example.test", "body": body, "occurred_at": "2026-09-20T10:00:00Z"}, 202).(map[string]any)
+			var delegationCalls atomic.Int32
+			llm := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var payload M
+				check(json.NewDecoder(r.Body).Decode(&payload))
+				result := M{"summary": body, "thread_summary": body, "tasks": []any{}, "mailing": M{"detected": false, "confidence": 1, "kind": "not_mailing"}, "meeting_result": M{"detected": true, "confidence": .99, "meeting_title": "Итоги", "evidence": body}, "agreements": []string{body}}
+				if obj(obj(payload, "format"), "properties")["items"] != nil {
+					delegationCalls.Add(1)
+					var input M
+					messages := payload["messages"].([]any)
+					check(json.Unmarshal([]byte(messages[1].(map[string]any)["content"].(string)), &input))
+					if input["is_meeting_result"] != true || input["event_type"] != kind {
+						t.Error("missing meeting context", input)
+					}
+					candidate := M{"delegation_id": "", "is_new": true, "title": "Подготовить отчёт", "description": "Отчёт", "expected_result": "Отчёт", "assignee_name": "Иван Петров", "assignee_email": "ivan@example.test", "due_at": "2026-09-25T12:00:00Z", "evidence": quote, "assignment_evidence": quote, "assigner_name": "Максим Муратов", "assigner_email": "me@example.test", "confidence": .99, "status": "ASSIGNED"}
+					self := maps.Clone(candidate)
+					self["title"] = "Презентация"
+					self["assignee_email"] = "me@example.test"
+					unproven := maps.Clone(candidate)
+					unproven["title"] = "Выдуманное поручение"
+					unproven["evidence"] = "Не существующая цитата"
+					unknown := maps.Clone(candidate)
+					unknown["assignee_name"] = ""
+					unknown["assignee_email"] = ""
+					foreign := maps.Clone(candidate)
+					foreign["title"] = "Подготовить презентацию"
+					foreign["assigner_name"] = "Анна Иванова"
+					foreign["assigner_email"] = "anna@example.test"
+					foreign["assignment_evidence"] = "Пётр, подготовь презентацию."
+					foreign["evidence"] = "Пётр, подготовь презентацию."
+					result = M{"items": []M{candidate, self, unproven, unknown, foreign}}
+				}
+				writeJSON(w, 200, M{"message": M{"content": string(must(json.Marshal(result)))}})
+			}))
+			defer llm.Close()
+			call(t, s, "PUT", "/api/v1/admin/settings", M{"settings": M{"identity": M{"names": []string{"Максим Муратов"}}, "llm": M{"base_url": llm.URL}}}, 200)
+			for i := 0; i < 2; i++ {
+				_, err := s.job(context.Background(), func(q *request) bool { q.analyzeEvent(q.get("communication_events", str(event, "id"))); return true })
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			// Previously analyzed meeting results are picked up without a manual requeue.
+			_, err := s.Pool.Exec(context.Background(), "UPDATE communication_events SET analysis_result=jsonb_set(analysis_result::jsonb,'{delegation_extraction_version}','1') WHERE id=$1", event["id"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !s.processEvent(context.Background()) {
+				t.Fatal("old meeting result was not reprocessed")
+			}
+			items := call(t, s, "GET", "/api/v1/delegations", nil, 200).(map[string]any)["items"].([]any)
+			if len(items) != 1 {
+				t.Fatalf("want one delegation after replay, got %v", items)
+			}
+			d := items[0].(map[string]any)
+			if d["source_event_id"] != event["id"] || d["assignee_email"] != "ivan@example.test" || d["due_at"] == nil {
+				t.Fatal(d)
+			}
+			detail := call(t, s, "GET", "/api/v1/delegations/"+str(d, "id"), nil, 200).(map[string]any)
+			if len(detail["history"].([]any)) != 1 || delegationCalls.Load() != 3 {
+				t.Fatal("non-idempotent history or skipped extraction", detail, delegationCalls.Load())
+			}
+		})
+	}
+}
+
+func TestMeetingAssignmentRequiresUserSpeaker(t *testing.T) {
+	quote := "Иван, подготовь отчёт до пятницы."
+	candidate := M{"assigner_name": "Максим Муратов", "assigner_email": "me@example.test", "assignment_evidence": quote, "evidence": quote}
+	for _, tc := range []struct {
+		name, body string
+		candidate  M
+		want       bool
+	}{
+		{"user assigned", "00:00:01 · Максим Муратов\n" + quote, candidate, true},
+		{"someone else assigned", "00:00:01 · Анна Иванова\n" + quote, candidate, false},
+		{"speaker unknown", "00:00:01 · Участник 1\n" + quote, candidate, false},
+		{"no speaker labels", quote, candidate, false},
+		{"same quote by different speakers", "00:00:01 · Максим Муратов\n" + quote + "\n00:00:03 · Анна Иванова\n" + quote, candidate, false},
+		{"missing assigner evidence", "00:00:01 · Максим Муратов\n" + quote, M{"evidence": quote}, false},
+		{"claimed different assigner", "00:00:01 · Максим Муратов\n" + quote, M{"evidence": quote, "assignment_evidence": quote, "assigner_name": "Анна Иванова", "assigner_email": "anna@example.test"}, false},
+		{"unrelated user quote", "00:00:01 · Максим Муратов\nСпасибо всем за участие.\n00:00:03 · Анна Иванова\n" + quote, M{"evidence": quote, "assignment_evidence": "Спасибо всем за участие.", "assigner_name": "Максим Муратов"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			event := M{"event_type": "meeting_transcript", "body": tc.body}
+			if got := meetingAssignmentByUser(event, tc.candidate, []string{"Максим Муратов"}, []string{"me@example.test"}); got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

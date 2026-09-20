@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/mumg/ai_secretary/windows/internal/i18n"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,13 +18,13 @@ var version = "dev"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "Ошибка установки:", err)
+		fmt.Fprintln(os.Stderr, i18n.Tr("Ошибка установки:"), err)
 		os.Exit(1)
 	}
 }
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("ожидается configure, prepare, remove, export-client, check-runtime или version")
+		return errors.New(i18n.Tr("ожидается configure, prepare, remove, export-client, check-runtime или version"))
 	}
 	command := args[0]
 	if command == "version" {
@@ -33,9 +34,10 @@ func run(args []string) error {
 	switch command {
 	case "configure", "prepare", "remove", "export-client", "check-runtime":
 	default:
-		return errors.New("неизвестная команда")
+		return errors.New(i18n.Tr("неизвестная команда"))
 	}
 	f := flag.NewFlagSet(command, flag.ContinueOnError)
+	language := f.String("language", "", "interface language: ru, en, zh")
 	root := f.String("root", "", "program directory")
 	data := f.String("data", "", "persistent data directory")
 	target := f.String("target-version", version, "target release")
@@ -49,11 +51,14 @@ func run(args []string) error {
 	if err := f.Parse(args[1:]); err != nil {
 		return err
 	}
+	if *language != "" {
+		i18n.Set(*language)
+	}
 	if f.NArg() != 0 || *root == "" {
-		return errors.New("нужен --root и корректные параметры")
+		return errors.New(i18n.Tr("нужен --root и корректные параметры"))
 	}
 	if runtime.GOOS != "windows" {
-		return errors.New("установочный помощник запускается только на Windows")
+		return errors.New(i18n.Tr("установочный помощник запускается только на Windows"))
 	}
 	program, err := filepath.Abs(*root)
 	if err != nil {
@@ -68,7 +73,7 @@ func run(args []string) error {
 		return err
 	}
 	if *data == "" {
-		return errors.New("нужен --data")
+		return errors.New(i18n.Tr("нужен --data"))
 	}
 	persistent, err := filepath.Abs(*data)
 	if err != nil {
@@ -77,7 +82,7 @@ func run(args []string) error {
 	for _, pair := range [][2]string{{program, persistent}, {persistent, program}} {
 		rel, err := filepath.Rel(strings.ToLower(pair[0]), strings.ToLower(pair[1]))
 		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return errors.New("каталоги программы и данных не должны пересекаться")
+			return errors.New(i18n.Tr("каталоги программы и данных не должны пересекаться"))
 		}
 	}
 	e := setup.New(program, persistent)
@@ -105,8 +110,8 @@ func run(args []string) error {
 		err = e.ExportClient(*output)
 	}
 	if err != nil {
-		fmt.Fprintln(log, "Ошибка установки:", err)
-		fmt.Fprintln(log, "Данные сохранены в", persistent)
+		fmt.Fprintln(log, i18n.Tr("Ошибка установки:"), err)
+		fmt.Fprintln(log, i18n.Tr("Данные сохранены в"), persistent)
 		return err
 	}
 	return log.Sync()

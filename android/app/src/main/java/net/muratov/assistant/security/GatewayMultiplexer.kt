@@ -1,5 +1,7 @@
 package net.muratov.assistant.security
 
+import net.muratov.assistant.i18n.tr
+
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
@@ -60,8 +62,8 @@ internal object GatewayMultiplexer {
                     bridge = listener.accept().apply { tcpNoDelay = true }
                 }
                 stream = open(key, bridge!!, limit, connectPhysical)
-                if (isClosed) { stream?.reset(); throw IOException("Соединение закрыто") }
-            } catch (error: Exception) { runCatching { bridge?.close() }; close(); throw IOException("Не удалось открыть поток туннеля: ${error.message}", error) }
+                if (isClosed) { stream?.reset(); throw IOException(tr("Соединение закрыто")) }
+            } catch (error: Exception) { runCatching { bridge?.close() }; close(); throw IOException(tr("Не удалось открыть поток туннеля: {0}" , error.message), error) }
         }
         override fun close() { stream?.reset(); super.close() }
     }
@@ -83,15 +85,15 @@ internal object GatewayMultiplexer {
             }
         }
         @Synchronized fun open(bridge: Socket, timeout: Int): Stream {
-            if (closed) throw IOException("Туннель закрыт")
-            if (streams.size >= 32 || nextID <= 0) throw IOException("Слишком много потоков туннеля")
+            if (closed) throw IOException(tr("Туннель закрыт"))
+            if (streams.size >= 32 || nextID <= 0) throw IOException(tr("Слишком много потоков туннеля"))
             val stream = Stream(this, nextID, bridge)
             nextID += 2
             streams[stream.id] = stream
             try {
                 frame(1, 1, stream.id, 0)
                 if (!stream.accepted.await(timeout.toLong(), TimeUnit.MILLISECONDS) || stream.closed) {
-                    throw IOException("Сервер не подтвердил общий туннель. Проверьте соединение и версию сервера")
+                    throw IOException(tr("Сервер не подтвердил общий туннель. Проверьте соединение и версию сервера"))
                 }
                 stream.start()
                 return stream
@@ -99,7 +101,7 @@ internal object GatewayMultiplexer {
         }
         fun frame(type: Int, flags: Int, id: Int, length: Int, bytes: ByteArray? = null, offset: Int = 0) {
             try { synchronized(writing) {
-                if (closed) throw IOException("Туннель закрыт")
+                if (closed) throw IOException(tr("Туннель закрыт"))
                 output.writeByte(0); output.writeByte(type); output.writeShort(flags)
                 output.writeInt(id); output.writeInt(length)
                 if (bytes != null) output.write(bytes, offset, length)
@@ -186,7 +188,7 @@ internal object GatewayMultiplexer {
                                     if (remaining <= 0) throw IOException("Mux write timeout")
                                     TimeUnit.NANOSECONDS.timedWait(monitor, remaining)
                                 }
-                                if (closed) throw IOException("Поток закрыт")
+                                if (closed) throw IOException(tr("Поток закрыт"))
                                 minOf(count - offset, sendWindow).also { sendWindow -= it }
                             }
                             session.frame(0, 0, id, amount, bytes, offset)

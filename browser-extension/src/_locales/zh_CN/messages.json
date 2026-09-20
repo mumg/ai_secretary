@@ -1,0 +1,11 @@
+{
+  "appName": {
+    "message": "AI 秘书"
+  },
+  "description": {
+    "message": "AI 秘书的 MTS Link 企业登录。"
+  },
+  "actionTitle": {
+    "message": "AI 秘书 — 连接 MTS Link 登录"
+  }
+}

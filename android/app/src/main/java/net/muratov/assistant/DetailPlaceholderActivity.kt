@@ -1,5 +1,7 @@
 package net.muratov.assistant
 
+import net.muratov.assistant.i18n.tr
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import net.muratov.assistant.ui.ImproverTheme
 
 /** Automatically removed by WindowManager when the phone is folded. */
-class DetailPlaceholderActivity : ComponentActivity() {
+class DetailPlaceholderActivity : net.muratov.assistant.i18n.LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -28,9 +30,9 @@ class DetailPlaceholderActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text("AI Секретарь", style = MaterialTheme.typography.headlineSmall)
+                        Text(tr("AI Секретарь"), style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            "Выберите задачу, встречу или переписку — подробности появятся здесь.",
+                            tr("Выберите задачу, встречу или переписку — подробности появятся здесь."),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
