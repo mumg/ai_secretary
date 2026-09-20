@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const { Services, run, availablePort } = require('./services.cjs');
+const { tr } = require('./i18n.cjs');
 
 async function main() {
   const payload = path.resolve(process.argv[2] || 'dist/macos/payload');
@@ -45,7 +46,9 @@ async function main() {
     const keyPath = path.join(data, 'secrets/master-key');
     await fs.rename(keyPath, keyPath + '.saved');
     try {
-      await assert.rejects(() => services.ensure(), /Отсутствует secrets\/master-key/);
+      await assert.rejects(() => services.ensure(), {
+        message: tr('Отсутствует secrets/{0}; восстановите резервную копию', 'master-key'),
+      });
       assert.match(await services.loaded('api'), /state = running/);
     } finally { await fs.rename(keyPath + '.saved', keyPath); }
     await services.sql(c, 'CREATE TABLE secretary_smoke_marker (id int); INSERT INTO secretary_smoke_marker VALUES (42);');
@@ -71,7 +74,7 @@ async function main() {
     assert.equal(await services.sql(c, 'SELECT id FROM secretary_smoke_marker;'), '42');
     const installed = JSON.parse(await fs.readFile(path.join(data, 'installed.json')));
     await fs.writeFile(path.join(data, 'installed.json'), JSON.stringify({ ...installed, version: '999.0.0' }));
-    await assert.rejects(() => services.ensure(), /старой версии/);
+    await assert.rejects(() => services.ensure(), { message: tr('Установка более старой версии запрещена') });
     await fs.writeFile(path.join(data, 'installed.json'), JSON.stringify(installed));
     console.log('PASS: services, database, API, web, parser, restart, reinstall, data preservation, downgrade guard');
   } finally {
