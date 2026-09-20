@@ -12,6 +12,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { MtsAuth } = require('./mts-auth.cjs');
+const language = require('./i18n.cjs');
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'secretary-sso-test-'));
 app.setPath('userData', path.join(directory, 'electron'));
 app.commandLine.appendSwitch('host-resolver-rules', 'MAP gw.mts-link.ru:443 127.0.0.1:48199');
@@ -37,6 +38,10 @@ const listen = server => new Promise((resolve, reject) => {
   web = http.createServer((_req, res) => res.end('<!doctype html><title>Local admin test</title>'));
   await Promise.all([listen(idp), listen(web), app.whenReady()]);
   const origin = `http://127.0.0.1:${web.address().port}`;
+  language.configure(app);
+  language.registerIPC(electron.ipcMain, () => owner?.webContents, url => {
+    try { return new URL(url).origin === origin; } catch { return false; }
+  });
   owner = new BrowserWindow({ show: false, webPreferences: {
     preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false,
   } });
@@ -52,6 +57,12 @@ const listen = server => new Promise((resolve, reject) => {
     async loadURL(url) { await this.webContents.session.setProxy({ mode: 'direct' }); return super.loadURL(url); }
   } }, owner, () => origin);
   await owner.loadURL(`${origin}/admin`);
+  assert.equal(await owner.webContents.executeJavaScript("localStorage.getItem('secretary.language')"), 'system');
+  await owner.webContents.executeJavaScript("window.dispatchEvent(new CustomEvent('secretary-language', { detail: 'ru' }))");
+  assert.equal(language.preference, 'ru');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'language.json'), 'utf8')).language, 'ru');
+  await owner.loadURL(`${origin}/admin`);
+  assert.equal(await owner.webContents.executeJavaScript("localStorage.getItem('secretary.language')"), 'ru');
   const result = await owner.webContents.executeJavaScript(`new Promise(resolve => {
     window.addEventListener('message', event => {
       if (event.data?.from === 'extension' && ['complete', 'error'].includes(event.data.action)) resolve(event.data);
@@ -68,7 +79,7 @@ const listen = server => new Promise((resolve, reject) => {
   assert.equal(auth.flow, null);
   assert.equal(partitions.length, 1);
   assert.equal(partitions[0].getStoragePath(), null);
-  console.log('PASS: sandboxed preload, IPC, isolated HTTPS login and captured redirect in real Electron');
+  console.log('PASS: sandboxed preload, language persistence, IPC, isolated HTTPS login and captured redirect in real Electron');
 })().then(() => finish(0), error => { console.error(error); void finish(1); });
 async function finish(code) {
   clearTimeout(deadline);

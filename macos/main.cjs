@@ -142,11 +142,7 @@ else {
   app.on('window-all-closed', () => app.quit());
   app.whenReady().then(async () => {
     language.configure(app);
-    electron.ipcMain.on('secretary:language', (event, value) => {
-      if (event.sender !== window?.webContents || event.senderFrame !== event.sender.mainFrame || !internal(event.senderFrame.url)) { event.returnValue = null; return; }
-      if (value !== undefined) language.set(value);
-      event.returnValue = language.preference;
-    });
+    language.registerIPC(electron.ipcMain, () => window?.webContents, internal);
     if (!isWindows && app.isPackaged && process.execPath.startsWith('/Volumes/')) {
       dialog.showErrorBox(tr("Установка AI Секретаря"), tr("Перетащите AI Secretary в папку «Программы», затем запустите его оттуда."));
       app.quit(); return;

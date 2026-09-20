@@ -19,6 +19,16 @@ module.exports = {
     let value = 'system'; try { value = JSON.parse(fs.readFileSync(file, 'utf8')).language; } catch { /* First launch. */ }
     if (!set(value, false)) set('system', false);
   },
+  registerIPC(ipcMain, getContents, isInternal) {
+    ipcMain.on('secretary:language', (event, value) => {
+      if (event.sender !== getContents() || event.senderFrame !== event.sender.mainFrame || !isInternal(event.senderFrame.url)) {
+        event.returnValue = null;
+        return;
+      }
+      if (value !== undefined) set(value);
+      event.returnValue = preference;
+    });
+  },
   set,
   get preference() { return preference; },
   get language() { return language; },
