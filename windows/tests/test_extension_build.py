@@ -30,7 +30,17 @@ class ExtensionBuildTests(unittest.TestCase):
             manifest_bytes = archive.read("manifest.json")
             self.assertEqual(manifest_bytes, (SCRIPT.parent / "src/manifest.json").read_bytes())
             manifest = json.loads(manifest_bytes.decode("utf-8"))
-            self.assertEqual(manifest["name"], "AI Секретарь")
+            self.assertEqual(manifest["name"], "__MSG_appName__")
+            self.assertEqual(manifest["default_locale"], "en")
+            self.assertTrue(all("\\" not in name for name in archive.namelist()))
+            for locale, name in (("en", "AI Secretary"), ("ru", "AI Секретарь"), ("zh_CN", "AI 秘书")):
+                messages = json.loads(archive.read(f"_locales/{locale}/messages.json").decode("utf-8"))
+                self.assertEqual(messages["appName"]["message"], name)
+                for reference in (manifest["name"], manifest["description"], manifest["action"]["default_title"]):
+                    self.assertTrue(reference.startswith("__MSG_") and reference.endswith("__"))
+                    self.assertTrue(messages[reference[6:-2]]["message"])
+            for asset in ("i18n.js", "translations.js", "options.html", "options.js"):
+                self.assertIn(asset, archive.namelist())
             for asset in (manifest["background"]["service_worker"], *manifest["icons"].values()):
                 self.assertIn(asset, archive.namelist())
 

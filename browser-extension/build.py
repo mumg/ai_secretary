@@ -15,7 +15,7 @@ def build(output: Path, backend_web: Path) -> None:
              manifest["background"]["service_worker"], *manifest["icons"].values(),
              *manifest["action"]["default_icon"].values()}
     files.update({"translations.js", "i18n.js", "options.html", "options.js"})
-    files.update(str(p.relative_to(source)) for p in (source / "_locales").rglob("messages.json"))
+    files.update(p.relative_to(source).as_posix() for p in (source / "_locales").rglob("messages.json"))
     for name in files:
         if Path(name).is_absolute() or ".." in Path(name).parts or not (source / name).is_file():
             raise ValueError(f"Missing or invalid extension asset: {name}")

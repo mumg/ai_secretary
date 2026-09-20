@@ -1,11 +1,33 @@
 package net.muratov.assistant
 
 import java.time.ZoneId
+import java.util.Locale
+import org.junit.Before
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class MeetingResultTimeTest {
     private val moscow = ZoneId.of("Europe/Moscow")
+    private lateinit var originalLocale: Locale
+    private lateinit var originalDisplayLocale: Locale
+    private lateinit var originalFormatLocale: Locale
+
+    @Before
+    fun useRussianLocale() {
+        originalLocale = Locale.getDefault()
+        originalDisplayLocale = Locale.getDefault(Locale.Category.DISPLAY)
+        originalFormatLocale = Locale.getDefault(Locale.Category.FORMAT)
+        // These assertions specify Russian UI text and dates, not the runner's locale.
+        Locale.setDefault(Locale.forLanguageTag("ru-RU"))
+    }
+
+    @After
+    fun restoreLocale() {
+        Locale.setDefault(originalLocale)
+        Locale.setDefault(Locale.Category.DISPLAY, originalDisplayLocale)
+        Locale.setDefault(Locale.Category.FORMAT, originalFormatLocale)
+    }
 
     @Test
     fun standaloneEmailShowsReceiptTimeInsteadOfInventedMeetingInterval() {
