@@ -80,7 +80,7 @@ async function start() {
         })`);
         const state = await window.webContents.executeJavaScript(`({ title: document.title,
           tabs: document.querySelectorAll('#tabs button').length, node: typeof process, require: typeof require })`);
-        if (state.tabs !== 5 || state.node !== 'undefined' || state.require !== 'undefined') throw Error('Renderer smoke check failed');
+        if (state.tabs !== 6 || state.node !== 'undefined' || state.require !== 'undefined') throw Error('Renderer smoke check failed');
         await fs.writeFile(path.join(smokeRoot, 'electron-app.png'), (await window.webContents.capturePage()).toPNG());
         await window.loadURL(`${origin}/admin`);
         state.settings = await window.webContents.executeJavaScript('document.querySelectorAll("input").length');

@@ -18,7 +18,8 @@ module.exports = {
     hardenedRuntime: false,
     gatekeeperAssess: false,
     extendInfo: {
-      CFBundleName: 'AI Секретарь',
+      // Electron resolves Helper apps using CFBundleName. Leave that name
+      // aligned with productName; localize only the user-visible display name.
       CFBundleDisplayName: 'AI Секретарь',
       NSHumanReadableCopyright: 'AI Secretary contributors'
     }

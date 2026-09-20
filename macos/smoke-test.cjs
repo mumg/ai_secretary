@@ -31,7 +31,7 @@ async function main() {
       await run(executable, ['--secretary-smoke-test'], { env: { ...process.env,
         AI_SECRETARY_SMOKE_ROOT: data, AI_SECRETARY_SMOKE_LABEL: services.label }, timeout: 180000 });
       const renderer = JSON.parse(await fs.readFile(path.join(data, 'electron-smoke.json')));
-      assert.equal(renderer.tabs, 5);
+      assert.equal(renderer.tabs, 6);
       assert.equal(renderer.node, 'undefined');
       assert.equal(renderer.require, 'undefined');
       assert.equal(renderer.nativeSSO, true);

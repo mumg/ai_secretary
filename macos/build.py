@@ -243,9 +243,20 @@ def build(payload_only=False):
     package_dmg(OUT / 'mac-universal/AI Secretary.app', version)
 
 
+def validate_electron_helpers(app):
+    # Electron's GetApplicationName reads CFBundleName, not CFBundleDisplayName.
+    info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
+    for suffix in ['', ' (Renderer)', ' (GPU)', ' (Plugin)']:
+        name = f'{info["CFBundleName"]} Helper{suffix}'
+        helper = app / 'Contents/Frameworks' / f'{name}.app' / 'Contents/MacOS' / name
+        if not helper.is_file() or not os.access(helper, os.X_OK):
+            raise ValueError(f'Electron helper does not match CFBundleName: {helper}')
+
+
 def package_dmg(app, version):
     print('Verifying universal architectures, payload checksums and application signatures.', flush=True)
     validate_native_tree(app)
+    validate_electron_helpers(app)
     release.verify_payload(app / 'Contents/Resources/server')
     run('codesign', '--verify', '--deep', '--strict', app)
     if release.signed():
