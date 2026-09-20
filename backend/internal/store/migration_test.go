@@ -61,10 +61,10 @@ func TestUpgradeExistingRevisionPreservesData(t *testing.T) {
 		t.Fatal(persisted, err)
 	}
 	var revision string
-	if err = pool.QueryRow(ctx, "SELECT version_num FROM alembic_version").Scan(&revision); err != nil || revision != "0022" {
+	if err = pool.QueryRow(ctx, "SELECT version_num FROM alembic_version").Scan(&revision); err != nil || revision != "0023" {
 		t.Fatal(revision, err)
 	}
-	pool.Exec(ctx, "UPDATE alembic_version SET version_num='0023'")
+	pool.Exec(ctx, "UPDATE alembic_version SET version_num='0024'")
 	if err = Migrate(ctx, pool); err == nil {
 		t.Fatal("future database revision accepted")
 	}

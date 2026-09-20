@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <meta name="description" content="Настройки AI Секретаря">
   <title>AI Секретарь — Настройки</title>
   <link rel="icon" type="image/svg+xml" href="/admin/assets/secretary-robot.svg">
@@ -13,7 +14,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/app/" aria-label="AI Секретарь — главная"><img class="brand-icon" src="/admin/assets/secretary-robot.svg" alt="" width="32" height="32"><span>AI Секретарь</span></a>
-    <div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div>
+    <div class="topbar-actions"><div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div><a class="app-link" href="/app/">К приложению</a></div>
   </header>
 
   <div id="version-notice" class="version-notice" role="status" aria-live="polite" hidden>
@@ -22,13 +23,8 @@
   </div>
 
   <main class="shell">
-    <div class="version-settings">
-      <p id="version-details" role="status" aria-live="polite">Получаем версию исходников…</p>
-      <button id="version-check" type="button" class="secondary">Проверить обновления</button>
-    </div>
     <section class="intro">
       <div>
-        <p class="eyebrow">ПЕРСОНАЛЬНЫЙ КОНТУР</p>
         <h1>Настройки</h1>
         <p id="deploymentHint">Подключайте источники переписки и управляйте анализом прямо здесь. Доступ к панели защищён тем же клиентским сертификатом, что и мобильное приложение.</p>
       </div>
@@ -132,7 +128,9 @@
       <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Анализ и рабочий день</h2></div></div>
       <form id="settingsForm" class="settings-grid">
         <fieldset><legend>Пользователь</legend>
-          <label>Имя и фамилия пользователя <small>варианты через запятую; почтовые адреса определяются из подключённых источников</small><input id="identityNames" autocomplete="off"></label>
+          <label>Мои руководители <small>По одному сотруднику на строку: Имя | email, второй email</small><textarea id="relationshipManagers" rows="4"></textarea></label>
+<label>Мои подчинённые <small>По одному сотруднику на строку: Имя | email, второй email</small><textarea id="relationshipReports" rows="4"></textarea></label>
+<label>Имя и фамилия пользователя <small>варианты через запятую; почтовые адреса определяются из подключённых источников</small><input id="identityNames" autocomplete="off"></label>
           <label>Часовой пояс<input id="timezone" value="Europe/Moscow"></label>
 
         </fieldset>
@@ -180,6 +178,10 @@
       </div>
       <div class="bottom-actions"><button class="primary save-settings">Сохранить настройки</button></div>
     </section>
+    <div class="version-settings">
+      <p id="version-details" role="status" aria-live="polite">Получаем версию исходников…</p>
+      <button id="version-check" type="button" class="secondary">Проверить обновления</button>
+    </div>
   </main>
   <footer class="copyright">Максим Муратов (С) 2026</footer>
 

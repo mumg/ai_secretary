@@ -2,6 +2,7 @@ package server
 
 func (s *Server) routes() {
 	s.taskRoutes()
+	s.delegationRoutes()
 	s.adminRoutes()
 	s.archiveRoutes()
 	s.externalRoutes()

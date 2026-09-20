@@ -17,7 +17,11 @@ module.exports = {
     // disabled; the release hook enables hardened runtime for Developer ID.
     hardenedRuntime: false,
     gatekeeperAssess: false,
-    extendInfo: { NSHumanReadableCopyright: 'AI Secretary contributors' }
+    extendInfo: {
+      CFBundleName: 'AI Секретарь',
+      CFBundleDisplayName: 'AI Секретарь',
+      NSHumanReadableCopyright: 'AI Secretary contributors'
+    }
   },
   afterPack: require('./sign.cjs'),
   publish: null

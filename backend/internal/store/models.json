@@ -1235,5 +1235,139 @@
       "primary": false,
       "server_default": true
     }
+  },
+  "delegations": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "title": {
+      "nullable": false,
+      "type": "VARCHAR(500)",
+      "primary": false
+    },
+    "description": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "source_event_id": {
+      "nullable": true,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "due_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "status": {
+      "nullable": false,
+      "type": "VARCHAR(32)",
+      "primary": false,
+      "default": "ASSIGNED"
+    },
+    "expected_result": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "assignee_name": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "assignee_email": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "evidence": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "confidence": {
+      "nullable": false,
+      "type": "FLOAT",
+      "primary": false
+    },
+    "last_status_event_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "manual_status_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
+    "last_content_event_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    }
+  },
+  "delegation_history": {
+    "id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": true
+    },
+    "created_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "updated_at": {
+      "nullable": false,
+      "type": "DATETIME",
+      "primary": false,
+      "server_default": true
+    },
+    "source_event_id": {
+      "nullable": true,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "delegation_id": {
+      "nullable": false,
+      "type": "CHAR(32)",
+      "primary": false
+    },
+    "old_status": {
+      "nullable": true,
+      "type": "TEXT",
+      "primary": false
+    },
+    "new_status": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "actor": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    },
+    "explanation": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false
+    }
   }
 }

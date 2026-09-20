@@ -3,9 +3,17 @@
   const $ = (id) => document.getElementById(id);
   const C = window.SecretaryCore,
     e = C.escape;
-  const tabs = ["tasks", "meetings", "results", "threads", "status"];
+  const tabs = [
+    "tasks",
+    "delegations",
+    "meetings",
+    "results",
+    "threads",
+    "status",
+  ];
   const names = {
     tasks: "План на сегодня",
+    delegations: "Поручения",
     meetings: "Предстоящие встречи",
     results: "Результаты встреч",
     threads: "Резюме переписок",
@@ -13,6 +21,7 @@
   };
   const searches = {
     tasks: "задачам",
+    delegations: "поручениям",
     meetings: "встречам",
     results: "итогам",
     threads: "перепискам",
@@ -24,6 +33,8 @@
     CRITICAL: "Критический",
   };
   const statuses = {
+    ASSIGNED: "Назначено",
+    IN_REVIEW: "На проверке",
     NEEDS_CONFIRMATION: "Нужно подтвердить",
     NEW: "Новая",
     IN_PROGRESS: "В работе",
@@ -71,6 +82,16 @@
     listLoading = false,
     actionBusy = false,
     chatRevision = 0;
+  for (const id of [
+    "delegation-assignee",
+    "delegation-status",
+    "delegation-due",
+  ])
+    $(id).addEventListener("change", () => {
+      state.selected = null;
+      view().rows = [];
+      void loadList();
+    });
   const view = () =>
     (state.views[state.tab] ||= {
       rows: [],
@@ -83,6 +104,7 @@
   const badge = (text, cls = "") =>
     `<span class="tag ${e(cls)}">${e(text)}</span>`;
   const label = (s) => statuses[s] || s || "Не указано";
+  const delegationLabel = (s) => ({ COMPLETED: "Выполнено", CANCELLED: "Отменено" }[s] || label(s));
   const closed = (t) => ["COMPLETED", "CANCELLED"].includes(t.status);
   const date = (value, time = true) =>
     value && Number.isFinite(Date.parse(value))
@@ -110,8 +132,8 @@
     x.time_basis === "transcript"
       ? `По временным отметкам расшифровки: ${interval(x)}`
       : x.time_known === false
-      ? `Время встречи неизвестно · письмо получено ${date(x.received_at)}`
-      : interval(x);
+        ? `Время встречи неизвестно · письмо получено ${date(x.received_at)}`
+        : interval(x);
   const link = (url, title) =>
     C.safeURL(url)
       ? `<a href="${e(C.safeURL(url))}" target="_blank" rel="noopener noreferrer">${e(title)}</a>`
@@ -212,9 +234,15 @@
     const kind = p.get("kind"),
       id = p.get("id");
     state.selected =
-      ["task", "meeting", "result", "thread", "event", "component"].includes(
-        kind,
-      ) && id
+      [
+        "task",
+        "delegation",
+        "meeting",
+        "result",
+        "thread",
+        "event",
+        "component",
+      ].includes(kind) && id
         ? { kind, id }
         : null;
     state.chat = p.get("chat") === "1";
@@ -232,6 +260,7 @@
     $("search").setAttribute("aria-label", $("search").placeholder);
     $("search-wrap").hidden = state.tab === "status";
     $("clear-search").hidden = !state.q;
+    $("delegation-filters").hidden = state.tab !== "delegations";
     $("sort").hidden = state.tab !== "tasks";
     $("sort").value = state.order;
     $("create-task").hidden = state.tab !== "tasks";
@@ -267,6 +296,17 @@
     const x = row.value;
     let c;
     if (row.kind === "task") c = taskCard(x);
+    else if (row.kind === "delegation")
+      c = {
+        title: x.title,
+        sub: `${x.assignee_name || x.assignee_email || "Исполнитель не определён"} · ${date(x.due_at)}`,
+        preview: x.description,
+        tags:
+          badge(delegationLabel(x.status)) +
+          (!closed(x) && x.due_at && Date.parse(x.due_at) < Date.now()
+            ? badge("Просрочено", "error")
+            : ""),
+      };
     else if (row.kind === "meeting")
       c = {
         title: x.title,
@@ -340,7 +380,7 @@
     if (!state.configured) return;
     const tab = state.tab,
       v = view(),
-      signature = `${state.q}|${state.order}`,
+      signature = `${state.q}|${state.order}|${$("delegation-assignee").value}|${$("delegation-status").value}|${$("delegation-due").value}`,
       serial = ++listSerial;
     listController?.abort();
     listController = new AbortController();
@@ -385,6 +425,7 @@
           meetings: "meetings",
           results: "meeting-results",
           threads: "threads",
+          delegations: "delegations",
         }[tab];
         let offset = more ? v.nextOffset || v.rows.length : 0;
         const target = more ? 30 : Math.max(30, v.rows.length);
@@ -393,7 +434,7 @@
         do {
           const limit = Math.min(100, target - items.length);
           page = await api(
-            `/${path}?${new URLSearchParams({ q: state.q, offset, limit })}`,
+            `/${path}?${new URLSearchParams({ q: state.q, offset, limit, ...(tab === "delegations" ? { assignee: $("delegation-assignee").value, status: $("delegation-status").value, due: $("delegation-due").value } : {}) })}`,
             { signal },
           );
           items.push(...page.items);
@@ -401,9 +442,12 @@
         } while (page.has_more && items.length < target && page.items.length);
         if (serial === listSerial) v.nextOffset = offset;
         rows = items.map((value) => ({
-          kind: { meetings: "meeting", results: "result", threads: "thread" }[
-            tab
-          ],
+          kind: {
+            delegations: "delegation",
+            meetings: "meeting",
+            results: "result",
+            threads: "thread",
+          }[tab],
           value,
           group:
             tab === "meetings"
@@ -413,6 +457,26 @@
                 : date(value.last_event_at, false),
         }));
         hasMore = page.has_more;
+        if (tab === "delegations" && serial === listSerial) {
+          const select = $("delegation-assignee"),
+            current = select.value;
+          const seen = new Set();
+          select.innerHTML =
+            '<option value="">Все исполнители</option>' +
+            (page.recipients || [])
+              .filter((p) => {
+                const key = p.assignee_email || p.assignee_name;
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              })
+              .map(
+                (p) =>
+                  `<option value="${e(p.assignee_email || p.assignee_name)}">${e(p.assignee_name || p.assignee_email)}${p.assignee_name && p.assignee_email ? " · " + e(p.assignee_email) : ""}</option>`,
+              )
+              .join("");
+          select.value = current;
+        }
       }
       if (serial !== listSerial) return;
       v.rows = more
@@ -512,10 +576,17 @@
   }
   function taskHTML(data) {
     const t = data.task;
-    const rejectButton = '<button class="icon-button task-reject" data-action="reject" title="Отказаться от задачи" aria-label="Отказаться от задачи"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></button>';
+    const rejectButton =
+      '<button class="icon-button task-reject" data-action="reject" title="Отказаться от задачи" aria-label="Отказаться от задачи"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></button>';
     return (
       head("Задача") +
       `<h2>${e(t.title)}</h2><div class="tags">${badge(priorities[t.priority], t.priority.toLowerCase())}${badge(label(t.status))}</div><div class="actions">${!closed(t) ? `${t.status === "NEEDS_CONFIRMATION" ? '<button class="primary" data-action="confirm">Подтвердить</button>' : '<button class="primary" data-action="complete">✓ Завершить</button>'}${rejectButton}<button data-action="remind">◷ Напомнить</button>` : ""}</div><div class="facts">${fact("Срок", e(t.due_at ? date(t.due_at) : "Без срока"))}${fact("Статус", e(label(t.status)))}${fact("Приоритет", e(priorities[t.priority]))}${fact("Рейтинг", e(t.ranking_score.toFixed(2)))}</div><h3>Что нужно сделать</h3>${t.description ? markdown(t.description) : '<p class="muted">Описание не указано.</p>'}${t.ranking_reasons.length ? `<h3>Почему задача в плане</h3><ul>${t.ranking_reasons.map((r) => `<li>${e(r)}</li>`).join("")}</ul>` : ""}${t.evidence ? `<h3>Основание назначения</h3><div class="callout text-body">${e(t.evidence)}</div>` : ""}<h3>Напоминания</h3>${t.reminders.length ? `<ul>${t.reminders.map((r) => `<li>${e(date(r.remind_at))} · ${r.sent_at ? "Отправлено" : r.enabled ? "Запланировано" : "Отключено"} ${!r.sent_at ? `<button class="link-button" data-remove-reminder="${e(r.id)}">Удалить</button>` : ""}</li>`).join("")}</ul>` : '<p class="muted">Напоминания не установлены.</p>'}<h3>Первоисточник</h3>${sourceHTML(data.source)}`
+    );
+  }
+  function delegationHTML(d) {
+    return (
+      head("Поручение · выявлено ИИ") +
+      `<h2>${e(d.title)}</h2><div class="tags">${badge(delegationLabel(d.status))}</div><div class="facts">${fact("Исполнитель", e(d.assignee_name || d.assignee_email || "Не определён"))}${fact("Email", e(d.assignee_email))}${fact("Срок", e(date(d.due_at)))}</div>${markdown(d.description || "")}<h3>Ожидаемый результат</h3>${markdown(d.expected_result || "Не указан")}<h3>Основание</h3><div class="text-body">${e(d.evidence)}</div>${openButton("event", d.source_event_id, "Открыть исходное письмо")}<h3>Изменить статус</h3><div class="actions">${["ASSIGNED", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"].map((s) => `<button data-delegation-status="${s}" ${s === d.status ? "disabled" : ""}>${s === "COMPLETED" ? "Принять результат" : e(delegationLabel(s))}</button>`).join("")}</div><h3>История изменений</h3>${(d.history || []).map((h) => `<article class="source"><strong>${e((h.old_status ? delegationLabel(h.old_status) + " → " : "") + delegationLabel(h.new_status))}</strong><p>${e(date(h.created_at))} · ${h.actor === "USER" ? "Пользователь" : "ИИ"}</p><div class="text-body">${e(h.explanation)}</div>${openButton("event", h.source_event_id, "Письмо-основание")}</article>`).join("")}`
     );
   }
   function meetingHTML(data) {
@@ -547,7 +618,10 @@
       : value;
   }
   function statusMetrics(metrics) {
-    return Object.entries(metrics || {}).filter(([key]) => !["events_failed", "chat_failed", "contexts_failed"].includes(key));
+    return Object.entries(metrics || {}).filter(
+      ([key]) =>
+        !["events_failed", "chat_failed", "contexts_failed"].includes(key),
+    );
   }
   function metricsHTML(metrics) {
     return `<div class="metrics">${statusMetrics(metrics)
@@ -560,14 +634,24 @@
   function queueHTML(metrics) {
     if (!metrics || metrics.events_total == null) return "";
     const n = (key) => Math.max(0, Number(metrics[key]) || 0);
-    const fmt = (value, digits = 0) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: digits }).format(value);
-    const total = n("events_total"), completed = n("events_completed"), excluded = n("events_excluded");
-    const done = completed + excluded, percent = total ? Math.min(100, done / total * 100) : 0;
+    const fmt = (value, digits = 0) =>
+      new Intl.NumberFormat("ru-RU", { maximumFractionDigits: digits }).format(
+        value,
+      );
+    const total = n("events_total"),
+      completed = n("events_completed"),
+      excluded = n("events_excluded");
+    const done = completed + excluded,
+      percent = total ? Math.min(100, (done / total) * 100) : 0;
     const cards = [
       ["Ожидают", fmt(n("events_pending")), "queue-waiting"],
       ["В обработке", fmt(n("events_processing")), "queue-active"],
       ["Завершено", fmt(completed), "queue-done"],
-      ["Скорость · событий/мин", fmt(n("events_rate_per_minute"), 2), "queue-rate"],
+      [
+        "Скорость · событий/мин",
+        fmt(n("events_rate_per_minute"), 2),
+        "queue-rate",
+      ],
     ];
     return `<section class="queue-panel" aria-label="Очередь обработки">
       <div class="queue-heading"><h3>Очередь обработки</h3><span class="tag ${state.statusLive ? "green" : "error"}" role="status">${state.statusLive ? "В реальном времени" : "Нет связи · данные устарели"}</span></div>
@@ -596,7 +680,9 @@
       `<h2>${["OK", "BUSY"].includes(system.overall_status) ? "Система работает штатно" : "Есть компоненты, требующие внимания"}</h2><p class="muted">Обновлено ${e(date(system.generated_at))}. Занятость Qwen не означает сбой.</p>${queueHTML(system.components.find((c) => c.id === "processing")?.metrics)}<div class="table-wrap"><table><thead><tr><th>Компонент</th><th>Состояние</th><th>Обновлено</th><th>Показатели</th></tr></thead><tbody>${system.components
         .map(
           (c) =>
-            `<tr><td>${openButton("component", c.id, c.label)}</td><td class="${C.healthClass(c.status)}"><span class="dot"></span>${e(label(c.status))}<p class="muted">${e(c.message || "")}</p></td><td>${e(date(c.observed_at))}</td><td class="numbers">${statusMetrics(c.metrics)
+            `<tr><td>${openButton("component", c.id, c.label)}</td><td class="${C.healthClass(c.status)}"><span class="dot"></span>${e(label(c.status))}<p class="muted">${e(c.message || "")}</p></td><td>${e(date(c.observed_at))}</td><td class="numbers">${statusMetrics(
+              c.metrics,
+            )
               .map(([k, v]) => `${e(k)}: ${e(formatMetric(v))}`)
               .join("<br>")}</td></tr>`,
         )
@@ -634,6 +720,7 @@
       } else {
         const path = {
           task: `/tasks/${selected.id}`,
+          delegation: `/delegations/${selected.id}`,
           meeting: `/meetings/${selected.id}/context`,
           result: `/meeting-results/${selected.id}`,
           thread: `/threads/${selected.id}?events_limit=30`,
@@ -669,17 +756,19 @@
       state.detailKey = key;
       if (changed)
         setDetail(
-          selected.kind === "task"
-            ? taskHTML(data)
-            : selected.kind === "meeting"
-              ? meetingHTML(data)
-              : selected.kind === "result"
-                ? resultHTML(data)
-                : selected.kind === "thread"
-                  ? threadHTML(data)
-                  : selected.kind === "event"
-                    ? head("Исходное сообщение") + sourceHTML(data)
-                    : systemHTML(selected.id),
+          selected.kind === "delegation"
+            ? delegationHTML(data)
+            : selected.kind === "task"
+              ? taskHTML(data)
+              : selected.kind === "meeting"
+                ? meetingHTML(data)
+                : selected.kind === "result"
+                  ? resultHTML(data)
+                  : selected.kind === "thread"
+                    ? threadHTML(data)
+                    : selected.kind === "event"
+                      ? head("Исходное сообщение") + sourceHTML(data)
+                      : systemHTML(selected.id),
           data.references,
           quiet,
         );
@@ -729,12 +818,17 @@
   function renderStatusSnapshot() {
     if (state.tab !== "status") return;
     const v = view();
-    v.rows = (state.system?.components || []).map((value) => ({ kind: "component", value, group: "Компоненты" }));
+    v.rows = (state.system?.components || []).map((value) => ({
+      kind: "component",
+      value,
+      group: "Компоненты",
+    }));
     v.loaded = !!state.system;
     v.hasMore = false;
     renderList();
     if (!state.chat) {
-      if (state.selected?.kind === "component") setDetail(systemHTML(state.selected.id), [], true);
+      if (state.selected?.kind === "component")
+        setDetail(systemHTML(state.selected.id), [], true);
       else if (!state.selected) renderSystem();
     }
   }
@@ -847,6 +941,13 @@
   async function action(event) {
     const b = event.target.closest("button");
     if (!b) return;
+    if (b.dataset.delegationStatus && state.selected?.kind === "delegation") {
+      await mutate(b, `/delegations/${state.selected.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: b.dataset.delegationStatus }),
+      });
+      return;
+    }
     if (b.dataset.openKind) {
       await selectRecord(b.dataset.openKind, b.dataset.openId);
       return;
@@ -1166,6 +1267,7 @@
       if (!state.configured) await configure();
       const listChanged = {
         tasks: has("tasks", "meetings"),
+        delegations: has("delegations"),
         meetings: has("meetings"),
         results: has("results", "events"),
         threads: has("threads", "events"),
@@ -1173,6 +1275,7 @@
       }[state.tab];
       const detailChanged = {
         task: has("tasks", "events"),
+        delegation: has("delegations", "events"),
         meeting: has("contexts", "meetings", "events"),
         result: has("results", "events"),
         thread: has("threads", "events"),
@@ -1192,7 +1295,11 @@
       if (pendingTopics.size) queueLive([]);
     }
   }
-  const live = window.SecretaryRealtime?.(queueLive, receiveStatus, statusConnection);
+  const live = window.SecretaryRealtime?.(
+    queueLive,
+    receiveStatus,
+    statusConnection,
+  );
   window.addEventListener("online", refresh);
   window.addEventListener("offline", () => {
     paintHealth(true);

@@ -240,11 +240,13 @@ private fun ReferenceCard(
     onOpenEvent: (String, String?) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
+    val delegationContext = androidx.compose.ui.platform.LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         onClick = {
             when {
+                reference.kind == "delegation" -> delegationContext.startActivity(DelegationDetailActivity.intent(delegationContext, reference.id))
                 reference.kind == "task" -> onOpenTask(reference.id)
                 else -> onOpenEvent(reference.id, reference.sourceLabel)
             }

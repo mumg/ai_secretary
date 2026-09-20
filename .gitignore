@@ -53,3 +53,11 @@ google-services.json
 
 # Embedded Go migrations are source code.
 !/backend/internal/store/migrations/*.sql
+
+# iOS local build state and Firebase configuration
+# iOS is maintained in its own Git repository.
+/ios/
+ios/build/
+ios/GoogleService-Info.plist
+ios/**/*.xcuserstate
+ios/**/xcuserdata/

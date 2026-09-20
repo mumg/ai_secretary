@@ -211,6 +211,8 @@ private fun ImproverScreen(
         todayMeetings.filter { meetingIsUpcoming(it, currentTime) }
     }
     val context = LocalContext.current
+    val delegationViewModel: net.muratov.assistant.ui.DelegationsViewModel = viewModel(factory = net.muratov.assistant.ui.DelegationsViewModel.Factory((context.applicationContext as ImproverApplication).container.repository))
+    val delegationState by delegationViewModel.state.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var reminderTask by remember { mutableStateOf<TaskEntity?>(null) }
@@ -301,6 +303,7 @@ private fun ImproverScreen(
                         Column {
                             Text(
                                 when (selectedTab) {
+                                    HomeTab.DELEGATIONS -> "Поручения"
                                     HomeTab.TASKS -> "План на сегодня"
                                     HomeTab.MEETINGS -> "Встречи"
                                     HomeTab.RESULTS -> "Результаты встреч"
@@ -310,6 +313,7 @@ private fun ImproverScreen(
                             )
                             Text(
                                 when (selectedTab) {
+                                    HomeTab.DELEGATIONS -> "Поручения сотрудникам из исходящих писем"
                                     HomeTab.TASKS -> if (sortByDue) {
                                         "По приоритету и сроку"
                                     } else {
@@ -335,13 +339,14 @@ private fun ImproverScreen(
                         )
                     },
                 )
-                TabRow(selectedTabIndex = selectedTab.ordinal) {
+                androidx.compose.material3.ScrollableTabRow(selectedTabIndex = selectedTab.ordinal, edgePadding = 0.dp) {
                     Tab(
                         selected = selectedTab == HomeTab.TASKS,
                         onClick = { selectTab(HomeTab.TASKS) },
                         modifier = Modifier.height(48.dp),
                         content = { HomeTabLabel("Задачи") },
                     )
+                    Tab(selected = selectedTab == HomeTab.DELEGATIONS, onClick = { selectTab(HomeTab.DELEGATIONS) }, content = { HomeTabLabel("Поручения") })
                     Tab(
                         selected = selectedTab == HomeTab.MEETINGS,
                         onClick = { selectTab(HomeTab.MEETINGS) },
@@ -413,6 +418,7 @@ private fun ImproverScreen(
         ) { page ->
             val pageTab = HomeTab.entries[page]
             val refreshing = when (pageTab) {
+                HomeTab.DELEGATIONS -> delegationState.loading
                 HomeTab.TASKS -> taskRefreshing
                 HomeTab.MEETINGS -> meetingsState.refreshing
                 HomeTab.RESULTS -> meetingResultsState.refreshing
@@ -423,6 +429,7 @@ private fun ImproverScreen(
                 isRefreshing = refreshing,
                 onRefresh = {
                     when (pageTab) {
+                        HomeTab.DELEGATIONS -> delegationViewModel.load()
                         HomeTab.TASKS -> viewModel.refreshFromPull()
                         HomeTab.MEETINGS -> meetingsViewModel.refresh(fromPull = true)
                         HomeTab.RESULTS -> meetingResultsViewModel.refresh(fromPull = true)
@@ -433,6 +440,7 @@ private fun ImproverScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 when (pageTab) {
+                    HomeTab.DELEGATIONS -> net.muratov.assistant.ui.DelegationsScreen(delegationViewModel)
                     HomeTab.TASKS -> Column(
                         Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     ) {
@@ -568,6 +576,7 @@ private fun HomeTabLabel(text: String) {
 
 private enum class HomeTab {
     TASKS,
+    DELEGATIONS,
     MEETINGS,
     RESULTS,
     THREADS,
@@ -1597,6 +1606,7 @@ private fun SettingsDialog(onDismiss: () -> Unit, onSetup: () -> Unit) {
                 Text(application.container.settings.serverUrl)
                 Button(onClick = onSetup) { Text("Мастер подключения") }
                 Spacer(Modifier.height(16.dp))
+                net.muratov.assistant.ui.RelationshipSettings(application.container.repository)
                 UpdatePanel(application.container.updates)
             }
         },

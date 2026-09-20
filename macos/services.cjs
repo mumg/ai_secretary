@@ -167,6 +167,8 @@ class Services {
       default: throw Error('Unknown service');
     }
     return { Label: `${this.label}.${name}`, ProgramArguments: args, EnvironmentVariables: env,
+      // Let macOS attribute background jobs to the app instead of the signing identity.
+      AssociatedBundleIdentifiers: ['net.muratov.secretary.desktop'],
       WorkingDirectory: this.data, RunAtLoad: true, KeepAlive: true, ThrottleInterval: 10,
       ExitTimeOut: 60, Umask: 63, ProcessType: 'Background',
       StandardOutPath: path.join(this.data, 'logs', `${name}.log`),

@@ -888,3 +888,10 @@ dialog select {
 .queue-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 12px; margin-top: 12px; }
 .queue-note { font-size: 12px; margin-bottom: 0; }
 @media (max-width: 1000px) { .queue-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .queue-panel { padding: 16px; } }
+
+/* Six sections remain reachable on narrow windows. */
+#tabs { overflow-x: auto; gap: 12px; }
+#tabs button { flex-shrink: 0; }
+#delegation-filters:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+#delegation-filters label { min-width: 0; flex: 1 1 120px; }
+#delegation-filters select { width: 100%; }

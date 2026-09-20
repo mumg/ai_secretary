@@ -47,7 +47,7 @@ func (s *Server) Start(ctx context.Context) {
 }
 func (s *Server) publish(topic string) {
 	switch topic {
-	case "all", "tasks", "meetings", "contexts", "results", "threads", "events", "chat", "status":
+	case "all", "delegations", "tasks", "meetings", "contexts", "results", "threads", "events", "chat", "status":
 	default:
 		return
 	}

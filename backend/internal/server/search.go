@@ -98,11 +98,15 @@ func parseSearch(query string, now time.Time, literal bool) searchIntent {
 		intent.scope = "events"
 	} else {
 		events := rx(`\b(?:писем|письм|сообщен|переписк|встреч|расшифров)`, text)
-		tasks := rx(`\b(?:задач|поручен)`, text)
-		if events && !tasks {
+		tasks := rx(`\bзадач`, text)
+		delegations := rx(`\b(?:поручен|поручил|делегир)`, text)
+		if events && !tasks && !delegations {
 			intent.scope = "events"
 		}
-		if tasks && !events {
+		if delegations && !tasks && !events {
+			intent.scope = "delegations"
+		}
+		if tasks && !events && !delegations {
 			intent.scope = "tasks"
 		}
 		day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -135,12 +139,18 @@ func parseSearch(query string, now time.Time, literal bool) searchIntent {
 		intent.overdue = rx(`просроч\w*`, text)
 		if intent.overdue || rx(`незаверш\w*|невыполн\w*|не\s+(?:выполн\w*|заверш\w*)|активн\w*|открыт\w*`, text) {
 			intent.statuses = []string{"NEW", "IN_PROGRESS", "NEEDS_CONFIRMATION", "POSSIBLY_COMPLETED"}
+		} else if rx(`на\s+проверк\w*`, text) {
+			intent.statuses = []string{"POSSIBLY_COMPLETED"}
+		} else if rx(`в\s+работе`, text) {
+			intent.statuses = []string{"IN_PROGRESS"}
+		} else if rx(`назначен\w*`, text) {
+			intent.statuses = []string{"NEW"}
 		} else if rx(`выполн\w*|заверш\w*`, text) {
 			intent.statuses = []string{"COMPLETED"}
 		} else if rx(`отмен[её]н\w*`, text) {
 			intent.statuses = []string{"CANCELLED"}
 		}
-		r = must(compileLinkPattern(`просроч\w*|незаверш\w*|невыполн\w*|не\s+(?:выполн\w*|заверш\w*)|активн\w*|открыт\w*|выполн\w*|заверш\w*|отмен[её]н\w*`))
+		r = must(compileLinkPattern(`на\s+проверк\w*|в\s+работе|назначен\w*|просроч\w*|незаверш\w*|невыполн\w*|не\s+(?:выполн\w*|заверш\w*)|активн\w*|открыт\w*|выполн\w*|заверш\w*|отмен[её]н\w*`))
 		text = must(r.Replace(text, " ", -1, -1))
 		r = must(compileLinkPattern(`\b(?:от|from|с|with)\s+([\w@.+-]+)`))
 		if m := must(r.FindStringMatch(text)); m != nil {
@@ -162,7 +172,7 @@ func (q *request) retrieveArchive(m M) ([]M, []M) {
 	if before := timestamp(m["before"]); before != nil && (intent.end == nil || before.Before(*intent.end)) {
 		intent.end = before
 	}
-	retrieve := func(tasks bool) []M {
+	retrieve := func(tasks, delegations bool) []M {
 		args := []any{stringsArray(m["tag_ids"])}
 		add := func(v any) string { args = append(args, v); return fmt.Sprintf("$%d", len(args)) }
 		where := []string{"(cardinality($1::text[])=0 OR EXISTS(SELECT 1 FROM communication_source_tags st WHERE st.source_id=e.source_id AND st.tag_id::text=ANY($1::text[])))"}
@@ -173,6 +183,9 @@ func (q *request) retrieveArchive(m M) ([]M, []M) {
 		if tasks {
 			table, date = "t", "t.due_at"
 			query = "SELECT t.*,s.label AS source_label,e.source_url,e.author,e.occurred_at FROM tasks t LEFT JOIN communication_events e ON e.id=t.source_event_id LEFT JOIN communication_sources s ON s.id=e.source_id"
+			if delegations {
+				query = "SELECT t.*, 'delegation' AS record_kind,s.label AS source_label,e.source_url,e.author,e.occurred_at FROM delegations t LEFT JOIN communication_events e ON e.id=t.source_event_id LEFT JOIN communication_sources s ON s.id=e.source_id"
+			}
 			order = "t.updated_at DESC"
 			limit = 12
 		} else {
@@ -188,7 +201,23 @@ func (q *request) retrieveArchive(m M) ([]M, []M) {
 			where = append(where, date+"<"+add(*intent.end))
 		}
 		if tasks && len(intent.statuses) > 0 {
-			where = append(where, "t.status=ANY("+add(intent.statuses)+"::text[])")
+			where = append(where, "t.status=ANY("+add(func() []string {
+				if !delegations {
+					return intent.statuses
+				}
+				out := []string{}
+				for _, status := range intent.statuses {
+					switch status {
+					case "NEW", "NEEDS_CONFIRMATION":
+						out = append(out, "ASSIGNED")
+					case "POSSIBLY_COMPLETED":
+						out = append(out, "IN_REVIEW")
+					default:
+						out = append(out, status)
+					}
+				}
+				return out
+			}())+"::text[])")
 		}
 		if tasks && intent.overdue {
 			where = append(where, "t.due_at<"+add(q.now()))
@@ -211,6 +240,9 @@ func (q *request) retrieveArchive(m M) ([]M, []M) {
 				p := add(term)
 				haystack := "coalesce(e.author,'')||e.participants::text||e.semantic_index"
 				if tasks {
+					if delegations {
+						haystack += "||t.assignee_name||t.assignee_email"
+					}
 					haystack += "||coalesce(t.title,'')||coalesce(t.description,'')||coalesce(t.evidence,'')"
 				}
 				conditions = append(conditions, "strpos(lower("+haystack+"),"+p+")>0")
@@ -220,11 +252,16 @@ func (q *request) retrieveArchive(m M) ([]M, []M) {
 		return q.rows(query+" WHERE "+strings.Join(where, " AND ")+" ORDER BY "+order+fmt.Sprintf(" LIMIT %d", limit), args...)
 	}
 	events, tasks := []M{}, []M{}
-	if intent.scope != "tasks" {
-		events = retrieve(false)
+	if intent.scope != "tasks" && intent.scope != "delegations" {
+		events = retrieve(false, false)
 	}
 	if intent.scope != "events" {
-		tasks = retrieve(true)
+		if intent.scope != "delegations" {
+			tasks = retrieve(true, false)
+		}
+		if intent.scope != "tasks" {
+			tasks = append(tasks, retrieve(true, true)...)
+		}
 	}
 	return events, tasks
 }

@@ -242,7 +242,7 @@ func New(pool *pgxpool.Pool, c config.Config, version string) *Server {
 	s.route("GET /health/live", false, func(q *request) any { return M{"status": "ok", "version": s.Version} })
 	s.route("GET /health/ready", false, func(q *request) any {
 		r := q.one("SELECT version,revision FROM database_schema_version WHERE id=1")
-		if num(r, "version") < 22 {
+		if num(r, "version") < 23 {
 			fail(503, "Database schema is not ready")
 		}
 		return M{"status": "ready", "database_schema_version": r["version"], "database_schema_revision": r["revision"]}

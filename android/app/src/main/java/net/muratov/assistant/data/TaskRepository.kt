@@ -44,6 +44,11 @@ class TaskRepository(
 
     private val apiSession = ApiSession { url, alias -> ApiFactory.client(context, url, alias) }
 
+    suspend fun delegations(query: String, assignee: String, status: String, due: String, offset: Int = 0) = api().delegations(query,assignee,status,due,offset)
+    suspend fun delegation(id: String) = api().delegation(id)
+    suspend fun delegationStatus(id: String, status: String) = api().delegationStatus(id,mapOf("status" to status))
+    suspend fun relationships() = api().relationships()
+    suspend fun saveRelationships(body: net.muratov.assistant.data.remote.RelationshipsDto) = api().saveRelationships(body)
     private fun api() = apiSession.get(settings.serverUrl, settings.certificateAlias)
 
     private fun TaskDto.toEntity() = TaskEntity(

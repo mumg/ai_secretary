@@ -361,8 +361,12 @@ func (q *request) archiveAnswer(m M, emit func(string)) M {
 
 	for _, t := range tasks {
 		key := fmt.Sprintf("T%d", len(records)+1)
-		references = append(references, M{"key": key, "kind": "task", "id": t["id"], "title": t["title"], "source_label": t["source_label"], "occurred_at": nil, "snippet": bounded(str(t, "description"), 1000), "source_url": t["source_url"]})
-		records = append(records, M{"reference_id": key, "title": t["title"], "description": bounded(str(t, "description"), 2000), "status": t["status"], "due_at": t["due_at"]})
+		kind := "task"
+		if t["record_kind"] == "delegation" {
+			kind = "delegation"
+		}
+		references = append(references, M{"key": key, "kind": kind, "id": t["id"], "title": t["title"], "source_label": t["source_label"], "occurred_at": nil, "snippet": bounded(str(t, "description"), 1000), "source_url": t["source_url"]})
+		records = append(records, M{"reference_id": key, "kind": kind, "assignee_name": t["assignee_name"], "assignee_email": t["assignee_email"], "expected_result": t["expected_result"], "evidence": t["evidence"], "source_event_id": t["source_event_id"], "title": t["title"], "description": bounded(str(t, "description"), 2000), "status": t["status"], "due_at": t["due_at"]})
 	}
 	if len(records) == 0 {
 		answer := "В архиве не нашлось данных для ответа на этот вопрос."

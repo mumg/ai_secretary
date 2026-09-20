@@ -24,6 +24,7 @@
             android:name="android.window.PROPERTY_ACTIVITY_EMBEDDING_SPLITS_ENABLED"
             android:value="true" />
 
+        <activity android:name=".DelegationDetailActivity" android:exported="false" />
         <activity android:name=".setup.IdentityCaptureActivity" android:exported="false" />
 
         <activity android:name=".DetailPlaceholderActivity" android:exported="false" />

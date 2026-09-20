@@ -11,6 +11,17 @@ import retrofit2.http.Query
 import retrofit2.http.Streaming
 
 interface ImproverApi {
+    @GET("api/v1/delegations")
+    suspend fun delegations(@Query("q") query: String, @Query("assignee") assignee: String, @Query("status") status: String, @Query("due") due: String, @Query("offset") offset: Int, @Query("limit") limit: Int = 30): DelegationPage
+    @GET("api/v1/delegations/{id}")
+    suspend fun delegation(@Path("id") id: String): DelegationDto
+    @retrofit2.http.PATCH("api/v1/delegations/{id}")
+    suspend fun delegationStatus(@Path("id") id: String, @Body body: Map<String,String>): DelegationDto
+    @GET("api/v1/relationships")
+    suspend fun relationships(): RelationshipsDto
+    @PUT("api/v1/relationships")
+    suspend fun saveRelationships(@Body body: RelationshipsDto): RelationshipsDto
+
     @GET("api/v1/tasks")
     suspend fun tasks(
         @Query("order") order: String = "rank",

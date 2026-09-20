@@ -6,7 +6,11 @@
     <meta name="color-scheme" content="dark" />
     <meta name="referrer" content="no-referrer" />
     <title>AI Секретарь</title>
-    <link rel="icon" type="image/svg+xml" href="/app/assets/secretary-robot.svg" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="/app/assets/secretary-robot.svg"
+    />
     <link rel="stylesheet" href="/app/assets/app.css" />
     <link rel="stylesheet" href="/app/assets/version.css?v=1" />
     <script src="/app/assets/version.js?v=1" defer></script>
@@ -18,7 +22,14 @@
   <body>
     <header class="app-header">
       <a class="brand" href="/app/" aria-label="AI Секретарь — главная"
-        ><img class="brand-icon" src="/app/assets/secretary-robot.svg" alt="" width="32" height="32" /> AI Секретарь</a
+        ><img
+          class="brand-icon"
+          src="/app/assets/secretary-robot.svg"
+          alt=""
+          width="32"
+          height="32"
+        />
+        AI Секретарь</a
       >
       <div class="header-actions">
         <button
@@ -30,17 +41,25 @@
           ><span id="health-label">Проверка состояния</span>
         </button>
         <button id="chat-toggle" aria-pressed="false">Чат с Qwen</button>
-        <a
-          class="icon-button"
-          href="/admin"
-          title="Настройки"
+        <a class="icon-button" href="/admin" title="Настройки"
           ><span aria-hidden="true">⚙</span> Настройки</a
         >
       </div>
     </header>
-    <div id="version-notice" class="version-notice" role="status" aria-live="polite" hidden>
+    <div
+      id="version-notice"
+      class="version-notice"
+      role="status"
+      aria-live="polite"
+      hidden
+    >
       <span id="version-notice-text"></span>
-      <a href="https://github.com/mumg/ai_secretary" target="_blank" rel="noopener noreferrer">Открыть новую версию на GitHub</a>
+      <a
+        href="https://github.com/mumg/ai_secretary"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Открыть новую версию на GitHub</a
+      >
     </div>
     <div id="connection" class="connection" role="status" hidden></div>
     <main class="workspace">
@@ -48,6 +67,7 @@
         <aside class="list-pane" aria-label="Список записей">
           <nav id="tabs" aria-label="Разделы">
             <button data-tab="tasks" aria-current="page">Задачи</button
+            ><button data-tab="delegations">Поручения</button
             ><button data-tab="meetings">Встречи</button
             ><button data-tab="results">Итоги</button
             ><button data-tab="threads">Переписки</button
@@ -71,6 +91,33 @@
               /><button id="clear-search" aria-label="Очистить поиск" hidden>
                 ×
               </button>
+            </div>
+            <div id="delegation-filters" hidden>
+              <label
+                >Исполнитель
+                <select id="delegation-assignee">
+                  <option value="">Все исполнители</option>
+                </select></label
+              >
+              <label
+                >Статус
+                <select id="delegation-status">
+                  <option value="">Все статусы</option>
+                  <option value="ASSIGNED">Назначено</option>
+                  <option value="IN_PROGRESS">В работе</option>
+                  <option value="IN_REVIEW">На проверке</option>
+                  <option value="COMPLETED">Выполнено</option>
+                  <option value="CANCELLED">Отменено</option>
+                </select></label
+              >
+              <label
+                >Срок
+                <select id="delegation-due">
+                  <option value="">Все сроки</option>
+                  <option value="overdue">Просрочено</option>
+                  <option value="none">Без срока</option>
+                </select></label
+              >
             </div>
             <div class="list-meta">
               <span id="count" aria-live="polite"></span

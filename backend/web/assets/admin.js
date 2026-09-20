@@ -61,6 +61,9 @@ function populateSettings(data) {
   $("overdueSetting").hidden = false;
   $("scheduleLegend").textContent = localWeb ? "Обработка" : "Сроки";
   $("publicUrl").disabled = localWeb;
+  for (const [key, id] of [["managers", "relationshipManagers"], ["reports", "relationshipReports"]]) {
+    setValue(id, (s.relationships?.[key] || []).map(p => `${p.name} | ${p.emails.join(", ")}`).join("\n"));
+  }
   setValue("identityNames", (s.identity.names || []).join(", "));
   setValue("timezone", s.server.timezone);
   setValue("publicUrl", s.server.public_url);
@@ -101,6 +104,14 @@ async function saveSettings() {
     const fields = document.querySelectorAll("#analysis input, #notifications input");
     if (![...fields].every((field) => field.reportValidity())) return;
     const s = structuredClone(settingsState);
+    s.relationships = {};
+    for (const [key, id] of [["managers", "relationshipManagers"], ["reports", "relationshipReports"]]) {
+      s.relationships[key] = $(id).value.split("\n").filter(v => v.trim()).map(line => {
+        const [name, addresses, extra] = line.split("|");
+        if (!name?.trim() || !addresses?.trim() || extra !== undefined) throw Error("Укажите сотрудника в формате: Имя | email, второй email");
+        return {name: name.trim(), emails: addresses.split(",").map(v => v.trim()).filter(Boolean)};
+      });
+    }
     s.identity.names = csv($("identityNames").value);
     s.server.timezone = $("timezone").value.trim();
 

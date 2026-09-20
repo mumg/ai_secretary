@@ -102,7 +102,7 @@ func (c Config) Defaults() Object {
 		"worker":                Object{"poll_interval_seconds": float64(60), "batch_size": float64(10), "ranking_interval_seconds": float64(900)},
 		"notifications":         Object{"due_soon_minutes": float64(60), "overdue_repeat_hour": float64(10)},
 		"document_parser":       Object{"timeout_seconds": float64(30), "max_bytes": float64(26214400), "max_characters": float64(100000)},
-		"communication_sources": Object{"initial_sync_days": float64(30)}, "identity": Object{"names": []any{}}, "analysis_filters": Object{"stop_words": []any{}, "excluded_addresses": []any{}},
+		"communication_sources": Object{"initial_sync_days": float64(30)}, "identity": Object{"names": []any{}}, "relationships": Object{"managers": []any{}, "reports": []any{}}, "analysis_filters": Object{"stop_words": []any{}, "excluded_addresses": []any{}},
 	}
 }
 func Section(o Object, k string) Object {

@@ -401,3 +401,27 @@ test("failed analysis is shown on its thread message, not system monitoring", as
   await settle();
   assert.doesNotMatch(d.querySelector("#detail").textContent, /events_failed|chat_failed|contexts_failed|Ошибки:/);
 });
+
+test("delegations filter, search, manual acceptance, history and source links", async (t) => {
+  const api = createAPI(), original = api.handle;
+  const record = {id:"delegation1",title:"Подготовить отчёт",description:"Поставки",expected_result:"Таблица",assignee_name:"Иван",assignee_email:"ivan@example.test",status:"IN_REVIEW",due_at:null,source_event_id:"event1",evidence:"Иван, подготовь отчёт",history:[{id:"h1",new_status:"IN_REVIEW",actor:"AI",explanation:"Отчёт готов",source_event_id:"event1",created_at:new Date().toISOString()}]};
+  const calls=[];
+  api.handle=async (url,options={})=>{
+    const u=new URL(url,"http://localhost"), p=u.pathname;
+    if(!p.includes('/delegations')) return original(url,options);
+    calls.push({url:u,options});
+    if(options.method==='PATCH') { record.status=JSON.parse(options.body).status;record.history.push({id:"h2",new_status:record.status,actor:"USER",explanation:"Статус изменён пользователем",created_at:new Date().toISOString()}); }
+    return {ok:true,status:200,json:async()=>structuredClone(p.endsWith('/delegations') ? {items:[record],has_more:false,recipients:[{assignee_name:"Иван",assignee_email:"ivan@example.test"}]} : record)};
+  };
+  const {d,w}=setup(t,api);
+  await settle();click(d,'[data-tab="delegations"]');await settle();
+  assert.match(d.querySelector('#detail').textContent,/Ожидаемый результат/);
+  const assignee=d.querySelector('#delegation-assignee'); assignee.value='ivan@example.test';assignee.dispatchEvent(new w.Event('change'));await settle();
+  assert.equal(calls.at(-2).url.searchParams.get('assignee'),'ivan@example.test');
+  const search=d.querySelector('#search');search.value='поставки';search.dispatchEvent(new w.Event('input'));await new Promise(r=>setTimeout(r,500));await settle();
+  assert.ok(calls.some(c=>c.url.searchParams.get('q')==='поставки' && c.url.searchParams.get('assignee')==='ivan@example.test'));
+  click(d,'[data-delegation-status="COMPLETED"]');await settle();
+  assert.equal(record.status,'COMPLETED');assert.match(d.querySelector('#detail').textContent,/Пользователь/);
+  click(d,'#detail [data-open-kind="event"]');await settle();
+  assert.ok(api.calls.some(c=>c.path==='/events/event1'));
+});

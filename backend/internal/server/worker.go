@@ -80,7 +80,7 @@ func (s *Server) processEvent(ctx context.Context) bool {
 		// Old failures must not consume every model slot during a large import.
 		rows := q.rows("SELECT * FROM communication_events WHERE (analysis_state='PENDING' AND (next_analysis_at IS NULL OR next_analysis_at<=now())) OR (analysis_state='PROCESSING' AND updated_at<now()-interval '15 minutes') ORDER BY CASE event_type WHEN 'meeting_invitation' THEN 0 WHEN 'meeting_transcript' THEN 1 ELSE 2 END,(analysis_model IS NOT NULL),analysis_attempts,occurred_at FOR NO KEY UPDATE SKIP LOCKED LIMIT 1")
 		if len(rows) == 0 {
-			rows = q.rows(`SELECT * FROM communication_events e WHERE analysis_state='COMPLETED' AND event_type<>'meeting_invitation' AND NOT is_mailing AND (next_analysis_at IS NULL OR next_analysis_at<=now()) AND (semantic_version<2 OR NULLIF(btrim(semantic_summary),'') IS NULL OR (event_type='email' AND (mailing_version<1 OR NOT (analysis_result::jsonb ? 'task_extraction_version')))) ORDER BY occurred_at DESC FOR NO KEY UPDATE SKIP LOCKED LIMIT 1`)
+			rows = q.rows(`SELECT * FROM communication_events e WHERE analysis_state='COMPLETED' AND event_type<>'meeting_invitation' AND NOT is_mailing AND (next_analysis_at IS NULL OR next_analysis_at<=now()) AND (semantic_version<2 OR NULLIF(btrim(semantic_summary),'') IS NULL OR (event_type='email' AND (mailing_version<1 OR NOT (analysis_result::jsonb ? 'task_extraction_version') OR NOT (analysis_result::jsonb ? 'delegation_extraction_version')))) ORDER BY occurred_at ASC FOR NO KEY UPDATE SKIP LOCKED LIMIT 1`)
 		}
 		if len(rows) == 0 {
 			return false
@@ -286,12 +286,16 @@ func (q *request) analyzeEvent(event M) {
 	if event["event_type"] == "email" {
 		payload["body"] = bounded(cleanEmail(str(event, "body")), budget/2)
 	}
+	payload["relationships"] = settings["relationships"]
 	analysis := must(q.llm(str(obj(llmDefinitions, "prompts"), "analyze"), payload, "AnalysisResult", nil))
 	if str(analysis, "summary") == "" || str(analysis, "thread_summary") == "" {
 		panic(fmt.Errorf("invalid semantic analysis"))
 	}
 	mailing := obj(analysis, "mailing")
 	isMailing := event["event_type"] == "email" && boolean(mailing, "detected") && num(mailing, "confidence") >= 0.8
+	if !isMailing {
+		q.analyzeDelegations(event, payload)
+	}
 	candidates, _ := analysis["tasks"].([]any)
 	if !isMailing && event["event_type"] == "email" && boolean(assignment, "eligible") && len(candidates) == 0 {
 		focused := must(q.llm(str(obj(llmDefinitions, "prompts"), "extract_tasks"), payload, "TaskExtractionResult", nil))
@@ -324,6 +328,7 @@ func (q *request) analyzeEvent(event M) {
 	update := M{"analysis_state": "COMPLETED", "analysis_error": nil, "next_analysis_at": nil, "analysis_model": llm["model"], "analysis_result": analysis, "analyzed_at": now, "semantic_version": 2, "semantic_summary": bounded(str(analysis, "thread_summary"), 8000)}
 	analysis["assignment_signals"] = assignment
 	analysis["task_extraction_version"] = 1
+	analysis["delegation_extraction_version"] = 1
 	index := []string{str(update, "semantic_summary")}
 	for key, limit := range map[string]int{"categories": 12, "keywords": 30, "people": 30, "organizations": 20, "decisions": 20, "agreements": 20} {
 		values := stringsArray(analysis[key])
@@ -704,7 +709,7 @@ func (q *request) notify(kind, id string) int {
 		}
 	}
 	for _, device := range q.rows("SELECT fcm_token FROM devices WHERE active") {
-		body := must(json.Marshal(M{"message": M{"token": device["fcm_token"], "data": data, "android": M{"priority": "high"}}}))
+		body := must(json.Marshal(mobilePushMessage(device["fcm_token"], data)))
 		req := must(http.NewRequestWithContext(q.Context, "POST", "https://fcm.googleapis.com/v1/projects/"+str(account, "project_id")+"/messages:send", bytes.NewReader(body)))
 		req.Header.Set("Content-Type", "application/json")
 		response, e := client.Do(req)

@@ -25,7 +25,7 @@ object RealtimeState {
         }
     }
 
-    private val allowedTopics = setOf("all", "tasks", "meetings", "contexts", "results",
+    private val allowedTopics = setOf("all", "delegations", "tasks", "meetings", "contexts", "results",
         "threads", "events", "chat", "status")
 }
 

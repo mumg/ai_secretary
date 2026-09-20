@@ -180,6 +180,12 @@ func (s *Server) adminRoutes() {
 		if _, ok := m["settings"].(map[string]any); !ok {
 			fail(422, "settings must be an object")
 		}
+		if value, exists := obj(m, "settings")["relationships"]; exists {
+			if _, ok := value.(map[string]any); !ok {
+				fail(422, "relationships must be an object")
+			}
+		}
+		validateRelationships(obj(obj(m, "settings"), "relationships"))
 		previous := q.settings()
 		p := config.Merge(config.Object(q.settings()), config.Object(obj(m, "settings")))
 		if e := config.Validate(p); e != nil {
