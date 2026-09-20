@@ -1,0 +1,51 @@
+name: iOS application
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', 'backend/mobileclient/**', 'backend/cmd/iosbridge/**', 'backend/internal/mobileqr/**', 'version', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', 'backend/mobileclient/**', 'backend/cmd/iosbridge/**', 'backend/internal/mobileqr/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+    inputs:
+      ui_tests:
+        description: 'Run interactive iPhone and iPad simulator checks'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: backend/go.sum
+      - name: Test QR, mTLS and multiplexed gateway
+        run: go -C backend test -race ./mobileclient ./cmd/iosbridge
+      - name: Build iOS simulator app
+        run: python3 ios/build.py
+      - name: Select available simulators
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, os
+          data = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '-j']))
+          devices = [d for group in data['devices'].values() for d in group]
+          with open(os.environ['GITHUB_ENV'], 'a') as out:
+              for key, prefix in [('PHONE', 'iPhone'), ('TABLET', 'iPad')]:
+                  out.write(key + '=' + next(d['udid'] for d in devices if d['name'].startswith(prefix)) + '\n')
+          PY
+      - name: Test native models and bridge
+        run: xcodebuild -project ios/Secretary.xcodeproj -scheme Secretary -destination "platform=iOS Simulator,id=$PHONE" -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO -only-testing:SecretaryTests test
+      - name: Test adaptive iPhone and iPad UI
+        if: github.event_name == 'workflow_dispatch' && inputs.ui_tests
+        run: |
+          xcodebuild -project ios/Secretary.xcodeproj -scheme Secretary -destination "platform=iOS Simulator,id=$PHONE" -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO -only-testing:SecretaryUITests test
+          xcodebuild -project ios/Secretary.xcodeproj -scheme Secretary -destination "platform=iOS Simulator,id=$TABLET" -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO -only-testing:SecretaryUITests test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator
+          path: ios/build/Build/Products/Debug-iphonesimulator/AISecretary.app
+          retention-days: 14
