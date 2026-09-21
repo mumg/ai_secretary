@@ -92,8 +92,15 @@ function savedModelProvider(llm) {
   }
   return provider;
 }
+let localOllamaRuntime = null;
+function setLocalOllamaRuntime(runtime) { localOllamaRuntime = runtime; }
 function localOllamaInUse() {
-  return Boolean(settingsState?.llm && savedModelProvider(settingsState.llm) === "local");
+  if (!settingsState?.llm || savedModelProvider(settingsState.llm) !== "local" || !localOllamaRuntime?.available) return false;
+  const canonical = model => typeof model === "string" ? (model.includes(":") ? model : model + ":latest") : "";
+  const selected = canonical(settingsState.llm.model);
+  const installed = localOllamaRuntime.installedModels || [];
+  const loaded = (localOllamaRuntime.models || []).map(model => model.name);
+  return Boolean(selected && [...installed, ...loaded].some(model => canonical(model) === selected));
 }
 function renderModelSettings() {
   const provider = $("llmProvider").value;

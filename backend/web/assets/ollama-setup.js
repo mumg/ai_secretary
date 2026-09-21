@@ -111,7 +111,13 @@
   }
   window.addEventListener('message', event => {
     if (event.source !== window || event.origin !== location.origin || event.data?.channel !== channel || event.data?.from !== 'desktop' || !event.data.state) return;
-    if (event.data.state.runtimeOnly) { renderRuntime(event.data.state.runtime); return; }
+    if (event.data.state.runtimeOnly) {
+      setLocalOllamaRuntime(event.data.state.runtime);
+      connected = localOllamaInUse();
+      renderRuntime(event.data.state.runtime);
+      render(); scheduleInspection();
+      return;
+    }
     if (!state && event.data.state.selected) {
       el("localOllamaModel").value=event.data.state.selected.model; el("localOllamaContext").value=event.data.state.selected.contextLength;
     }
@@ -167,6 +173,7 @@
       settingsState = result.settings;
       setValue('llmProvider', 'local'); setValue('llmUrl', llm.base_url);
       setValue('llmModel', llm.model); setValue('contextLength', llm.context_length);
+      setLocalOllamaRuntime({ available: true, installedModels: [llm.model], models: [] });
       connected = true;
       toast(tr('Локальная модель подключена.')); loadStatus();
     } catch (error) { toast(error.message, true); }

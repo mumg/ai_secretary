@@ -14,13 +14,47 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: windows-installer
+  group: windows-installer-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.mode.outputs.publish }}
+      source_run: ${{ steps.reuse.outputs.run_id }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate release version
+        id: mode
+        env:
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          python3 windows/build.py --check-version
+          release_version="$(tr -d '\r\n' < version)"
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF" != "refs/tags/windows-v$release_version" ]]; then
+            echo 'Windows tag must match root version'; exit 1
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" != refs/heads/main ]]; then
+            echo 'Publish only from main'; exit 1
+          fi
+          publish=false
+          if [[ "$PUBLISH" == true || "$GITHUB_REF" == refs/tags/windows-v* ]]; then publish=true; fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+      - name: Find a tested installer for this commit
+        id: reuse
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await require('./windows/find-artifact.cjs')({ github, context, core });
+
   build:
+    needs: prepare
+    if: needs.prepare.outputs.source_run == ''
     runs-on: windows-2022
     timeout-minutes: 45
     steps:
@@ -40,14 +74,6 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: macos/package-lock.json
-      - name: Validate release version
-        shell: pwsh
-        run: |
-          python windows/build.py --check-version
-          if ($LASTEXITCODE -ne 0) { throw 'Release versions are inconsistent' }
-          $Version = (Get-Content version -Raw).Trim()
-          if ($env:GITHUB_REF.StartsWith('refs/tags/') -and $env:GITHUB_REF -ne "refs/tags/windows-v$Version") { throw 'Windows tag must match root version' }
-          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:GITHUB_REF -ne 'refs/heads/main') { throw 'Publish only from main' }
       - name: Install Electron tooling and test SSO isolation
         shell: pwsh
         run: |
@@ -55,6 +81,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Electron dependencies failed' }
           npm test --prefix macos
           if ($LASTEXITCODE -ne 0) { throw 'Electron/SSO tests failed' }
+          node --test windows/tests/artifact.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Artifact reuse tests failed' }
       - name: Go document parser tests on Windows
         working-directory: document-parser
         shell: pwsh
@@ -92,26 +120,41 @@ jobs:
       - name: Verify installation, services, shortcuts and data preservation (Server 2022)
         shell: pwsh
         run: ./windows/smoke-test.ps1
+      - name: Record tested installer provenance
+        shell: pwsh
+        run: |
+          python windows/artifact.py create --sha $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Installer provenance creation failed' }
       - uses: actions/upload-artifact@v7
         with:
-          name: windows-installer
+          name: windows-installer-tested
           path: |
             dist/windows/AI-Secretary-Setup-*-windows-x64.exe
             dist/windows/SHA256SUMS
+            dist/windows/artifact.json
+          if-no-files-found: error
           retention-days: 14
 
   publish:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/windows-v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    needs: [prepare, build]
+    if: >-
+      always() && !cancelled() && needs.prepare.result == 'success' &&
+      needs.prepare.outputs.publish == 'true' &&
+      (needs.build.result == 'success' || (needs.build.result == 'skipped' && needs.prepare.outputs.source_run != ''))
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v8
         with:
-          name: windows-installer
+          name: windows-installer-tested
           path: dist/windows
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.prepare.outputs.source_run || github.run_id }}
+      - name: Verify commit, version and installer checksum
+        run: python3 windows/artifact.py verify --sha "$GITHUB_SHA"
       - name: Publish tested installer
         env:
           GH_TOKEN: ${{ github.token }}
@@ -119,4 +162,4 @@ jobs:
           set -euo pipefail
           version="$(cat version | tr -d '\r\n')"
           tag="windows-v$version"
-          gh release create "$tag" dist/windows/* --target "$GITHUB_SHA" --title "Windows $version" --notes "Установщик AI Секретаря для Windows x64. Включает Go-бинарники, PostgreSQL и службы Windows; Python не требуется. Настройка через мастер; Docker не требуется. См. windows/README.md. EXE пока не подписан сертификатом Authenticode." --latest=false
+          gh release create "$tag" "dist/windows/AI-Secretary-Setup-$version-windows-x64.exe" dist/windows/SHA256SUMS --target "$GITHUB_SHA" --title "Windows $version" --notes "Установщик AI Секретаря для Windows x64. Включает Go-бинарники, PostgreSQL и службы Windows; Python не требуется. Настройка через мастер; Docker не требуется. См. windows/README.md. EXE пока не подписан сертификатом Authenticode." --latest=false

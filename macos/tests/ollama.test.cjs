@@ -208,6 +208,7 @@ test('runtime status reports actual loaded model memory and clears stale data wh
   const manager=new OllamaManager({fetcher:async url=>{
     if(offline)throw Error('offline');
     if(url.endsWith('/api/version'))return version(true);
+    if(url.endsWith('/api/tags'))return new Response(JSON.stringify({models:[{name:'qwen3:4b'}]}));
     assert.ok(url.endsWith('/api/ps'));
     if(psFailure)throw Error('ps unavailable');
     return new Response(JSON.stringify({models:[{name:'qwen3:4b',size:4*GiB,size_vram:3*GiB,context_length:8192,details:{quantization_level:'Q4_K_M'}}]}));
@@ -215,6 +216,7 @@ test('runtime status reports actual loaded model memory and clears stale data wh
   let status=await manager.runtimeStatus();
   assert.equal(status.available,true);assert.equal(status.models[0].sizeVRAM,3*GiB);
   assert.equal(status.models[0].contextLength,8192);assert.equal(status.models[0].quantization,'Q4_K_M');
+  assert.deepEqual(status.installedModels,['qwen3:4b']);
   psFailure=true;status=await manager.runtimeStatus();assert.equal(status.available,true);assert.equal(status.models,null);
   offline=true;status=await manager.runtimeStatus();assert.equal(status.available,false);assert.equal(status.models,null);
 });

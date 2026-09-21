@@ -131,6 +131,7 @@ test('saved local connection stays locked until another LLM is saved, including 
   const local={provider:'ollama',base_url:'http://127.0.0.1:11434',model:'qwen3:4b',context_length:8192};
   w.eval('settingsState = '+JSON.stringify({llm:local}));
   receive({});
+  receive({runtimeOnly:true,runtime:{available:true,installedModels:['qwen3:4b'],models:[]}});
   assert.equal(el('localOllamaUse').disabled,true);
   assert.match(el('localOllamaStatus').textContent,/подключена/);
   el('localOllamaModel').value='qwen3:8b';
@@ -165,4 +166,28 @@ test('runtime panel renders live CPU/GPU allocation safely without changing setu
   assert.equal(el('localOllamaRuntimeVersion').textContent,'');
   assert.equal(el('localOllamaRuntimeModels').textContent,'');
   assert.match(el('localOllamaRuntimeStatus').textContent,/не отвечает/);
+});
+
+
+test('fresh desktop defaults do not claim a connection or lock installation without the configured model', t => {
+  const {w,el,receive}=setup(t);
+  w.eval('settingsState = {llm:{provider:"ollama",base_url:"http://127.0.0.1:11434",model:"qwen3:4b"}}');
+  receive({});
+  for (const runtime of [
+    {available:false,models:null,installedModels:null},
+    {available:true,models:[],installedModels:[]},
+    {available:true,models:[],installedModels:['other:latest']},
+    {available:true,models:[],installedModels:null},
+  ]) {
+    receive({runtimeOnly:true,runtime});
+    assert.doesNotMatch(el('localOllamaStatus').textContent,/подключена/);
+    assert.equal(el('localOllamaUse').disabled,false);
+    assert.equal(el('localOllamaProgressGroup').hidden,true);
+  }
+  receive({runtimeOnly:true,runtime:{available:true,models:[],installedModels:['qwen3:4b']}});
+  assert.match(el('localOllamaStatus').textContent,/подключена/);
+  assert.equal(el('localOllamaUse').disabled,true);
+  receive({runtimeOnly:true,runtime:{available:false,models:null,installedModels:null}});
+  assert.doesNotMatch(el('localOllamaStatus').textContent,/подключена/);
+  assert.equal(el('localOllamaUse').disabled,false);
 });

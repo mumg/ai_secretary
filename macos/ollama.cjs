@@ -179,7 +179,7 @@ class OllamaManager extends EventEmitter {
       try {
         const version = await get('/api/version');
         if (typeof version.version !== 'string') throw Error('version');
-        const runtime = { available: true, version: version.version.slice(0, 80), endpoint, models: null };
+        const runtime = { available: true, version: version.version.slice(0, 80), endpoint, models: null, installedModels: null };
         try {
           const result = await get('/api/ps');
           if (!Array.isArray(result.models)) throw Error('models');
@@ -191,8 +191,14 @@ class OllamaManager extends EventEmitter {
             quantization: typeof model.details?.quantization_level === 'string' ? model.details.quantization_level.slice(0, 32) : null,
           }));
         } catch { /* Version is available even when model telemetry is not. */ }
+        try {
+          const result = await get('/api/tags');
+          if (!Array.isArray(result.models)) throw Error('models');
+          runtime.installedModels = result.models.slice(0, 1000)
+            .map(model => model.name || model.model).filter(name => typeof name === 'string').map(name => name.slice(0, 160));
+        } catch { /* A running server alone does not confirm that the chosen model exists. */ }
         return runtime;
-      } catch { return { available: false, endpoint, models: null }; }
+      } catch { return { available: false, endpoint, models: null, installedModels: null }; }
     })();
     try { return await this.runtimePending; } finally { this.runtimePending = null; }
   }

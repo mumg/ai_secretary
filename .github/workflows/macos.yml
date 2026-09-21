@@ -20,33 +20,21 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: macos-${{ github.ref }}
+  group: macos-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: macos-15
-    timeout-minutes: 120
+  prepare:
+    runs-on: ubuntu-latest
     outputs:
       signed: ${{ steps.signing-mode.outputs.signed }}
+      publish: ${{ steps.signing-mode.outputs.publish }}
+      source_run: ${{ steps.reuse.outputs.run_id }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.26.0'
-          cache-dependency-path: |
-            backend/go.sum
-            document-parser/go.sum
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: macos/package-lock.json
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
       - name: Validate release tag
         env:
           PUBLISH: ${{ inputs.publish }}
@@ -63,7 +51,40 @@ jobs:
             if [[ "$SIGN" != true ]]; then echo 'Publishing requires signing and notarization'; exit 1; fi
           fi
           echo "signed=$SIGN" >> "$GITHUB_OUTPUT"
-          echo "MACOS_REQUIRE_SIGNING=$SIGN" >> "$GITHUB_ENV"
+          publish=false
+          if [[ "$PUBLISH" == true || "$GITHUB_REF" == refs/tags/macos-v* ]]; then publish=true; fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+      - name: Find a tested signed DMG for this commit
+        if: steps.signing-mode.outputs.signed == 'true'
+        id: reuse
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await require('./macos/find-artifact.cjs')({ github, context, core });
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.source_run == ''
+    env:
+      MACOS_REQUIRE_SIGNING: ${{ needs.prepare.outputs.signed }}
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: |
+            backend/go.sum
+            document-parser/go.sum
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: macos/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
       - uses: actions/cache@v4
         with:
           path: |
@@ -80,7 +101,7 @@ jobs:
           go -C backend test ./...
           go -C document-parser test ./...
       - name: Import Developer ID and validate Apple credentials
-        if: steps.signing-mode.outputs.signed == 'true'
+        if: needs.prepare.outputs.signed == 'true'
         env:
           MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -96,16 +117,20 @@ jobs:
           macos/node_modules/.bin/electron macos/sso-smoke.cjs
       - name: Smoke test services from the packaged application
         run: node macos/smoke-test.cjs 'dist/macos/mac-universal/AI Secretary.app/Contents/Resources/server'
+      - name: Record signed artifact provenance
+        if: needs.prepare.outputs.signed == 'true'
+        run: python3 macos/artifact.py create --sha "$GITHUB_SHA"
       - uses: actions/upload-artifact@v7
         with:
-          name: macos-universal-dmg
+          name: ${{ needs.prepare.outputs.signed == 'true' && 'macos-universal-dmg-signed' || 'macos-universal-dmg' }}
           path: |
             dist/macos/AI-Secretary-*-mac-universal.dmg
             dist/macos/SHA256SUMS
+            dist/macos/artifact.json
           if-no-files-found: error
           retention-days: 14
       - name: Upload notarization diagnostics
-        if: always() && steps.signing-mode.outputs.signed == 'true'
+        if: always() && needs.prepare.outputs.signed == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: macos-notarization-logs
@@ -113,21 +138,29 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Remove signing keychain
-        if: always() && steps.signing-mode.outputs.signed == 'true'
+        if: always() && needs.prepare.outputs.signed == 'true'
         run: python3 macos/ci-signing.py cleanup
 
   publish:
-    needs: build
-    if: needs.build.outputs.signed == 'true' && (startsWith(github.ref, 'refs/tags/macos-v') || (github.event_name == 'workflow_dispatch' && inputs.publish))
+    needs: [prepare, build]
+    if: >-
+      always() && !cancelled() && needs.prepare.result == 'success' &&
+      needs.prepare.outputs.publish == 'true' && needs.prepare.outputs.signed == 'true' &&
+      (needs.build.result == 'success' || (needs.build.result == 'skipped' && needs.prepare.outputs.source_run != ''))
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v8
         with:
-          name: macos-universal-dmg
+          name: macos-universal-dmg-signed
           path: dist/macos
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.prepare.outputs.source_run || github.run_id }}
+      - name: Verify commit, version and DMG checksum
+        run: python3 macos/artifact.py verify --sha "$GITHUB_SHA"
       - name: Publish tested DMG
         env:
           GH_TOKEN: ${{ github.token }}
