@@ -1,0 +1,32 @@
+{
+  "version": "0.7.19",
+  "captured_on": "2026-09-21T09:16:55.344Z",
+  "renderer": "Chromium 152.0.7977.130",
+  "data": "synthetic web fixtures; real status WebSocket",
+  "screenshots": [
+    {
+      "file": "tasks.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "e8417becf08c9fd49464bb49b6bbcb1f53748f31436b257e6767213495197eb2"
+    },
+    {
+      "file": "meeting-context.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "311d311edcc629f4836e2a76f93e60b9918ddf743fc0bd27a3fa1d638ddbd259"
+    },
+    {
+      "file": "chat.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "24d533a71c11d4e345eb6fb5d7268e25b154f870e3d93ec75982a9f658ec56f9"
+    },
+    {
+      "file": "status.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "a6218eb295e1c7e52c74ed2fb887e00299067f228846d4364036e162dc417c26"
+    }
+  ]
+}

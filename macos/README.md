@@ -216,3 +216,10 @@ python3 macos/build.py
 Использованные механизмы: [launchd от Apple](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html),
 [защита Electron](https://www.electronjs.org/docs/latest/tutorial/security),
 [Postgres.app universal binaries](https://postgresapp.com/downloads.html).
+
+## Дополнительная локальная Ollama
+
+Ollama можно установить позже из **Настройки → Модель → Локальная Ollama**.
+Установка выполняется в профиль пользователя после инспекции компьютера;
+модель загружается отдельно и проверяется до переключения рабочего LLM.
+[Сценарий, требования и пользовательский LaunchAgent](../OLLAMA.md).

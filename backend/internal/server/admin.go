@@ -13,7 +13,7 @@ import (
 	"golang.org/x/text/cases"
 )
 
-const mtsPattern = `^https://mts\.mts-link\.ru/j/MTC/(?P<meeting_id>\d+)(?:/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$`
+const mtsPattern = config.MTSLinkPattern
 
 var sourceID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
 
@@ -23,7 +23,7 @@ func (q *request) sourceRead(row M, external bool) M {
 	if external {
 		return project("ExternalTaskSourceRead", row)
 	}
-	row["credential_configured"] = str(row, "credential_encrypted") != ""
+	row["credential_configured"] = str(row, "credential_encrypted") != "" || q.fileSourceCredential(row) != ""
 	row["refresh_token_configured"] = false
 	if str(row, "source_type") == "mts_link" && str(row, "credential_encrypted") != "" {
 		plain := must(q.server.Config.Decrypt(str(row, "credential_encrypted")))
@@ -97,6 +97,10 @@ func (q *request) saveSource(m M, existing M) M {
 	credential := str(m, "credential")
 	if credential == "" && existing != nil {
 		credential = str(existing, "credential_encrypted")
+		if credential == "" {
+			candidate := M{"id": id, "source_type": m["source_type"], "settings": settings, "preconfigured": existing["preconfigured"]}
+			credential = q.fileSourceCredential(candidate)
+		}
 	}
 	if boolean(m, "enabled") {
 		required := map[string][]string{"imap": {"host", "port", "username"}, "exchange": {"ews_url", "primary_smtp_address", "username"}, "mts_link": {"base_url"}}
@@ -164,10 +168,10 @@ func validatePatterns(value any) {
 func (q *request) settingsRead() M {
 	settings := q.settings()
 	rows := q.rows("SELECT * FROM system_settings WHERE id=1")
-	firebase, key := false, false
+	firebase, key := false, q.fileLLMKey() != ""
 	if len(rows) > 0 {
 		firebase = str(rows[0], "firebase_credentials_encrypted") != ""
-		key = str(obj(rows[0], "payload"), "llm_api_key_encrypted") != ""
+		key = str(obj(rows[0], "payload"), "llm_api_key_encrypted") != "" || (key && !boolean(obj(rows[0], "payload"), "llm_api_key_cleared"))
 	}
 	return M{"settings": settings, "local_web_only": q.server.Config.LocalOnly, "firebase_configured": firebase, "llm_api_key_configured": key, "filter_reconciliation": nil, "identity_requeued": nil}
 }
@@ -195,10 +199,14 @@ func (s *Server) adminRoutes() {
 			delete(config.Section(p, pair[0]), pair[1])
 		}
 		rows := q.rows("SELECT * FROM system_settings WHERE id=1 FOR UPDATE")
-		v := M{"payload": p}
+		delta := config.Difference(q.server.Config.Defaults(), p)
+		v := M{"payload": delta}
 		if len(rows) > 0 {
 			if key := str(obj(rows[0], "payload"), "llm_api_key_encrypted"); key != "" {
-				p["llm_api_key_encrypted"] = key
+				delta["llm_api_key_encrypted"] = key
+			}
+			if boolean(obj(rows[0], "payload"), "llm_api_key_cleared") {
+				delta["llm_api_key_cleared"] = true
 			}
 		}
 		key := strings.TrimSpace(str(m, "llm_api_key"))
@@ -214,10 +222,12 @@ func (s *Server) adminRoutes() {
 					fail(422, "Invalid API_KEY")
 				}
 			}
-			p["llm_api_key_encrypted"] = must(q.server.Config.Encrypt(key))
+			delta["llm_api_key_encrypted"] = must(q.server.Config.Encrypt(key))
+			delete(delta, "llm_api_key_cleared")
 		}
 		if boolean(m, "clear_llm_api_key") {
-			delete(p, "llm_api_key_encrypted")
+			delete(delta, "llm_api_key_encrypted")
+			delta["llm_api_key_cleared"] = true
 		}
 		if firebase := str(m, "firebase_credentials_json"); firebase != "" {
 			var account M
@@ -260,8 +270,12 @@ func (s *Server) adminRoutes() {
 	})
 	s.route("DELETE /api/v1/admin/sources/{source}", true, func(q *request) any {
 		id := q.r.PathValue("source")
-		q.get("communication_sources", id)
-		q.exec("DELETE FROM communication_sources WHERE id=$1", id)
+		row := q.get("communication_sources", id)
+		if boolean(row, "preconfigured") {
+			q.exec("UPDATE communication_sources SET configuration_deleted=true,enabled=false WHERE id=$1", id)
+		} else {
+			q.exec("DELETE FROM communication_sources WHERE id=$1", id)
+		}
 		q.exec("DELETE FROM daily_plans")
 		q.status = 204
 		return nil

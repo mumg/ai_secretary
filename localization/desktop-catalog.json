@@ -1,0 +1,290 @@
+{
+  "Локальная Ollama": {
+    "en": "Local Ollama",
+    "zh": "本地 Ollama"
+  },
+  "Дополнительный компонент: можно установить в любой момент без переустановки AI Секретаря. Права администратора не нужны.": {
+    "en": "Optional component: install at any time without reinstalling AI Secretary. No administrator privileges required.",
+    "zh": "可选组件：无需重新安装 AI 秘书，随时可安装。无需管理员权限。"
+  },
+  "Модель для локального запуска": {
+    "en": "Model to run locally",
+    "zh": "本地运行的模型"
+  },
+  "Контекст локальной модели": {
+    "en": "Local model context",
+    "zh": "本地模型上下文"
+  },
+  "Сначала проверьте совместимость компьютера.": {
+    "en": "Check computer compatibility first.",
+    "zh": "请先检查计算机兼容性。"
+  },
+  "Прогресс установки Ollama": {
+    "en": "Ollama installation progress",
+    "zh": "Ollama 安装进度"
+  },
+  "Проверить компьютер": {
+    "en": "Check computer",
+    "zh": "检查计算机"
+  },
+  "Установить Ollama": {
+    "en": "Install Ollama",
+    "zh": "安装 Ollama"
+  },
+  "Загрузить модель": {
+    "en": "Download model",
+    "zh": "下载模型"
+  },
+  "Использовать локально": {
+    "en": "Use locally",
+    "zh": "使用本地模型"
+  },
+  "Отменить загрузку": {
+    "en": "Cancel download",
+    "zh": "取消下载"
+  },
+  "Текущий LLM продолжит работать до нажатия «Использовать локально». Ollama и модель загружаются отдельно.": {
+    "en": "Your current LLM remains active until you choose “Use locally”. Ollama and the model are downloaded separately.",
+    "zh": "点击“使用本地模型”之前，当前 LLM 将继续工作。Ollama 和模型需分别下载。"
+  },
+  "Локальная установка поддерживается только в Windows и macOS.": {
+    "en": "Local installation is supported on Windows and macOS only.",
+    "zh": "仅 Windows 和 macOS 支持本地安装。"
+  },
+  "Нужен 64-битный процессор x64 или ARM64.": {
+    "en": "A 64-bit x64 or ARM64 processor is required.",
+    "zh": "需要 64 位 x64 或 ARM64 处理器。"
+  },
+  "Для этой версии Ollama требуется macOS 14 или новее.": {
+    "en": "This Ollama version requires macOS 14 or later.",
+    "zh": "此版本 Ollama 需要 macOS 14 或更高版本。"
+  },
+  "Требуется Windows 10 22H2 или новее.": {
+    "en": "Windows 10 22H2 or later is required.",
+    "zh": "需要 Windows 10 22H2 或更高版本。"
+  },
+  "Для локального анализа на x64 требуется процессор с AVX2.": {
+    "en": "Local analysis on x64 requires a processor with AVX2.",
+    "zh": "x64 本地分析需要支持 AVX2 的处理器。"
+  },
+  "Для локального анализа нужны минимум 4 логических ядра.": {
+    "en": "Local analysis requires at least 4 logical CPU cores.",
+    "zh": "本地分析至少需要 4 个逻辑处理器核心。"
+  },
+  "Нужно не менее {0} ГиБ оперативной памяти.": {
+    "en": "At least {0} GiB of RAM is required.",
+    "zh": "至少需要 {0} GiB 内存。"
+  },
+  "Для выбранной модели и контекста нужно примерно {0} ГиБ оперативной памяти. Выберите меньшую модель или контекст.": {
+    "en": "The selected model and context need approximately {0} GiB of RAM. Choose a smaller model or context.",
+    "zh": "所选模型和上下文约需 {0} GiB 内存。请选择更小的模型或上下文。"
+  },
+  "Не удалось проверить размер модели в каталоге Ollama. Проверьте название модели и доступ к интернету.": {
+    "en": "Could not verify the model size in the Ollama registry. Check the model name and internet connection.",
+    "zh": "无法在 Ollama 目录中验证模型大小。请检查模型名称和网络连接。"
+  },
+  "Не удалось определить свободное место на диске. Установка заблокирована.": {
+    "en": "Could not determine free disk space. Installation is blocked.",
+    "zh": "无法确定磁盘可用空间。已阻止安装。"
+  },
+  "Для установки и модели нужно {0} ГиБ свободного места на диске; доступно {1} ГиБ.": {
+    "en": "Installation and the model require {0} GiB of free disk space; {1} GiB is available.",
+    "zh": "安装和模型需要 {0} GiB 磁盘空间；当前可用 {1} GiB。"
+  },
+  "Без совместимого GPU анализ может выполняться медленно. Видеопамять не прибавляется к оперативной памяти.": {
+    "en": "Analysis may be slow without a compatible GPU. GPU memory is not added to system RAM.",
+    "zh": "没有兼容 GPU 时分析可能较慢。显存不计入系统内存。"
+  },
+  "Расход памяти модели рассчитан с запасом. Перед переключением будет выполнен пробный запуск.": {
+    "en": "Model memory requirements include a safety margin. A trial run is required before switching.",
+    "zh": "模型内存估算包含余量。切换前需进行试运行。"
+  },
+  "Проверка компьютера и требований модели…": {
+    "en": "Checking computer and model requirements…",
+    "zh": "正在检查计算机和模型要求…"
+  },
+  "Проверка пройдена. Можно продолжить.": {
+    "en": "Checks passed. You can continue.",
+    "zh": "检查通过，可以继续。"
+  },
+  "Установка недоступна: требования не выполнены.": {
+    "en": "Installation unavailable: requirements are not met.",
+    "zh": "无法安装：未满足要求。"
+  },
+  "Загрузка Ollama…": {
+    "en": "Downloading Ollama…",
+    "zh": "正在下载 Ollama…"
+  },
+  "Установка Ollama в профиль пользователя…": {
+    "en": "Installing Ollama for the current user…",
+    "zh": "正在为当前用户安装 Ollama…"
+  },
+  "Запуск Ollama…": {
+    "en": "Starting Ollama…",
+    "zh": "正在启动 Ollama…"
+  },
+  "Ollama запущена. Загрузите и проверьте выбранную модель.": {
+    "en": "Ollama is running. Download and test the selected model.",
+    "zh": "Ollama 已启动。请下载并测试所选模型。"
+  },
+  "Загрузка модели…": {
+    "en": "Downloading model…",
+    "zh": "正在下载模型…"
+  },
+  "Пробный запуск модели…": {
+    "en": "Testing the model…",
+    "zh": "正在试运行模型…"
+  },
+  "Модель проверена и готова к использованию.": {
+    "en": "The model passed its test and is ready to use.",
+    "zh": "模型测试通过，可以使用。"
+  },
+  "Загрузка отменена. Текущий LLM не изменён.": {
+    "en": "Download cancelled. The current LLM is unchanged.",
+    "zh": "下载已取消。当前 LLM 未更改。"
+  },
+  "Не удалось завершить операцию. Можно повторить попытку.": {
+    "en": "The operation could not be completed. You can retry.",
+    "zh": "无法完成操作，请重试。"
+  },
+  "Укажите название модели из каталога Ollama, например qwen3:4b.": {
+    "en": "Enter a model name from the Ollama registry, such as qwen3:4b.",
+    "zh": "请输入 Ollama 目录中的模型名称，例如 qwen3:4b。"
+  },
+  "Контекст должен быть от 4096 до 131072 токенов.": {
+    "en": "Context must be between 4096 and 131072 tokens.",
+    "zh": "上下文长度必须在 4096 到 131072 个 token 之间。"
+  },
+  "Не удалось проверить компьютер. Установка заблокирована.": {
+    "en": "Could not inspect the computer. Installation is blocked.",
+    "zh": "无法检查计算机。已阻止安装。"
+  },
+  "Проверка загруженного файла не пройдена. Файл не запускался.": {
+    "en": "Downloaded file verification failed. The file was not executed.",
+    "zh": "下载文件验证失败。未执行该文件。"
+  },
+  "Не удалось загрузить Ollama. Проверьте соединение и повторите попытку.": {
+    "en": "Could not download Ollama. Check your connection and try again.",
+    "zh": "无法下载 Ollama。请检查连接后重试。"
+  },
+  "Установка в профиль пользователя не завершена. Проверьте доступ к папке пользователя.": {
+    "en": "Installation for the current user did not complete. Check access to the user folder.",
+    "zh": "当前用户安装未完成。请检查用户文件夹的访问权限。"
+  },
+  "Ollama ещё не установлена.": {
+    "en": "Ollama is not installed yet.",
+    "zh": "尚未安装 Ollama。"
+  },
+  "Сначала запустите Ollama.": {
+    "en": "Start Ollama first.",
+    "zh": "请先启动 Ollama。"
+  },
+  "Ollama установлена, но не ответила вовремя. Повторите запуск.": {
+    "en": "Ollama is installed but did not respond in time. Try starting it again.",
+    "zh": "Ollama 已安装但未及时响应。请尝试重新启动。"
+  },
+  "Не удалось загрузить модель. Проверьте соединение и свободное место.": {
+    "en": "Could not download the model. Check your connection and free disk space.",
+    "zh": "无法下载模型。请检查连接和可用磁盘空间。"
+  },
+  "Пробный запуск модели не удался. Выберите меньшую модель или контекст.": {
+    "en": "The model test failed. Choose a smaller model or context.",
+    "zh": "模型试运行失败。请选择更小的模型或上下文。"
+  },
+  "Ollama запущена": {
+    "en": "Ollama is running",
+    "zh": "Ollama 已启动"
+  },
+  "Запустить Ollama": {
+    "en": "Start Ollama",
+    "zh": "启动 Ollama"
+  },
+  "Память: {0} ГиБ · Логических ядер: {1} · Модель: {2} ГиБ": {
+    "en": "RAM: {0} GiB · Logical cores: {1} · Model: {2} GiB",
+    "zh": "内存：{0} GiB · 逻辑核心：{1} · 模型：{2} GiB"
+  },
+  "Локальная модель подключена.": {
+    "en": "Local model connected.",
+    "zh": "已连接本地模型。"
+  },
+  "Подключение модели": {
+    "en": "Model connection",
+    "zh": "模型连接"
+  },
+  "Адрес сервера Ollama, например http://localhost:11434": {
+    "en": "Ollama server address, for example http://localhost:11434",
+    "zh": "Ollama 服务器地址，例如 http://localhost:11434"
+  },
+  "Для OpenAI укажите https://api.openai.com/v1 или URL совместимого API.": {
+    "en": "For OpenAI, enter https://api.openai.com/v1 or a compatible API URL.",
+    "zh": "对于 OpenAI，请输入 https://api.openai.com/v1 或兼容的 API 地址。"
+  },
+  "Для установки локальной Ollama откройте настройки в приложении AI Секретарь для macOS или Windows.": {
+    "en": "To install local Ollama, open settings in the AI Secretary app for macOS or Windows.",
+    "zh": "要安装本地 Ollama，请在 macOS 或 Windows 版 AI 秘书应用中打开设置。"
+  },
+  "Проверим компьютер автоматически. Затем установим Ollama, загрузим модель и подключим её одной кнопкой.": {
+    "en": "We will check your computer automatically. Then install Ollama, download the model and connect it with one button.",
+    "zh": "我们将自动检查电脑。然后只需点击一个按钮，即可安装 Ollama、下载模型并连接。"
+  },
+  "Текущая модель продолжит работать до завершения установки и проверки локальной модели.": {
+    "en": "Your current model will keep working until the local model is installed and verified.",
+    "zh": "在本地模型安装并验证完成之前，当前模型将继续运行。"
+  },
+  "Подключение локальной модели…": {
+    "en": "Connecting the local model…",
+    "zh": "正在连接本地模型…"
+  },
+  "Повторить проверку": {
+    "en": "Retry check",
+    "zh": "重新检查"
+  },
+  "Работающая Ollama": {
+    "en": "Running Ollama",
+    "zh": "运行中的 Ollama"
+  },
+  "Получение параметров Ollama…": {
+    "en": "Reading Ollama status…",
+    "zh": "正在读取 Ollama 状态…"
+  },
+  "Ollama не отвечает": {
+    "en": "Ollama is not responding",
+    "zh": "Ollama 无响应"
+  },
+  "Ollama работает. Параметры моделей недоступны.": {
+    "en": "Ollama is running. Model details are unavailable.",
+    "zh": "Ollama 正在运行，模型信息不可用。"
+  },
+  "Ollama работает": {
+    "en": "Ollama is running",
+    "zh": "Ollama 正在运行"
+  },
+  "Ollama работает. Модели пока не загружены в память.": {
+    "en": "Ollama is running. No models are loaded into memory yet.",
+    "zh": "Ollama 正在运行，尚未有模型加载到内存中。"
+  },
+  "Версия: {0} · Адрес: {1}": {
+    "en": "Version: {0} · Address: {1}",
+    "zh": "版本：{0} · 地址：{1}"
+  },
+  "{0} ГиБ": {
+    "en": "{0} GiB",
+    "zh": "{0} GiB"
+  },
+  "Нет данных": {
+    "en": "No data",
+    "zh": "无数据"
+  },
+  "Размещение модели: {0}": {
+    "en": "Model placement: {0}",
+    "zh": "模型分配：{0}"
+  },
+  "Память: {0} · На GPU: {1}": {
+    "en": "Memory: {0} · On GPU: {1}",
+    "zh": "内存：{0} · GPU：{1}"
+  },
+  "Контекст: {0} · Квантизация: {1}": {
+    "en": "Context: {0} · Quantization: {1}",
+    "zh": "上下文：{0} · 量化：{1}"
+  }
+}

@@ -230,6 +230,7 @@ func (e *Engine) configure(proposed Options) {
 	migrate := e.command(filepath.Join(e.Root, "backend", "improver.exe"), "migrate")
 	migrate.Dir = filepath.Join(e.Root, "backend")
 	migrate.Env = Environment(e.Data, o)
+	migrate.Env["APP_CONFIG_DEFAULT_FILE"] = filepath.Join(e.Root, "secretary-config.json")
 	must(e.Run(migrate))
 	e.wrapper("AISecretaryParser", "start")
 	check(e.WaitURL(fmt.Sprintf("http://127.0.0.1:%d/health", o.ParserPort)))

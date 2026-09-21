@@ -21,6 +21,7 @@ node_modules/
 dist/
 build/
 /backend/web/downloads/
+/demo/
 
 # Runtime data and secrets
 /data/
@@ -62,3 +63,6 @@ ios/GoogleService-Info.plist
 ios/**/*.xcuserstate
 ios/**/xcuserdata/
 /android/rustore/
+
+# Installation preconfiguration may contain private endpoints and credentials.
+/secretary-config.json

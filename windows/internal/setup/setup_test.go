@@ -493,3 +493,34 @@ func TestPublicConfigureValidatesBeforeStartingProxy(t *testing.T) {
 	}
 	check(validateCertificates(filepath.Join(h.e.Data, "certificates")))
 }
+
+func TestPreconfigurationServicePath(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "Программа")
+	for _, name := range []string{"AISecretaryApi", "AISecretaryWorker"} {
+		doc, err := ServiceXML(root, t.TempDir(), DefaultOptions(), name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var config struct {
+			Env []struct {
+				Name  string `xml:"name,attr"`
+				Value string `xml:"value,attr"`
+			} `xml:"env"`
+		}
+		if err := xml.Unmarshal([]byte(doc), &config); err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, env := range config.Env {
+			if env.Name == "APP_CONFIG_DEFAULT_FILE" {
+				found = true
+				if env.Value != filepath.Join(root, "secretary-config.json") {
+					t.Fatal(env)
+				}
+			}
+		}
+		if !found {
+			t.Fatal("preconfiguration path missing", name)
+		}
+	}
+}

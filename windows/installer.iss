@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.7.19"
+  #define AppVersion "0.7.24"
 #endif
 #ifndef PayloadDir
   #define PayloadDir "..\dist\windows\payload"
@@ -45,6 +45,9 @@ Name: "chinese"; MessagesFile: "languages\ChineseSimplified.isl"
 [Files]
 Source: "{#PayloadDir}\setup\secretary-setup.exe"; Flags: dontcopy
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Policy-delivered configuration survives upgrades and uninstall/reinstall.
+Source: "{param:CONFIGFILE|}"; DestDir: "{app}"; DestName: "secretary-config.json"; Flags: external ignoreversion uninsneveruninstall; Check: HasPreconfiguration
 
 [Icons]
 Name: "{commondesktop}\AI {cm:Texte97f94f593}"; Filename: "{app}\desktop\AI Secretary.exe"; IconFilename: "{app}\secretary.ico"
@@ -258,6 +261,11 @@ begin
   end;
 end;
 
+function HasPreconfiguration: Boolean;
+begin
+  Result := ExpandConstant('{param:CONFIGFILE|}') <> '';
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Root, Helper, Params, Uninstaller: String;
@@ -265,6 +273,10 @@ var
   SavedData: Boolean;
 begin
   Result := '';
+  if HasPreconfiguration and not FileExists(ExpandConstant('{param:CONFIGFILE|}')) then begin
+    Result := 'The preconfiguration JSON file does not exist.';
+    Exit;
+  end;
   if not SafeProgramDirectory(ExpandConstant('{app}')) then begin
     Result := CustomMessage('Texte21d44021c');
     Exit;

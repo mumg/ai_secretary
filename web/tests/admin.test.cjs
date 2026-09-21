@@ -64,6 +64,18 @@ test('model settings save, preserve and remove API key without echoing it', asyn
   assert.equal(writes[2].clear_llm_api_key, true);
   assert.equal(el('clearLlmApiKey').checked, false);
   assert.equal(el('llmKeyState').textContent, 'Ключ не настроен');
+  const savedLLM = structuredClone(state.settings.llm);
+  el('llmProvider').value = 'local';
+  el('llmProvider').dispatchEvent(new w.Event('change'));
+  el('llmUrl').value = 'invalid hidden URL';
+  el('llmApiKey').value = 'hidden-key';
+  el('clearLlmApiKey').checked = true;
+  await w.saveSettings();
+  assert.deepEqual(writes[3].settings.llm, savedLLM);
+  assert.equal(writes[3].llm_api_key, null);
+  assert.equal(writes[3].clear_llm_api_key, false);
+  assert.equal(el('llmProvider').value, 'local');
+  assert.equal(el('remoteModelSettings').hidden, true);
   state.local_web_only = true;
   w.populateSettings(structuredClone(state));
   assert.equal(el('firebaseSettings').hidden, true);

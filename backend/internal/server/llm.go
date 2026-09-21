@@ -45,8 +45,12 @@ func init() {
 }
 func (q *request) llmConfig() M {
 	cfg := obj(q.settings(), "llm")
+	cfg["api_key"] = q.fileLLMKey()
 	rows := q.rows("SELECT payload FROM system_settings WHERE id=1")
 	if len(rows) > 0 {
+		if boolean(obj(rows[0], "payload"), "llm_api_key_cleared") {
+			delete(cfg, "api_key")
+		}
 		if key := str(obj(rows[0], "payload"), "llm_api_key_encrypted"); key != "" {
 			cfg["api_key"] = must(q.server.Config.Decrypt(key))
 		}
@@ -564,4 +568,13 @@ func fitRecords(records []M, budget int) []M {
 		}
 	}
 	return out
+}
+
+func (q *request) fileLLMKey() string {
+	baseline := obj(M(q.server.Config.Defaults()), "llm")
+	effective := obj(q.settings(), "llm")
+	if baseline["base_url"] != effective["base_url"] || baseline["provider"] != effective["provider"] {
+		return ""
+	}
+	return q.server.Config.Preconfiguration.LLMAPIKey
 }

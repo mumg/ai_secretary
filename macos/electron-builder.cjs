@@ -3,7 +3,7 @@ module.exports = {
   productName: 'AI Secretary',
   artifactName: 'AI-Secretary-${version}-mac-universal.${ext}',
   directories: { output: '../dist/macos', buildResources: 'assets' },
-  files: ['i18n.cjs', 'translations.json', 'main.cjs', 'services.cjs', 'windows-services.cjs', 'mts-auth.cjs', 'preload.cjs', 'splash.html', 'package.json'],
+  files: ['i18n.cjs', 'translations.json', 'main.cjs', 'services.cjs', 'windows-services.cjs', 'mts-auth.cjs', 'ollama.cjs', 'ollama-system.cjs', 'ollama-release.json', 'preload.cjs', 'splash.html', 'package.json'],
   // sign.cjs copies the already-universal server payload after merging Electron.
   // Otherwise @electron/universal runs `file` on thousands of server files twice.
   asar: true,

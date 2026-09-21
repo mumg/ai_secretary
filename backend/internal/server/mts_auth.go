@@ -71,7 +71,7 @@ func requestJSONValue(ctx context.Context, method, endpoint string, body any, he
 func (q *request) sourceTokens(row M) (string, string) {
 	encrypted := str(row, "credential_encrypted")
 	if encrypted == "" {
-		return "", ""
+		return q.fileSourceCredential(row), ""
 	}
 	plain := must(q.server.Config.Decrypt(encrypted))
 	if row["source_type"] == "mts_link" && strings.HasPrefix(plain, tokenPrefix) {

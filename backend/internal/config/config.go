@@ -18,17 +18,18 @@ import (
 
 type Object map[string]any
 type Config struct {
-	ClientCAFile    string
-	ClientCAKeyFile string
-	DatabaseURL     string
-	MasterKeyFile   string
-	DataDir         string
-	LocalOnly       bool
-	PublicURL       string
-	ParserURL       string
-	LLMURL          string
-	Listen          string
-	WebDir          string
+	Preconfiguration Preconfiguration
+	ClientCAFile     string
+	ClientCAKeyFile  string
+	DatabaseURL      string
+	MasterKeyFile    string
+	DataDir          string
+	LocalOnly        bool
+	PublicURL        string
+	ParserURL        string
+	LLMURL           string
+	Listen           string
+	WebDir           string
 }
 
 func Env(k, d string) string {
@@ -82,7 +83,8 @@ func Load() (Config, error) {
 		u.User = url.UserPassword(u.User.Username(), password)
 	}
 	c.DatabaseURL = u.String()
-	return c, nil
+	e = c.loadAdjacentPreconfiguration()
+	return c, e
 }
 func PublicURL(s string) error {
 	u, e := url.Parse(s)
@@ -95,7 +97,7 @@ func PublicURL(s string) error {
 	return nil
 }
 func (c Config) Defaults() Object {
-	return Object{
+	return Merge(Object{
 		"server":                Object{"timezone": "Europe/Moscow", "public_url": c.PublicURL, "log_level": Env("LOG_LEVEL", "INFO")},
 		"calendar":              Object{"country": "RU", "workday_start": "10:00", "workday_end": "17:00", "daily_plan_time": "08:00", "auto_update": true, "weekend_due_policy": "previous_workday", "working_dates": []any{}, "non_working_dates": []any{}},
 		"llm":                   Object{"provider": "ollama", "base_url": c.LLMURL, "model": "qwen3.8:27b-q4_K_M", "context_length": float64(16384), "temperature": 0.1, "auto_create_confidence": 0.85, "possible_completion_confidence": 0.8, "request_timeout_seconds": float64(300)},
@@ -103,7 +105,7 @@ func (c Config) Defaults() Object {
 		"notifications":         Object{"due_soon_minutes": float64(60), "overdue_repeat_hour": float64(10)},
 		"document_parser":       Object{"timeout_seconds": float64(30), "max_bytes": float64(26214400), "max_characters": float64(100000)},
 		"communication_sources": Object{"initial_sync_days": float64(30)}, "identity": Object{"names": []any{}}, "relationships": Object{"managers": []any{}, "reports": []any{}}, "analysis_filters": Object{"stop_words": []any{}, "excluded_addresses": []any{}},
-	}
+	}, c.Preconfiguration.Settings)
 }
 func Section(o Object, k string) Object {
 	switch v := o[k].(type) {

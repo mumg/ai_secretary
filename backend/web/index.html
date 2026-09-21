@@ -152,13 +152,40 @@
           <label>Дополнительные рабочие даты <small>YYYY-MM-DD, через запятую</small><input id="workingDates"></label>
         </fieldset>
         <fieldset class="wide"><legend>Модель</legend>
-          <label>Тип API<select id="llmProvider"><option value="ollama">Ollama</option><option value="openai">OpenAI-совместимый (LLMOps / vLLM)</option></select></label>
-          <div class="two-columns"><label>URL API<input id="llmUrl" type="url"><small>Для LLMOps укажите базовый URL, например https://llm.example.com/v1</small></label><label>Модель<input id="llmModel"></label></div>
-          <label>API_KEY <small id="llmKeyState">Ключ не настроен</small><input id="llmApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Оставьте пустым, чтобы сохранить текущий ключ"></label>
-          <label class="toggle"><input id="clearLlmApiKey" type="checkbox">Удалить сохранённый API_KEY при сохранении</label>
-          <div class="four-columns"><label>Контекст<input id="contextLength" type="number" min="4096" max="131072" step="1024"></label><label>Температура<input id="temperature" type="number" min="0" max="2" step="0.05"></label><label>Автосоздание от<input id="autoConfidence" type="number" min="0" max="1" step="0.01"></label><label>Выполнение от<input id="completionConfidence" type="number" min="0" max="1" step="0.01"></label></div>
+          <label>Подключение модели<select id="llmProvider"><option value="ollama">Ollama</option><option value="openai">OpenAI</option><option value="local">Локальная Ollama</option></select></label>
+          <div id="remoteModelSettings">
+          <div class="two-columns"><label>URL API<input id="llmUrl" type="url"><small id="ollamaUrlHint">Адрес сервера Ollama, например http://localhost:11434</small><small id="openaiUrlHint" hidden>Для OpenAI укажите https://api.openai.com/v1 или URL совместимого API.</small></label><label>Модель<input id="llmModel"></label></div>
+          <div id="openaiKeySettings" hidden><label>API_KEY <small id="llmKeyState">Ключ не настроен</small><input id="llmApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Оставьте пустым, чтобы сохранить текущий ключ"></label>
+          <label class="toggle"><input id="clearLlmApiKey" type="checkbox">Удалить сохранённый API_KEY при сохранении</label></div>
+          <label>Контекст<input id="contextLength" type="number" min="4096" max="131072" step="1024"></label>
+          </div>
+          <p id="localOllamaUnavailable" class="hint" hidden>Для установки локальной Ollama откройте настройки в приложении AI Секретарь для macOS или Windows.</p>
+          <section id="localOllama" class="local-ollama" hidden aria-labelledby="localOllamaTitle">
+            <h3 id="localOllamaTitle">Локальная Ollama</h3>
+            <section class="ollama-runtime" aria-labelledby="localOllamaRuntimeTitle">
+              <h4 id="localOllamaRuntimeTitle">Работающая Ollama</h4>
+              <p id="localOllamaRuntimeStatus" role="status">Получение параметров Ollama…</p>
+              <p id="localOllamaRuntimeVersion" class="hint"></p>
+              <div id="localOllamaRuntimeModels"></div>
+            </section>
+            <p class="hint">Проверим компьютер автоматически. Затем установим Ollama, загрузим модель и подключим её одной кнопкой.</p>
+            <div class="two-columns">
+              <label>Модель для локального запуска<input id="localOllamaModel" value="qwen3:4b" list="localOllamaModels" maxlength="160" spellcheck="false"></label>
+              <label>Контекст локальной модели<input id="localOllamaContext" type="number" min="4096" max="131072" step="4096" value="8192"></label>
+            </div>
+            <datalist id="localOllamaModels"><option value="qwen3:4b"><option value="qwen3:8b"><option value="qwen3:14b"></datalist>
+            <p id="localOllamaStatus" role="status" aria-live="polite">Сначала проверьте совместимость компьютера.</p>
+            <p id="localOllamaSummary" class="hint"></p>
+            <ul id="localOllamaChecks"></ul>
+            <div id="localOllamaProgressGroup" hidden><progress id="localOllamaProgress" max="100" value="0" aria-label="Прогресс установки Ollama"></progress><p id="localOllamaPercent" role="status" aria-live="polite">0%</p></div>
+            <div class="ollama-actions">
+              <button id="localOllamaUse" type="button" disabled class="primary">Использовать локально</button>
+              <button id="localOllamaCancel" type="button" hidden>Отменить загрузку</button>
+            </div>
+            <p class="hint">Текущая модель продолжит работать до завершения установки и проверки локальной модели.</p>
+          </section>
+          <div class="three-columns"><label>Температура<input id="temperature" type="number" min="0" max="2" step="0.05"></label><label>Автосоздание от<input id="autoConfidence" type="number" min="0" max="1" step="0.01"></label><label>Выполнение от<input id="completionConfidence" type="number" min="0" max="1" step="0.01"></label></div>
           <label>Таймаут запроса, секунд<input id="llmTimeout" type="number" min="10" max="1800"></label>
-          <p class="hint">Контекст до 128K поддерживается, но 16K остаётся экономичным режимом для RTX 3090.</p>
         </fieldset>
         <fieldset class="wide"><legend>Обработка и вложения</legend>
           <div class="four-columns"><label>Событий в пакете<input id="batchSize" type="number" min="1" max="100"></label><label>Макс. вложение, МБ<input id="attachmentMb" type="number" min="1" max="25"></label><label>Макс. текст, символов<input id="attachmentCharacters" type="number" min="1000" max="100000"></label><label>Таймаут парсера, секунд<input id="parserTimeout" type="number" min="5" max="300"></label></div>
@@ -239,7 +266,8 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="/admin/assets/admin.js?v=20260916-default-link-rules" defer></script>
+  <script src="/admin/assets/admin.js?v=20260921-local-active" defer></script>
+  <script src="/admin/assets/ollama-setup.js?v=5" defer></script>
   <script src="/admin/assets/mts-link-auth.js?v=20260916-email-profile" defer></script>
 </body>
 </html>

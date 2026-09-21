@@ -92,8 +92,9 @@ label small { color: var(--muted); font-weight: 450; }
 input, select, textarea { width: 100%; margin-top: 6px; padding: 10px 11px; color: var(--ink); background: var(--paper); border: 1px solid #41515d; border-radius: 8px; outline: none; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-.inline, .two-columns, .four-columns { display: grid; gap: 12px; }
+.inline, .two-columns, .three-columns, .four-columns { display: grid; gap: 12px; }
 .inline, .two-columns { grid-template-columns: 1fr 1fr; }
+.three-columns { grid-template-columns: repeat(3, 1fr); }
 .four-columns { grid-template-columns: repeat(4, 1fr); }
 .hint { font-size: 12px; color: var(--muted); }
 .mts-auth-options { margin-top: 16px; font-size: 14px; }
@@ -149,7 +150,7 @@ dialog::backdrop { background: #0009; }
   .tab { flex: 0 0 auto; }
   .panel { padding: 20px 15px; border-radius: 8px; }
   .section-heading { flex-direction: column; }
-  .inline, .two-columns, .four-columns { grid-template-columns: 1fr; }
+  .inline, .two-columns, .three-columns, .four-columns { grid-template-columns: 1fr; }
   .tag-create-form, .tag-row { grid-template-columns: 1fr; }
   .tag-row .card-actions { grid-column: auto; }
 }
@@ -182,7 +183,9 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .secondary:hover, .card-actions button:hover, .icon-button:hover, .tab:hover { background: #25343c; }
 .primary:disabled:hover { background: var(--accent); }
 .tab.active { color: var(--accent); background: #19232b; }
-.topbar-actions { display: flex; align-items: center; gap: 20px; }
+.topbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+.topbar-actions [data-language-settings] label { display: inline-flex; align-items: center; gap: 10px; margin: 0; white-space: nowrap; }
+.topbar-actions [data-language-settings] select { width: auto; margin: 0; padding: 8px 11px; }
 .app-link { padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); text-decoration: none; white-space: nowrap; }
 .app-link:hover { background: #25343c; }
 .metrics article, .intro > div, .source-card-header > div { min-width: 0; }
@@ -216,3 +219,14 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .relationship-table td, .relationship-table th { padding: 8px 4px; border-bottom: 1px solid var(--line); }
 .relationship-table input { width: 100%; min-width: 130px; box-sizing: border-box; }
 .relationship-table td:last-child { width: 1%; white-space: nowrap; }
+
+.local-ollama { margin-top: 20px; border-top: 1px solid var(--border, #dce2e8); padding-top: 16px; }
+.local-ollama h3 { margin: 0 0 10px; font-size: 16px; }
+.local-ollama ul { padding-left: 20px; font-size: 13px; line-height: 1.6; }
+.local-ollama progress { width: 100%; margin: 10px 0; }
+.ollama-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.ollama-runtime { margin-bottom: 16px; padding: 12px; border: 1px solid var(--border, #dce2e8); border-radius: 8px; }
+.ollama-runtime h4 { margin: 0 0 8px; }
+.ollama-runtime-model { margin-top: 12px; overflow-wrap: anywhere; }
+.ollama-runtime-model p { margin: 4px 0; }

@@ -10,6 +10,7 @@ const os = require('node:os');
 const { Services } = require('./services.cjs');
 const { WindowsServices } = require('./windows-services.cjs');
 const { MtsAuth } = require('./mts-auth.cjs');
+const { OllamaManager, downloadFetcher, registerIPC: registerOllamaIPC } = require('./ollama.cjs');
 const isWindows = process.platform === 'win32';
 
 let window, services, origin, busy = false;
@@ -143,6 +144,8 @@ else {
   app.whenReady().then(async () => {
     language.configure(app);
     language.registerIPC(electron.ipcMain, () => window?.webContents, internal);
+    const ollama = new OllamaManager({ fetcher: electron.net.fetch.bind(electron.net), downloadFetch: downloadFetcher(electron.net) });
+    registerOllamaIPC(electron.ipcMain, ollama, () => window?.webContents, () => origin);
     if (!isWindows && app.isPackaged && process.execPath.startsWith('/Volumes/')) {
       dialog.showErrorBox(tr("Установка AI Секретаря"), tr("Перетащите AI Secretary в папку «Программы», затем запустите его оттуда."));
       app.quit(); return;
@@ -155,7 +158,8 @@ else {
     session.defaultSession.setPermissionCheckHandler((contents, permission, requestingOrigin) =>
       canWriteClipboard(contents, permission, requestingOrigin));
     services = isWindows ? new WindowsServices({ progress: text => void status(text) }) :
-      new Services({ payload: app.isPackaged ? path.join(process.resourcesPath, 'server') : path.join(__dirname, '../dist/macos/payload'),
+      new Services({ configurationFile: path.join(app.isPackaged ? path.resolve(process.resourcesPath, '../../..') : path.resolve(__dirname, '..'), 'secretary-config.json'),
+        payload: app.isPackaged ? path.join(process.resourcesPath, 'server') : path.join(__dirname, '../dist/macos/payload'),
         ...(smoke ? { data: smokeRoot, label: process.env.AI_SECRETARY_SMOKE_LABEL } : {}), progress: text => void status(text) });
     Menu.setApplicationMenu(null);
     if (process.platform === 'darwin') {

@@ -85,17 +85,17 @@
       "primary": true
     },
     "label": {
-      "nullable": false,
+      "nullable": true,
       "type": "VARCHAR(255)",
       "primary": false
     },
     "source_type": {
-      "nullable": false,
+      "nullable": true,
       "type": "VARCHAR(32)",
       "primary": false
     },
     "enabled": {
-      "nullable": false,
+      "nullable": true,
       "type": "BOOLEAN",
       "primary": false,
       "default": true
@@ -131,6 +131,27 @@
       "nullable": false,
       "type": "DATETIME",
       "primary": false,
+      "server_default": true
+    },
+    "preconfigured": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": false,
+      "server_default": true
+    },
+    "configuration_deleted": {
+      "nullable": false,
+      "type": "BOOLEAN",
+      "primary": false,
+      "default": false,
+      "server_default": true
+    },
+    "configuration_fingerprint": {
+      "nullable": false,
+      "type": "TEXT",
+      "primary": false,
+      "default": "",
       "server_default": true
     }
   },

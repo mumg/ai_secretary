@@ -177,6 +177,7 @@ func ServiceXML(root, data string, o Options, name string) (string, error) {
 		}
 		add("arguments", CommandLine(args...))
 		env := Environment(data, o)
+		env["APP_CONFIG_DEFAULT_FILE"] = filepath.Join(root, "secretary-config.json")
 		keys := []string{}
 		for k := range env {
 			keys = append(keys, k)

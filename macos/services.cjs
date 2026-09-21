@@ -72,10 +72,11 @@ function validateConnection(c) {
 }
 
 class Services {
-  constructor({ payload, data = path.join(os.homedir(), 'Library/Application Support/AI Secretary'),
+  constructor({ payload, configurationFile, data = path.join(os.homedir(), 'Library/Application Support/AI Secretary'),
     label = 'net.muratov.secretary', progress = () => {} }) {
     if (!/^[a-zA-Z0-9.-]+$/.test(label)) throw Error('Invalid launchd label');
     this.payload = path.resolve(payload);
+    this.configurationFile = configurationFile ? path.resolve(configurationFile) : path.join(path.dirname(this.payload), 'secretary-config.json');
     this.data = path.resolve(data);
     this.label = label;
     this.agents = path.join(os.homedir(), 'Library/LaunchAgents');
@@ -116,6 +117,8 @@ class Services {
   }
   environment(c) {
     return {
+      APP_CONFIG_DEFAULT_FILE: this.configurationFile,
+      ...(process.env.APP_CONFIG_FILE ? { APP_CONFIG_FILE: process.env.APP_CONFIG_FILE } : {}),
       DATABASE_URL: `postgresql://improver@127.0.0.1:${c.databasePort}/improver?sslmode=disable`,
       DATABASE_PASSWORD_FILE: path.join(this.data, 'secrets/database-password'),
       APP_MASTER_KEY_FILE: path.join(this.data, 'secrets/master-key'),

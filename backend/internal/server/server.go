@@ -100,12 +100,17 @@ func timestamp(v any) *time.Time {
 	return nil
 }
 func (q *request) rows(sql string, args ...any) []M {
+	sql, args = q.sourceQuery(sql, args)
 	return must(store.Rows(q.Context, q.db, sql, args...))
 }
 func (q *request) one(sql string, args ...any) M {
+	sql, args = q.sourceQuery(sql, args)
 	return must(store.One(q.Context, q.db, sql, args...))
 }
 func (q *request) get(table string, id any) M {
+	if table == "communication_sources" {
+		return q.one("SELECT * FROM communication_sources WHERE id=$1", id)
+	}
 	r, e := store.Get(q.Context, q.db, table, id)
 	if errors.Is(e, pgx.ErrNoRows) {
 		fail(404, "Not found")
@@ -133,6 +138,10 @@ func (q *request) insert(table string, m M) M {
 func (q *request) update(table string, id any, m M) M {
 	if table == "tasks" {
 		q.exec("SELECT pg_advisory_xact_lock(726941831)")
+	}
+	if table == "communication_sources" {
+		must(store.Update(q.Context, q.db, table, id, q.sourceOverrides(id, m)))
+		return q.get(table, id)
 	}
 	row := must(store.Update(q.Context, q.db, table, id, m))
 	if table == "chat_requests" && m["status"] == "COMPLETED" {
@@ -242,7 +251,7 @@ func New(pool *pgxpool.Pool, c config.Config, version string) *Server {
 	s.route("GET /health/live", false, func(q *request) any { return M{"status": "ok", "version": s.Version} })
 	s.route("GET /health/ready", false, func(q *request) any {
 		r := q.one("SELECT version,revision FROM database_schema_version WHERE id=1")
-		if num(r, "version") < 23 {
+		if num(r, "version") < 25 {
 			fail(503, "Database schema is not ready")
 		}
 		return M{"status": "ready", "database_schema_version": r["version"], "database_schema_revision": r["revision"]}

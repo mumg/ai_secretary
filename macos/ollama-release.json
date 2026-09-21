@@ -1,0 +1,15 @@
+{
+  "version": "0.34.2",
+  "win32": {
+    "url": "https://github.com/ollama/ollama/releases/download/v0.34.2/OllamaSetup.exe",
+    "filename": "OllamaSetup.exe",
+    "bytes": 1569993232,
+    "sha256": "8c9eb7ba71f3c6a62df4c7d204cc4739d90c335e1cbeb07c99fd471544066a8b"
+  },
+  "darwin": {
+    "url": "https://github.com/ollama/ollama/releases/download/v0.34.2/Ollama-darwin.zip",
+    "filename": "Ollama-darwin.zip",
+    "bytes": 197183181,
+    "sha256": "a0f49ba612d54c06ff54e4bd2050494838351a14d3cd4851362ae5c17571dc7b"
+  }
+}

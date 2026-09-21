@@ -1,0 +1,18 @@
+# Optional: docker compose -f compose.yaml -f compose.preconfigured.yaml ...
+# APP_CONFIG_PATH points to a UTF-8 JSON file on the Docker host.
+x-preconfiguration: &preconfiguration
+  environment:
+    APP_CONFIG_FILE: /run/secretary-config.json
+  configs:
+    - source: secretary_preconfiguration
+      target: /run/secretary-config.json
+services:
+  migrate:
+    <<: *preconfiguration
+  api:
+    <<: *preconfiguration
+  worker:
+    <<: *preconfiguration
+configs:
+  secretary_preconfiguration:
+    file: ${APP_CONFIG_PATH:?Set APP_CONFIG_PATH to the installation JSON file}

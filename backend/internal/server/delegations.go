@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/mumg/ai_secretary/backend/internal/config"
 	"net/mail"
 	"strings"
 )
@@ -58,11 +59,12 @@ func (s *Server) delegationRoutes() {
 		}
 		q.exec("SELECT pg_advisory_xact_lock(726941833)")
 		rows := q.rows("SELECT * FROM system_settings WHERE id=1 FOR UPDATE")
+		delta := config.Difference(config.Section(q.server.Config.Defaults(), "relationships"), config.Object(pick(m, "managers", "reports")))
 		if len(rows) == 0 {
-			q.insert("system_settings", M{"id": 1, "payload": M{"relationships": pick(m, "managers", "reports")}})
+			q.insert("system_settings", M{"id": 1, "payload": M{"relationships": delta}})
 		} else {
 			p := obj(rows[0], "payload")
-			p["relationships"] = pick(m, "managers", "reports")
+			p["relationships"] = delta
 			q.update("system_settings", 1, M{"payload": p})
 		}
 		return obj(q.settings(), "relationships")

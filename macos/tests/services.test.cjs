@@ -39,3 +39,13 @@ test('stop order drains HTTP and worker clients before PostgreSQL', { skip: proc
   await s.stopAll();
   assert.deepEqual(stopped, ['proxy', 'worker', 'api', 'parser', 'database']);
 });
+
+test('preconfiguration uses a stable policy path for API, worker and migration', { skip: process.platform === 'win32' }, () => {
+  const configurationFile = '/Applications/Корпоративные приложения/secretary-config.json';
+  const s = new Services({ payload: '/tmp/payload', configurationFile });
+  s.runtime = '/tmp/runtime';
+  assert.equal(s.environment(connection).APP_CONFIG_DEFAULT_FILE, configurationFile);
+  for (const name of ['api', 'worker']) {
+    assert.equal(s.definition(name, connection).EnvironmentVariables.APP_CONFIG_DEFAULT_FILE, configurationFile);
+  }
+});

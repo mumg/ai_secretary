@@ -80,6 +80,43 @@ const csv = (value) => (value || "").split(",").map((item) => item.trim()).filte
 const listValues = (value) => (value || "").split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
 const setValue = (id, value) => { $(id).value = value ?? ""; };
 
+let localOllamaAvailable = false;
+let modelSelectionEdited = false;
+function savedModelProvider(llm) {
+  const provider = llm.provider || "ollama";
+  if (localOllamaAvailable && provider === "ollama") {
+    try {
+      const url = new URL(llm.base_url);
+      if (url.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) && url.port === "11434" && url.pathname === "/") return "local";
+    } catch (_) { /* An incomplete URL remains editable as a remote connection. */ }
+  }
+  return provider;
+}
+function localOllamaInUse() {
+  return Boolean(settingsState?.llm && savedModelProvider(settingsState.llm) === "local");
+}
+function renderModelSettings() {
+  const provider = $("llmProvider").value;
+  const local = provider === "local";
+  $("remoteModelSettings").hidden = local;
+  $("openaiKeySettings").hidden = provider !== "openai";
+  $("openaiUrlHint").hidden = provider !== "openai";
+  $("ollamaUrlHint").hidden = provider !== "ollama";
+  $("localOllama").hidden = !local || !localOllamaAvailable;
+  $("localOllamaUnavailable").hidden = !local || localOllamaAvailable;
+  window.dispatchEvent(new Event("model-settings-rendered"));
+}
+function enableLocalOllama() {
+  localOllamaAvailable = true;
+  if (settingsState && !modelSelectionEdited) setValue("llmProvider", savedModelProvider(settingsState.llm));
+  renderModelSettings();
+}
+$("llmProvider").addEventListener("change", () => {
+  modelSelectionEdited = true;
+  renderModelSettings();
+});
+renderModelSettings();
+
 function populateSettings(data) {
   settingsState = data.settings;
   const s = data.settings;
@@ -114,7 +151,9 @@ function populateSettings(data) {
   setValue("nonWorkingDates", (s.calendar.non_working_dates || []).join(", "));
   setValue("workingDates", (s.calendar.working_dates || []).join(", "));
   setValue("llmUrl", s.llm.base_url);
-  setValue("llmProvider", s.llm.provider || "ollama");
+  setValue("llmProvider", savedModelProvider(s.llm));
+  modelSelectionEdited = false;
+  renderModelSettings();
   setValue("llmApiKey", "");
   $("clearLlmApiKey").checked = false;
   $("llmKeyState").textContent = data.llm_api_key_configured ? tr("Ключ сохранён") : tr("Ключ не настроен");
@@ -142,7 +181,7 @@ async function saveSettings() {
   try {
     if (!settingsState) throw new Error(tr("Настройки ещё не загружены"));
     const fields = document.querySelectorAll("#analysis input, #notifications input");
-    if (![...fields].every((field) => field.reportValidity())) return;
+    if (![...fields].filter(field => !field.closest("#localOllama") && !field.closest("[hidden]")).every((field) => field.reportValidity())) return;
     const s = structuredClone(settingsState);
     s.relationships = {};
     for (const [key, id] of [["managers", "relationshipManagers"], ["reports", "relationshipReports"]]) {
@@ -157,10 +196,14 @@ async function saveSettings() {
     s.calendar.non_working_dates = csv($("nonWorkingDates").value);
     s.calendar.working_dates = csv($("workingDates").value);
     s.communication_sources.initial_sync_days = Number($("initialDays").value);
-    s.llm.base_url = $("llmUrl").value.trim();
-    s.llm.provider = $("llmProvider").value;
-    s.llm.model = $("llmModel").value.trim();
-    s.llm.context_length = Number($("contextLength").value);
+    // Local installation switches the connection only after its model test succeeds.
+    const provider = $("llmProvider").value;
+    if (provider !== "local") {
+      s.llm.base_url = $("llmUrl").value.trim();
+      s.llm.provider = provider;
+      s.llm.model = $("llmModel").value.trim();
+      s.llm.context_length = Number($("contextLength").value);
+    }
     s.llm.temperature = Number($("temperature").value);
     s.llm.auto_create_confidence = Number($("autoConfidence").value);
     s.llm.possible_completion_confidence = Number($("completionConfidence").value);
@@ -179,11 +222,16 @@ async function saveSettings() {
     const result = await request("/settings", { method: "PUT", body: JSON.stringify({
       settings: s,
 
-      llm_api_key: $("llmApiKey").value.trim() || null,
-      clear_llm_api_key: $("clearLlmApiKey").checked,
+      llm_api_key: provider === "openai" ? $("llmApiKey").value.trim() || null : null,
+      clear_llm_api_key: provider === "openai" && $("clearLlmApiKey").checked,
     }) });
 
     populateSettings(result);
+    if (provider === "local") {
+      setValue("llmProvider", "local");
+      modelSelectionEdited = true;
+      renderModelSettings();
+    }
     const scan = result.filter_reconciliation;
     const scanMessage = scan
       ? tr(" Архив проверен: исключено {0}, возвращено в очередь {1}.", scan.skipped + scan.ignored, scan.requeued)
