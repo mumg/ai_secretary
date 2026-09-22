@@ -422,7 +422,7 @@ func (s *Server) systemRoutes() {
 
 func (q *request) systemStatus() M {
 	out := []M{}
-	for _, r := range q.rows("SELECT * FROM component_statuses ORDER BY id") {
+	for _, r := range q.rows("SELECT c.* FROM component_statuses c WHERE c.component_type<>'event_loader' OR EXISTS (SELECT 1 FROM communication_sources s WHERE c.id='source-'||s.id AND s.source_type<>'external_tasks') ORDER BY c.id") {
 		out = append(out, q.statusRead(r))
 	}
 	for _, r := range q.rows("SELECT * FROM communication_sources WHERE source_type<>'external_tasks' AND NOT EXISTS(SELECT 1 FROM component_statuses c WHERE c.id='source-'||communication_sources.id)") {

@@ -276,6 +276,7 @@ func (s *Server) adminRoutes() {
 		} else {
 			q.exec("DELETE FROM communication_sources WHERE id=$1", id)
 		}
+		q.exec("DELETE FROM component_statuses WHERE id=$1 AND component_type='event_loader'", "source-"+id)
 		q.exec("DELETE FROM daily_plans")
 		q.status = 204
 		return nil

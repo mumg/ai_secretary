@@ -24,6 +24,30 @@ var llmDefinitions M
 var llmSchemas map[string]*jsonschema.Schema
 var llmWireSchemas map[string]json.RawMessage
 
+// Restrict references to supplied records; new assignments have no database ID yet.
+var delegationIDProperty = regexp.MustCompile(`"delegation_id"\s*:\s*\{[^{}]*\}`)
+
+func generationSchema(name string, user any) json.RawMessage {
+	base := llmWireSchemas[name]
+	if name != "DelegationAnalysis" && name != "MeetingDelegationAnalysis" {
+		return base
+	}
+	input, ok := user.(M)
+	if !ok {
+		return base
+	}
+	ids := []string{""}
+	existing, _ := input["existing_delegations"].([]M)
+	for _, record := range existing {
+		if id := str(record, "id"); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	property := must(json.Marshal(M{"type": "string", "enum": ids}))
+	// Replace only this property, preserving the authored generation order elsewhere.
+	return delegationIDProperty.ReplaceAllLiteral(base, append([]byte(`"delegation_id":`), property...))
+}
+
 func init() {
 	check(json.Unmarshal(llmContracts, &llmDefinitions))
 	// Structured generation follows property order on some model servers. Keep
@@ -153,7 +177,7 @@ func (q *request) llmAttempt(system string, user any, schema string, emit func(s
 	// before producing content, causing the same work to retry indefinitely.
 	payload := M{"model": cfg["model"], "messages": messages, "stream": emit != nil, "think": false, "options": M{"temperature": cfg["temperature"], "num_ctx": cfg["context_length"], "num_predict": outputTokens, "num_gpu": -1}, "keep_alive": -1}
 	if schema != "" {
-		payload["format"] = llmWireSchemas[schema]
+		payload["format"] = generationSchema(schema, user)
 	}
 	base := strings.TrimRight(str(cfg, "base_url"), "/")
 	endpoint := base + "/api/chat"
@@ -165,7 +189,7 @@ func (q *request) llmAttempt(system string, user any, schema string, emit func(s
 		endpoint = base + "/chat/completions"
 		payload = M{"model": cfg["model"], "messages": messages, "stream": emit != nil, "temperature": cfg["temperature"], "max_tokens": outputTokens}
 		if schema != "" {
-			payload["response_format"] = M{"type": "json_schema", "json_schema": M{"name": "response", "schema": llmWireSchemas[schema]}}
+			payload["response_format"] = M{"type": "json_schema", "json_schema": M{"name": "response", "schema": generationSchema(schema, user)}}
 		}
 	}
 	encoded, e := json.Marshal(payload)
