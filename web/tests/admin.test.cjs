@@ -47,17 +47,44 @@ test('model settings save, preserve and remove API key without echoing it', asyn
   assert.equal(el('llmApiKey').value, '');
   assert.equal(el('llmKeyState').textContent, 'Ключ сохранён');
   assert.equal(el('llmProvider').value, 'ollama');
+  // An older server can omit the notification policy fields.
+  assert.equal(el('notificationMode').value, 'immediate');
+  assert.equal(el('notificationQuietStart').value, '22:00');
+  assert.equal(el('notificationQuietEnd').value, '08:00');
+  assert.equal(el('notificationQuiet').checked, false);
+  assert.equal(el('notificationDaily').checked, true);
+
   el('llmProvider').value = 'openai';
   el('llmUrl').value = 'https://model.example.test/v1';
   el('llmApiKey').value = 'test-key-only';
   await w.saveSettings();
   assert.equal(writes[0].settings.llm.provider, 'openai');
+  assert.deepEqual(writes[0].settings.notifications, {
+    due_soon_minutes: 60, overdue_repeat_hour: 10, mode: 'immediate',
+    quiet_hours_enabled: false, quiet_start: '22:00', quiet_end: '08:00', daily_summary: true,
+  });
+  el('notificationMode').value = 'digest';
+  el('notificationQuiet').checked = true;
+  el('notificationQuietStart').value = '23:30';
+  el('notificationQuietEnd').value = '07:15';
+  el('notificationDaily').checked = false;
+
   assert.equal(writes[0].llm_api_key, 'test-key-only');
   assert.equal(el('llmApiKey').value, '');
   assert.equal(w.localStorage.length, 0);
   assert.equal(JSON.stringify(state.settings).includes('test-key-only'), false);
   await w.saveSettings();
   assert.equal(writes[1].llm_api_key, null);
+  assert.deepEqual(writes[1].settings.notifications, {
+    due_soon_minutes: 60, overdue_repeat_hour: 10, mode: 'digest',
+    quiet_hours_enabled: true, quiet_start: '23:30', quiet_end: '07:15', daily_summary: false,
+  });
+  assert.equal(el('notificationMode').value, 'digest');
+  assert.equal(el('notificationQuiet').checked, true);
+  assert.equal(el('notificationQuietStart').value, '23:30');
+  assert.equal(el('notificationQuietEnd').value, '07:15');
+  assert.equal(el('notificationDaily').checked, false);
+
   assert.equal(el('llmKeyState').textContent, 'Ключ сохранён');
   el('clearLlmApiKey').checked = true;
   await w.saveSettings();

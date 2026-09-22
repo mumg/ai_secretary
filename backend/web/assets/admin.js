@@ -178,11 +178,11 @@ function populateSettings(data) {
   setValue("analysisExcludedAddresses", (s.analysis_filters?.excluded_addresses || []).join("\n"));
   setValue("dueSoonMinutes", s.notifications.due_soon_minutes);
   setValue("overdueHour", s.notifications.overdue_repeat_hour);
-  setValue("notificationMode", s.notifications.mode);
-  $("notificationQuiet").checked = s.notifications.quiet_hours_enabled;
-  setValue("notificationQuietStart", s.notifications.quiet_start);
-  setValue("notificationQuietEnd", s.notifications.quiet_end);
-  $("notificationDaily").checked = s.notifications.daily_summary;
+  setValue("notificationMode", s.notifications.mode ?? "immediate");
+  $("notificationQuiet").checked = s.notifications.quiet_hours_enabled ?? false;
+  setValue("notificationQuietStart", s.notifications.quiet_start ?? "22:00");
+  setValue("notificationQuietEnd", s.notifications.quiet_end ?? "08:00");
+  $("notificationDaily").checked = s.notifications.daily_summary ?? true;
   setValue("rankingInterval", s.worker.ranking_interval_seconds);
   setValue("pollInterval", s.worker.poll_interval_seconds);
   $("firebaseState").textContent = data.firebase_configured ? tr("Ключ настроен") : tr("Ключ не настроен");
