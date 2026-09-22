@@ -286,5 +286,53 @@
   "Контекст: {0} · Квантизация: {1}": {
     "en": "Context: {0} · Quantization: {1}",
     "zh": "上下文：{0} · 量化：{1}"
+  },
+  "Политика уведомлений": {
+    "en": "Notification policy",
+    "zh": "通知策略"
+  },
+  "Режим уведомлений": {
+    "en": "Notification mode",
+    "zh": "通知模式"
+  },
+  "Сразу": {
+    "en": "Immediately",
+    "zh": "立即"
+  },
+  "Сводками каждые 15 минут": {
+    "en": "Summaries every 15 minutes",
+    "zh": "每 15 分钟汇总"
+  },
+  "Только важное": {
+    "en": "Important only",
+    "zh": "仅重要通知"
+  },
+  "Тихие часы": {
+    "en": "Quiet hours",
+    "zh": "免打扰时段"
+  },
+  "Начало тихих часов": {
+    "en": "Quiet hours start",
+    "zh": "免打扰开始时间"
+  },
+  "Конец тихих часов": {
+    "en": "Quiet hours end",
+    "zh": "免打扰结束时间"
+  },
+  "Используется часовой пояс сервера, указанный в настройках.": {
+    "en": "Uses the server time zone selected in settings.",
+    "zh": "使用设置中指定的服务器时区。"
+  },
+  "Ежедневная сводка и повторное напоминание о просрочках": {
+    "en": "Daily summary and repeated overdue reminders",
+    "zh": "每日汇总和逾期提醒"
+  },
+  "Ежедневная сводка просрочек после часа": {
+    "en": "Daily overdue summary after hour",
+    "zh": "每日逾期汇总开始小时"
+  },
+  "События объединяются за 2 минуты. Между обычными уведомлениями — минимум 5 минут. История до добавления источника не вызывает уведомлений.": {
+    "en": "Events are grouped over 2 minutes, with at least 5 minutes between notifications. History from before the source was added never triggers notifications.",
+    "zh": "事件在 2 分钟内合并，通知间隔至少 5 分钟。添加来源之前的历史记录不会触发通知。"
   }
 }

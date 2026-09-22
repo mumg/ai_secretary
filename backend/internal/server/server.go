@@ -32,15 +32,17 @@ type Server struct {
 	mux     *http.ServeMux
 	live    liveState
 	gateway gatewayState
+	push    notificationTransport
 }
 type request struct {
 	context.Context
-	db            store.DB
-	w             http.ResponseWriter
-	r             *http.Request
-	server        *Server
-	status        int
-	notifications [][2]string
+	db                      store.DB
+	w                       http.ResponseWriter
+	r                       *http.Request
+	server                  *Server
+	status                  int
+	notifications           [][2]string
+	historicalNotifications bool
 }
 type apiError struct {
 	Status int
@@ -132,6 +134,9 @@ func (q *request) insert(table string, m M) M {
 		if !boolean(row, "manually_created") || row["priority"] == "CRITICAL" {
 			q.notifications = append(q.notifications, [2]string{kind, str(row, "id")})
 		}
+	}
+	if table == "communication_events" {
+		q.exec("UPDATE communication_events SET notification_history=EXISTS (SELECT 1 FROM communication_sources WHERE id=$3 AND $2::timestamptz<=created_at) WHERE id=$1", row["id"], row["occurred_at"], row["source_id"])
 	}
 	return row
 }
@@ -317,10 +322,10 @@ func (s *Server) route(pattern string, transaction bool, fn func(*request) any) 
 			q.db = tx
 		}
 		result := fn(q)
+		q.enqueueNotifications()
 		if tx != nil {
 			check(tx.Commit(r.Context()))
 		}
-		s.deliver(q.Context, q.notifications)
 		writeJSON(w, q.status, result)
 	})
 }

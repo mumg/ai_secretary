@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -290,21 +289,4 @@ func (s *Server) registerGateway(ctx context.Context, address string, replace bo
 		_ = os.RemoveAll(oldDir)
 	}
 	return nil
-}
-
-// Workers are separate processes; read the persisted enabled flag for each batch.
-func (s *Server) gatewayNotify(ctx context.Context, kind, id string) int {
-	b, e := os.ReadFile(filepath.Join(s.Config.DataDir, "gateway.json"))
-	if e != nil {
-		return 0
-	}
-	var cfg gatewaySettings
-	if json.Unmarshal(b, &cfg) != nil || !cfg.Enabled {
-		return 0
-	}
-	count, err := gatewaylink.Notify(ctx, s.gatewaySettingsDir(cfg), kind, id, newID)
-	if err != nil {
-		slog.Warn("gateway notification unavailable", "type", kind)
-	}
-	return count
 }

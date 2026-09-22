@@ -102,7 +102,7 @@ func (c Config) Defaults() Object {
 		"calendar":              Object{"country": "RU", "workday_start": "10:00", "workday_end": "17:00", "daily_plan_time": "08:00", "auto_update": true, "weekend_due_policy": "previous_workday", "working_dates": []any{}, "non_working_dates": []any{}},
 		"llm":                   Object{"provider": "ollama", "base_url": c.LLMURL, "model": "qwen3.8:27b-q4_K_M", "context_length": float64(16384), "temperature": 0.1, "auto_create_confidence": 0.85, "possible_completion_confidence": 0.8, "request_timeout_seconds": float64(300)},
 		"worker":                Object{"poll_interval_seconds": float64(60), "batch_size": float64(10), "ranking_interval_seconds": float64(900)},
-		"notifications":         Object{"due_soon_minutes": float64(60), "overdue_repeat_hour": float64(10)},
+		"notifications":         Object{"due_soon_minutes": float64(60), "overdue_repeat_hour": float64(10), "mode": "immediate", "quiet_hours_enabled": false, "quiet_start": "22:00", "quiet_end": "08:00", "daily_summary": true},
 		"document_parser":       Object{"timeout_seconds": float64(30), "max_bytes": float64(26214400), "max_characters": float64(100000)},
 		"communication_sources": Object{"initial_sync_days": float64(30)}, "identity": Object{"names": []any{}}, "relationships": Object{"managers": []any{}, "reports": []any{}}, "analysis_filters": Object{"stop_words": []any{}, "excluded_addresses": []any{}},
 	}, c.Preconfiguration.Settings)
@@ -180,6 +180,25 @@ func Validate(p Object) error {
 	u, e := url.Parse(Text(llm, "base_url"))
 	if e != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 		return errors.New("invalid LLM base_url")
+	}
+	n := Section(p, "notifications")
+	switch Text(n, "mode") {
+	case "immediate", "digest", "important":
+	default:
+		return errors.New("invalid notification mode")
+	}
+	for _, key := range []string{"quiet_start", "quiet_end"} {
+		if _, err := time.Parse("15:04", Text(n, key)); err != nil {
+			return errors.New("invalid notification quiet time")
+		}
+	}
+	for _, key := range []string{"quiet_hours_enabled", "daily_summary"} {
+		if _, ok := n[key].(bool); !ok {
+			return fmt.Errorf("notifications.%s must be boolean", key)
+		}
+	}
+	if n["quiet_hours_enabled"] == true && Text(n, "quiet_start") == Text(n, "quiet_end") {
+		return errors.New("quiet hours must have different start and end")
 	}
 	limits := []struct {
 		s, k     string

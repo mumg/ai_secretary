@@ -18,8 +18,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/oauth2/jwt"
 )
 
 func (s *Server) job(ctx context.Context, fn func(*request) bool) (worked bool, err error) {
@@ -41,8 +39,8 @@ func (s *Server) job(ctx context.Context, fn func(*request) bool) (worked bool, 
 	defer tx.Rollback(context.Background())
 	q := &request{Context: ctx, db: tx, server: s}
 	worked = fn(q)
+	q.enqueueNotifications()
 	check(tx.Commit(ctx))
-	s.deliver(ctx, q.notifications)
 	return worked, nil
 }
 func (s *Server) Worker(ctx context.Context) {
@@ -70,6 +68,7 @@ func (s *Server) Worker(ctx context.Context) {
 	loop("contexts", 15*time.Second, s.processContext)
 	loop("sources", 10*time.Second, s.syncSources)
 	loop("maintenance", 30*time.Second, s.maintenance)
+	loop("notifications", 10*time.Second, s.dispatchNotifications)
 	wg.Wait()
 }
 func (s *Server) processEvent(ctx context.Context) bool {
@@ -255,6 +254,7 @@ func (q *request) attachmentTexts(event M) []string {
 	return out
 }
 func (q *request) analyzeEvent(event M) {
+	q.historicalNotifications = boolean(event, "notification_history") || event["analyzed_at"] != nil
 	now := q.now()
 	if str(event, "thread_external_id") == "" {
 		event = q.update("communication_events", event["id"], M{"thread_external_id": event["external_id"]})
@@ -643,7 +643,9 @@ func (s *Server) maintenance(ctx context.Context) bool {
 		plans := q.rows("SELECT * FROM daily_plans WHERE plan_date=$1", now.Format("2006-01-02"))
 		if len(plans) == 0 && now.Format("15:04") >= str(obj(settings, "calendar"), "daily_plan_time") {
 			plan := q.rebuildPlan()
-			q.notifications = append(q.notifications, [2]string{"DAILY_PLAN_READY", str(plan, "id")})
+			if boolean(obj(settings, "notifications"), "daily_summary") {
+				q.notifications = append(q.notifications, [2]string{"DAILY_PLAN_READY", str(plan, "id")})
+			}
 		} else if len(plans) > 0 {
 			generated := timestamp(plans[0]["generated_at"])
 			if generated == nil || now.Sub(*generated) >= time.Duration(num(obj(settings, "worker"), "ranking_interval_seconds"))*time.Second {
@@ -665,9 +667,9 @@ func (s *Server) maintenance(ctx context.Context) bool {
 				q.update("tasks", task["id"], M{"due_reminder_sent_at": now})
 			}
 		}
-		if now.Hour() >= int(num(obj(settings, "notifications"), "overdue_repeat_hour")) {
+		{
 			date := now.Format("2006-01-02")
-			for _, task := range q.rows("SELECT * FROM tasks WHERE status IN ('NEW','IN_PROGRESS') AND due_at<$1 AND (overdue_notification_date IS NULL OR overdue_notification_date<>$2) FOR UPDATE SKIP LOCKED", now, date) {
+			for _, task := range q.rows("SELECT * FROM tasks WHERE status IN ('NEW','IN_PROGRESS') AND due_at<$1 AND (overdue_notification_date IS NULL OR ($3 AND overdue_notification_date<>$2)) FOR UPDATE SKIP LOCKED", now, date, boolean(obj(settings, "notifications"), "daily_summary") && now.Hour() >= int(num(obj(settings, "notifications"), "overdue_repeat_hour"))) {
 				if q.notify("TASK_OVERDUE", str(task, "id")) > 0 {
 					q.update("tasks", task["id"], M{"overdue_notification_date": date})
 				}
@@ -688,60 +690,9 @@ func (s *Server) maintenance(ctx context.Context) bool {
 	}
 	return false
 }
-func (q *request) notify(kind, id string) int {
-	delivered := q.server.gatewayNotify(q.Context, kind, id)
-	if q.server.Config.LocalOnly {
-		return delivered
-	}
-	rows := q.rows("SELECT firebase_credentials_encrypted FROM system_settings WHERE id=1")
-	if len(rows) == 0 || str(rows[0], "firebase_credentials_encrypted") == "" {
-		return delivered
-	}
-	plain := must(q.server.Config.Decrypt(str(rows[0], "firebase_credentials_encrypted")))
-	var account M
-	check(json.Unmarshal([]byte(plain), &account))
-	cfg := jwt.Config{Email: str(account, "client_email"), PrivateKey: []byte(str(account, "private_key")), PrivateKeyID: str(account, "private_key_id"), Scopes: []string{"https://www.googleapis.com/auth/firebase.messaging"}, TokenURL: str(account, "token_uri")}
-	client := cfg.Client(q.Context)
-	client.Timeout = 30 * time.Second
-	data := M{"type": kind, "object_id": id}
-	if strings.Contains(kind, "TASK") {
-		tasks := q.rows("SELECT title,description FROM tasks WHERE id=$1", id)
-		if len(tasks) > 0 {
-			data["task_title"] = bounded(str(tasks[0], "title"), 180)
-			data["task_description"] = bounded(clean(str(tasks[0], "description")), 360)
-		}
-	}
-	for _, device := range q.rows("SELECT fcm_token,language FROM devices WHERE active") {
-		body := must(json.Marshal(mobilePushMessage(device["fcm_token"], data, str(device, "language"))))
-		req := must(http.NewRequestWithContext(q.Context, "POST", "https://fcm.googleapis.com/v1/projects/"+str(account, "project_id")+"/messages:send", bytes.NewReader(body)))
-		req.Header.Set("Content-Type", "application/json")
-		response, e := client.Do(req)
-		if e != nil {
-			slog.Warn("notification failed", "type", kind)
-			continue
-		}
-		response.Body.Close()
-		if response.StatusCode < 300 {
-			delivered++
-		}
-		if response.StatusCode >= 300 {
-			slog.Warn("notification failed", "type", kind, "status", response.StatusCode)
-		}
-	}
-	return delivered
-}
 
-func (s *Server) deliver(ctx context.Context, notifications [][2]string) {
-	defer func() {
-		if recover() != nil {
-			slog.Warn("notification delivery failed after commit")
-		}
-	}()
-	if len(notifications) == 0 {
-		return
-	}
-	q := &request{Context: ctx, db: s.Pool, server: s}
-	for _, n := range notifications {
-		q.notify(n[0], n[1])
-	}
+// Maintenance records intent in the same transaction as reminder markers.
+func (q *request) notify(kind, id string) int {
+	q.notifications = append(q.notifications, [2]string{kind, id})
+	return 1
 }

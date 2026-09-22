@@ -45,3 +45,21 @@ func TestDatabasePasswordURLQuoting(t *testing.T) {
 		t.Fatal(c.DatabaseURL, c.Listen)
 	}
 }
+
+func TestNotificationPolicyValidation(t *testing.T) {
+	c := Config{PublicURL: "https://localhost", LLMURL: "http://localhost:11434"}
+	for _, mode := range []string{"immediate", "digest", "important"} {
+		p := c.Defaults()
+		Section(p, "notifications")["mode"] = mode
+		if err := Validate(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, patch := range []Object{{"mode": "unknown"}, {"quiet_start": "25:00"}, {"quiet_hours_enabled": "true"}, {"daily_summary": 1}, {"quiet_hours_enabled": true, "quiet_start": "08:00", "quiet_end": "08:00"}} {
+		p := c.Defaults()
+		Merge(p, Object{"notifications": patch})
+		if Validate(p) == nil {
+			t.Fatal("invalid policy accepted", patch)
+		}
+	}
+}

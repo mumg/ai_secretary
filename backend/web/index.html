@@ -205,9 +205,18 @@
       <div class="section-heading"><div><p id="notificationsEyebrow" class="eyebrow">FCM</p><h2>Уведомления и расписание</h2></div></div>
       <p id="localWebNotice" class="hint" hidden>В локальной установке мобильные push-уведомления доступны через шлюз. Настройте его в разделе «Удалённое подключение».</p>
       <div class="settings-grid">
+        <fieldset><legend>Политика уведомлений</legend>
+          <label>Режим уведомлений<select id="notificationMode"><option value="immediate">Сразу</option><option value="digest">Сводками каждые 15 минут</option><option value="important">Только важное</option></select></label>
+          <p class="hint">События объединяются за 2 минуты. Между обычными уведомлениями — минимум 5 минут. История до добавления источника не вызывает уведомлений.</p>
+          <label><input id="notificationQuiet" type="checkbox">Тихие часы</label>
+          <label>Начало тихих часов<input id="notificationQuietStart" type="time" required></label>
+          <label>Конец тихих часов<input id="notificationQuietEnd" type="time" required></label>
+          <p class="hint">Используется часовой пояс сервера, указанный в настройках.</p>
+          <label><input id="notificationDaily" type="checkbox">Ежедневная сводка и повторное напоминание о просрочках</label>
+        </fieldset>
         <fieldset><legend id="scheduleLegend">Сроки</legend>
           <label id="dueSoonSetting">Предупреждать за, минут<input id="dueSoonMinutes" type="number" min="1" max="10080"></label>
-          <label id="overdueSetting">Повторять просроченные после часа<input id="overdueHour" type="number" min="0" max="23"></label>
+          <label id="overdueSetting">Ежедневная сводка просрочек после часа<input id="overdueHour" type="number" min="0" max="23"></label>
           <label>Повторное ранжирование, секунд<input id="rankingInterval" type="number" min="60"></label>
           <label>Проверка источников, секунд<input id="pollInterval" type="number" min="10"></label>
         </fieldset>

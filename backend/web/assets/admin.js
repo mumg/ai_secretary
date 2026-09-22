@@ -178,6 +178,11 @@ function populateSettings(data) {
   setValue("analysisExcludedAddresses", (s.analysis_filters?.excluded_addresses || []).join("\n"));
   setValue("dueSoonMinutes", s.notifications.due_soon_minutes);
   setValue("overdueHour", s.notifications.overdue_repeat_hour);
+  setValue("notificationMode", s.notifications.mode);
+  $("notificationQuiet").checked = s.notifications.quiet_hours_enabled;
+  setValue("notificationQuietStart", s.notifications.quiet_start);
+  setValue("notificationQuietEnd", s.notifications.quiet_end);
+  $("notificationDaily").checked = s.notifications.daily_summary;
   setValue("rankingInterval", s.worker.ranking_interval_seconds);
   setValue("pollInterval", s.worker.poll_interval_seconds);
   $("firebaseState").textContent = data.firebase_configured ? tr("Ключ настроен") : tr("Ключ не настроен");
@@ -224,6 +229,11 @@ async function saveSettings() {
     s.analysis_filters.excluded_addresses = listValues($("analysisExcludedAddresses").value);
     s.notifications.due_soon_minutes = Number($("dueSoonMinutes").value);
     s.notifications.overdue_repeat_hour = Number($("overdueHour").value);
+    s.notifications.mode = $("notificationMode").value;
+    s.notifications.quiet_hours_enabled = $("notificationQuiet").checked;
+    s.notifications.quiet_start = $("notificationQuietStart").value;
+    s.notifications.quiet_end = $("notificationQuietEnd").value;
+    s.notifications.daily_summary = $("notificationDaily").checked;
     s.worker.ranking_interval_seconds = Number($("rankingInterval").value);
     s.worker.poll_interval_seconds = Number($("pollInterval").value);
     const result = await request("/settings", { method: "PUT", body: JSON.stringify({
