@@ -137,3 +137,55 @@ func TestSourceHeartbeatVisibleDuringImport(t *testing.T) {
 		})
 	}
 }
+
+func TestSourceHeartbeatCancellationDrainsActiveWrite(t *testing.T) {
+	s := testServer(t)
+	call(t, s, "POST", "/api/v1/admin/sources", M{"id": "mail", "label": "Mail", "source_type": "imap", "enabled": true, "settings": M{"host": "mail.example.test", "port": 993, "username": "demo@example.test"}, "credential": "test-password"}, 201)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := s.sourceHeartbeat(ctx, "mail", 20*time.Millisecond)
+	defer stop()
+	blocker, err := s.Pool.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer blocker.Rollback(context.Background())
+	if _, err = blocker.Exec(context.Background(), "SELECT id FROM communication_sources WHERE id='mail' FOR UPDATE"); err != nil {
+		t.Fatal(err)
+	}
+	// The blocker owns one connection; the next heartbeat needs a second one.
+	deadline := time.Now().Add(3 * time.Second)
+	for s.Pool.Stat().AcquiredConns() < 2 {
+		if time.Now().After(deadline) {
+			t.Fatal("heartbeat did not start")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	cancel()
+	stopped := make(chan struct{})
+	go func() { stop(); close(stopped) }()
+	select {
+	case <-stopped:
+		t.Fatal("stop returned before the active database operation finished")
+	case <-time.After(50 * time.Millisecond):
+	}
+	if err = blocker.Rollback(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-stopped:
+	case <-time.After(6 * time.Second):
+		t.Fatal("heartbeat did not stop")
+	}
+	var before, after time.Time
+	if err = s.Pool.QueryRow(context.Background(), "SELECT observed_at FROM component_statuses WHERE id='source-mail'").Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(80 * time.Millisecond)
+	if err = s.Pool.QueryRow(context.Background(), "SELECT observed_at FROM component_statuses WHERE id='source-mail'").Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if !before.Equal(after) {
+		t.Fatal("write completed after stop")
+	}
+}

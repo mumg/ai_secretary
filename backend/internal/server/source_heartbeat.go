@@ -12,7 +12,13 @@ import (
 func (s *Server) sourceHeartbeat(ctx context.Context, id string, interval time.Duration) func() {
 	ctx, cancel := context.WithCancel(ctx)
 	pulse := func() {
-		pulseCtx, done := context.WithTimeout(ctx, 5*time.Second)
+		if ctx.Err() != nil {
+			return
+		}
+		// Drain a started transaction instead of cancelling COMMIT: pgx may
+		// return on cancellation before PostgreSQL finishes applying the write.
+		// stop() joins this bounded operation before the final source status.
+		pulseCtx, done := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer done()
 		_, err := s.job(pulseCtx, func(q *request) bool {
 			// Serialize with deletion without blocking foreign keys held by the import.
