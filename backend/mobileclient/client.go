@@ -36,23 +36,17 @@ type Client struct {
 }
 
 func New(server, qr string) (*Client, error) {
-	var id *Identity
-	var err error
-	if qr != "" {
-		id, err = Parse(qr)
-	} else {
-		server, err = Origin(server)
-		id = &Identity{Server: server}
+	if qr == "" {
+		return nil, errors.New("QR-код не содержит клиентский сертификат")
 	}
+	id, err := Parse(qr)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Client{Identity: id, ctx: ctx, cancel: cancel, events: make(chan string, 1)}
 	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13}
-	if len(id.Client.Certificate) > 0 {
-		tlsConfig.Certificates = []tls.Certificate{id.Client}
-	}
+	tlsConfig.Certificates = []tls.Certificate{id.Client}
 	outer := &http.Transport{TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 15 * time.Second, ResponseHeaderTimeout: 30 * time.Second, IdleConnTimeout: 30 * time.Second}
 	c.outer = &http.Client{Transport: outer, CheckRedirect: noRedirect}
 	c.transport = outer

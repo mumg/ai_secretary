@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.net.UnknownHostException
 import net.muratov.assistant.*
 import net.muratov.assistant.data.TaskRepository
 import net.muratov.assistant.data.remote.*
@@ -57,13 +58,29 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
             mutable.value=before.copy(loading=true,error=null)
             try {
                 if(debounce) delay(300)
-                val page=repository.delegations(before.query,before.assignee,before.status,before.due,if(more) before.items.size else 0,before.archive)
+                val page = retryUnknownHost {
+                    repository.delegations(before.query, before.assignee, before.status,
+                        before.due, if (more) before.items.size else 0, before.archive)
+                }
                 mutable.value=before.copy(items=(if(more) before.items else emptyList())+page.items,recipients=page.recipients,more=page.hasMore,loading=false)
-            } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.value=before.copy(loading=false,error=e.message ?: tr("Не удалось загрузить поручения")) }
+            } catch(e: CancellationException) { throw e } catch(e: Exception) {
+                mutable.value=before.copy(loading=false,error=if (e.hasUnknownHost()) tr("Сервер недоступен. Проверьте соединение.") else e.message ?: tr("Не удалось загрузить поручения"))
+            }
         }
     }
     class Factory(private val repository: TaskRepository): ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T: ViewModel> create(modelClass: Class<T>): T = DelegationsViewModel(repository) as T
+    }
+}
+private fun Throwable.hasUnknownHost(): Boolean = generateSequence(this) { it.cause }.any { it is UnknownHostException }
+private suspend fun <T> retryUnknownHost(action: suspend () -> T): T {
+    var attempt = 0
+    while (true) {
+        try { return action() }
+        catch (failure: Exception) {
+            if (failure is CancellationException || attempt >= 2 || !failure.hasUnknownHost()) throw failure
+            delay(750L shl attempt++)
+        }
     }
 }
 @Composable fun DelegationFilter(label: String, value: String, choices: Map<String,String>, onSelect: (String)->Unit) {
@@ -84,7 +101,12 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
             DelegationFilter(tr("Статус"),s.status,linkedMapOf("" to tr("Все статусы"))+delegationStatuses.filterKeys { if (s.archive) it in setOf("COMPLETED", "CANCELLED") else it !in setOf("COMPLETED", "CANCELLED") }) { vm.filters(status=it) }
             if (!s.archive) DelegationFilter(tr("Срок"),s.due,linkedMapOf("" to tr("Все сроки"),"overdue" to tr("Просрочено"),"none" to tr("Без срока"))) { vm.filters(due=it) }
         }},confirmButton={TextButton(onClick={showFilters=false}) {Text(tr("Готово"))}},dismissButton={TextButton(onClick={vm.filters(assignee="",status="",due="")}) {Text(tr("Сбросить"))}})
-        s.error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
+        s.error?.let {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(it, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { vm.load() }) { Text(tr("Повторить")) }
+            }
+        }
         if(s.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(modifier=Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             items(s.items,key={it.id}) { d ->
@@ -92,7 +114,7 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
                     context.startActivity(DelegationDetailActivity.intent(context, d.id))
                 })
             }
-            if(s.items.isEmpty() && !s.loading) item {Text(tr("Поручения не найдены"), Modifier.padding(top = 24.dp))}
+            if(s.items.isEmpty() && !s.loading && s.error == null) item {Text(tr("Поручения не найдены"), Modifier.padding(top = 24.dp))}
             if(s.more) item {TextButton(onClick={vm.load(more=true)},enabled=!s.loading) {Text(tr("Загрузить ещё"))}}
         }
         FullTextSearchField(

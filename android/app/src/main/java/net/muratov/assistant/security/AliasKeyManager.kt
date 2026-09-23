@@ -29,10 +29,12 @@ class AliasKeyManager(
     ): String = alias
 
     override fun getCertificateChain(alias: String?): Array<X509Certificate> =
-        KeyChain.getCertificateChain(context, this.alias) ?: emptyArray()
+        requireNotNull(KeyChain.getCertificateChain(context, this.alias)?.takeIf { it.isNotEmpty() }) {
+            "Client certificate is required"
+        }
 
-    override fun getPrivateKey(alias: String?): PrivateKey? =
-        KeyChain.getPrivateKey(context, this.alias)
+    override fun getPrivateKey(alias: String?): PrivateKey =
+        requireNotNull(KeyChain.getPrivateKey(context, this.alias)) { "Client private key is required" }
 
     override fun getServerAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? = null
 
@@ -48,4 +50,3 @@ class AliasKeyManager(
         engine: SSLEngine?,
     ): String? = null
 }
-

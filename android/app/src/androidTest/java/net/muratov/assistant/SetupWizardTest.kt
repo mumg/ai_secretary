@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import net.muratov.assistant.data.SettingsStore
+import net.muratov.assistant.data.ApiFactory
 import net.muratov.assistant.setup.SetupWizard
 import net.muratov.assistant.ui.ImproverTheme
 import org.junit.Assert.*
@@ -17,44 +18,32 @@ import org.junit.runner.RunWith
 class SetupWizardTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun startsBlankAndRejectsInvalidServer() {
+    @Test fun startsWithCameraScannerAndNoManualConnection() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.getSharedPreferences("connection", 0).edit().clear().commit()
         val settings = SettingsStore(context)
+        assertTrue(runCatching { settings.saveConnection("https://assistant.example.org", null) }.isFailure)
+        assertTrue(runCatching { ApiFactory.client(context, "https://assistant.example.org", null) }.isFailure)
         compose.setContent { ImproverTheme { SetupWizard(settings, onComplete = {}) } }
-        compose.onNodeWithText("Шаг 1 из 3").assertIsDisplayed()
-        compose.onNodeWithText("Далее").assertIsNotEnabled()
-        compose.onNodeWithText("Адрес сервера").performTextInput("http://example.org")
-        compose.onNodeWithText("Далее").assertIsNotEnabled()
+        compose.onNodeWithText("Сканировать QR-код").assertIsDisplayed()
+        compose.onNodeWithText("Адрес сервера").assertDoesNotExist()
+        compose.onNodeWithText("Далее").assertDoesNotExist()
+        compose.onNodeWithText("Проверить и начать").assertDoesNotExist()
         assertFalse(settings.isConfigured)
     }
 
-    @Test fun savesOnlyAfterSuccessfulCheckAndCanRetry() {
+    @Test fun existingConnectionCannotBypassQRScanner() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.getSharedPreferences("connection", 0).edit().clear().commit()
         val settings = SettingsStore(context)
-        var completed = false
-        var attempts = 0
+        settings.serverUrl = "https://assistant.example.org"
         compose.setContent { ImproverTheme {
-            SetupWizard(settings, onComplete = { completed = true }, checkConnection = { url, alias ->
-                assertEquals("https://assistant.example.org", url)
-                assertNull(alias)
-                attempts++
-                if (attempts == 1) throw java.io.IOException("Test connection refused")
-            })
+            SetupWizard(settings, onComplete = { fail("Setup must require a new QR scan") })
         } }
-        compose.onNodeWithText("Адрес сервера").performTextInput("https://assistant.example.org/")
-        compose.onNodeWithText("Далее").performClick()
-        compose.onNodeWithText("Шаг 2 из 3").assertIsDisplayed()
-        compose.onNodeWithText("Далее").performScrollTo().performClick()
-        compose.onNodeWithText("Проверить и начать").performScrollTo().performClick()
-        compose.waitForIdle()
-        assertFalse(completed)
-        assertFalse(settings.isConfigured)
-        compose.onNodeWithText("Проверить и начать").performScrollTo().performClick()
-        compose.waitUntil { completed }
-        assertTrue(settings.isConfigured)
+        compose.onNodeWithText("Сканировать QR-код").assertIsDisplayed()
+        compose.onNodeWithText("Проверить и начать").assertDoesNotExist()
         assertEquals("https://assistant.example.org", SettingsStore(context).serverUrl)
+        assertFalse(SettingsStore(context).isConfigured)
         context.getSharedPreferences("connection", 0).edit().clear().commit()
     }
 }

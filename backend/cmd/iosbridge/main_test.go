@@ -1,12 +1,39 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"math/big"
 	"testing"
+	"time"
+
+	"github.com/mumg/ai_secretary/backend/internal/mobileqr"
 )
 
 func TestBridgeCancellationAndClientOwnership(t *testing.T) {
-	open, e := call([]byte(`{"op":"open","server":"https://example.com"}`))
+	key, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if e != nil {
+		t.Fatal(e)
+	}
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "Test mobile"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}}
+	cert, e := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if e != nil {
+		t.Fatal(e)
+	}
+	scalar, e := mobileqr.Scalar(key)
+	if e != nil {
+		t.Fatal(e)
+	}
+	qr, e := mobileqr.Encode(mobileqr.DirectPrefix, []byte("https://example.com"), cert, scalar)
+	if e != nil {
+		t.Fatal(e)
+	}
+	request, _ := json.Marshal(map[string]string{"op": "open", "qr": qr})
+	open, e := call(request)
 	if e != nil {
 		t.Fatal(e)
 	}

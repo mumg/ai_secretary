@@ -35,8 +35,8 @@ fun SetupWizard(
 ) {
     val activity = checkNotNull(LocalActivity.current)
     var step by rememberSaveable { mutableIntStateOf(0) }
-    var url by rememberSaveable { mutableStateOf(settings.serverUrl) }
-    var alias by rememberSaveable { mutableStateOf(settings.certificateAlias) }
+    var url by rememberSaveable { mutableStateOf("") }
+    var alias by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -51,7 +51,7 @@ fun SetupWizard(
                     val imported = withContext(Dispatchers.IO) { AppClientIdentity.importQR(activity, payload) }
                     url = imported.server
                     alias = imported.alias
-                    step = 2
+                    step = 1
                 } catch (cancelled: CancellationException) { throw cancelled
                 } catch (_: Exception) {
                     error = tr("Не удалось прочитать ключ. Используйте действующий QR-код прямого подключения или гейтвея из настроек AI Секретаря.")
@@ -68,8 +68,7 @@ fun SetupWizard(
     val certificateLabel = when {
         GatewayIdentity.isAlias(alias) -> tr("Через гейтвей · ключ сохранён в приложении")
         AppClientIdentity.isAppAlias(alias) -> tr("Ключ сохранён в приложении")
-        alias != null -> tr("Ранее выбранный сертификат Android")
-        else -> tr("Без клиентского сертификата")
+        else -> tr("QR-код не содержит клиентский сертификат")
     }
     BackHandler(enabled = step > 0 && !busy) { step--; error = null }
     Surface(Modifier.fillMaxSize()) {
@@ -77,25 +76,13 @@ fun SetupWizard(
             verticalArrangement = Arrangement.spacedBy(20.dp)) {
             net.muratov.assistant.i18n.LanguageSetting()
             Text(tr("Настройка AI Секретаря"), style = MaterialTheme.typography.headlineMedium)
-            Text(tr("Шаг {0} из 3" , step + 1), style = MaterialTheme.typography.labelLarge)
             when (step) {
                 0 -> {
                     Text(tr("Подключите свой сервер"))
+                    Text(tr("Считайте QR-код из раздела удалённого подключения в настройках сервера. Ключ будет храниться только в защищённом хранилище этого устройства."))
                     Button(enabled = !busy, onClick = scan) { Text(tr("Сканировать QR-код")) }
-                    Text(tr("QR-код автоматически определит способ подключения: напрямую или через гейтвей. Для прямого подключения можно ввести HTTPS-адрес вручную."))
-                    OutlinedTextField(url, { url = it; error = null }, modifier = Modifier.fillMaxWidth(),
-                        label = { Text(tr("Адрес сервера")) }, placeholder = { Text("https://assistant.example.org") },
-                        singleLine = true, isError = url.isNotBlank() && normalized == null,
-                        supportingText = { Text(tr("HTTPS, без пути, логина и параметров. Допускается порт.")) })
                 }
                 1 -> {
-                    Text(tr("Ключ доступа"))
-                    Text(tr("Отсканируйте QR-код из раздела «Мобильное приложение» в настройках сервера. Ключ останется в закрытом каталоге приложения и не будет установлен в систему. Для сервера без mTLS этот шаг можно пропустить."))
-                    Text(certificateLabel)
-                    Button(enabled = !busy, onClick = scan) { Text(tr("Сканировать QR-код")) }
-                    if (alias != null) TextButton(enabled = !busy, onClick = { alias = null }) { Text(tr("Подключаться без сертификата")) }
-                }
-                2 -> {
                     Text(tr("Проверка подключения"))
                     Text(normalized.orEmpty())
                     Text(certificateLabel)
@@ -104,15 +91,14 @@ fun SetupWizard(
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Button(modifier = Modifier.fillMaxWidth(), enabled = !busy && normalized != null, onClick = {
-                if (step < 2) { step++; error = null } else {
+            if (step == 1) Button(modifier = Modifier.fillMaxWidth(), enabled = !busy && normalized != null && (AppClientIdentity.isAppAlias(alias) || GatewayIdentity.isAlias(alias)), onClick = {
                     busy = true; error = null
                     scope.launch {
                         try {
                             if (checkConnection != null) checkConnection(normalized!!, alias)
                             else checkServerConnection(activity, normalized!!, alias)
                             withContext(Dispatchers.IO) {
-                                settings.saveConnection(normalized!!, alias)
+                                settings.saveConnection(normalized, alias)
                                 runCatching { AppClientIdentity.retainOnly(activity, alias) }
                             }
                             onComplete()
@@ -121,8 +107,7 @@ fun SetupWizard(
                             error = tr("Не удалось подключиться. Проверьте адрес, сеть и сертификат. {0}" , failure.message.orEmpty().take(160))
                         } finally { busy = false }
                     }
-                }
-            }) { Text(if (step < 2) tr("Далее") else tr("Проверить и начать")) }
+            }) { Text(tr("Проверить и начать")) }
             Row {
                 if (step > 0) TextButton(enabled = !busy, onClick = { step--; error = null }) { Text(tr("Назад")) }
                 onCancel?.let { cancel -> TextButton(enabled = !busy, onClick = cancel) { Text(tr("Отмена")) } }
@@ -133,6 +118,9 @@ fun SetupWizard(
 
 private suspend fun checkServerConnection(activity: Activity, url: String, alias: String?) =
     withContext(Dispatchers.IO) {
+        require(AppClientIdentity.isAppAlias(alias) || GatewayIdentity.isAlias(alias)) {
+            tr("QR-код не содержит клиентский сертификат")
+        }
         val client = ApiFactory.client(activity, url, alias).newBuilder()
             .callTimeout(25, TimeUnit.SECONDS).followRedirects(false).build()
         try {

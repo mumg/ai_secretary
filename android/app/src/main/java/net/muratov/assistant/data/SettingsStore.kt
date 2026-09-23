@@ -4,6 +4,8 @@ import net.muratov.assistant.i18n.tr
 
 import android.content.Context
 import net.muratov.assistant.setup.normalizeServerUrl
+import net.muratov.assistant.security.AppClientIdentity
+import net.muratov.assistant.security.GatewayIdentity
 
 class SettingsStore(context: Context) {
     private val preferences = context.getSharedPreferences("connection", Context.MODE_PRIVATE)
@@ -13,10 +15,13 @@ class SettingsStore(context: Context) {
         set(value) = preferences.edit().putString("server_url", value.trim()).apply()
 
     val isConfigured: Boolean
-        get() = normalizeServerUrl(serverUrl) != null
+        get() = normalizeServerUrl(serverUrl) != null && !certificateAlias.isNullOrBlank()
 
     fun saveConnection(url: String, alias: String?) {
         require(normalizeServerUrl(url) != null)
+        require(AppClientIdentity.isAppAlias(alias) || GatewayIdentity.isAlias(alias)) {
+            tr("QR-код не содержит клиентский сертификат")
+        }
         check(preferences.edit().putString("server_url", normalizeServerUrl(url))
             .putString("certificate_alias", alias).commit()) { tr("Не удалось сохранить настройки подключения") }
     }

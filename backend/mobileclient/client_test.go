@@ -69,6 +69,11 @@ func TestOrigins(t *testing.T) {
 		t.Fatal(v, e)
 	}
 }
+func TestDirectConnectionRequiresQR(t *testing.T) {
+	if client, err := New("https://example.com", ""); err == nil || client != nil {
+		t.Fatal("accepted a direct connection without a client certificate")
+	}
+}
 func TestMTLSAndRedirectIsolation(t *testing.T) {
 	der, k := identityFixture(t)
 	pair, e := pair(der, k, true)
