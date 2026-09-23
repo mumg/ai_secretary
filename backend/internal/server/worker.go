@@ -44,6 +44,29 @@ func (s *Server) job(ctx context.Context, fn func(*request) bool) (worked bool, 
 	return worked, nil
 }
 func (s *Server) Worker(ctx context.Context) {
+	waiting := false
+	for ctx.Err() == nil {
+		ready, err := s.setupWizardReady(ctx)
+		if err != nil {
+			slog.Error("cannot check setup wizard state", "error", err)
+		} else if ready {
+			if waiting {
+				slog.Info("setup wizard completed; starting worker jobs")
+			}
+			break
+		} else if !waiting {
+			slog.Info("worker jobs waiting for setup wizard")
+			waiting = true
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
+	}
+	if ctx.Err() != nil {
+		return
+	}
 	var wg sync.WaitGroup
 	loop := func(name string, idle time.Duration, fn func(context.Context) bool) {
 		wg.Add(1)
@@ -294,7 +317,7 @@ func (q *request) analyzeEvent(event M) {
 	mailing := obj(analysis, "mailing")
 	isMailing := event["event_type"] == "email" && boolean(mailing, "detected") && num(mailing, "confidence") >= 0.8
 	candidates, _ := analysis["tasks"].([]any)
-	if !isMailing && event["event_type"] == "email" && boolean(assignment, "eligible") && len(candidates) == 0 {
+	if !isMailing && event["event_type"] == "email" && boolean(assignment, "eligible") && len(candidates) == 0 && q.initialAssignmentAllowed(event) {
 		focused := must(q.llm(str(obj(llmDefinitions, "prompts"), "extract_tasks"), payload, "TaskExtractionResult", nil))
 		candidates, _ = focused["tasks"].([]any)
 	}
@@ -398,10 +421,10 @@ func (q *request) taskCandidate(event, candidate, assignment M, addresses, names
 			return
 		}
 	}
-	duplicate := q.rows("SELECT t.* FROM tasks t JOIN communication_events e ON e.id=t.source_event_id WHERE lower(t.title)=lower($1) AND e.source_id=$2 AND (($3::text IS NOT NULL AND e.thread_external_id=$3) OR ($3::text IS NULL AND t.source_event_id=$4)) AND (t.status NOT IN ('CANCELLED','COMPLETED') OR (t.status='CANCELLED' AND t.source_event_id=$4)) ORDER BY t.created_at,t.id LIMIT 1", candidate["title"], event["source_id"], event["thread_external_id"], event["id"])
+	duplicate := q.rows("SELECT t.* FROM tasks t JOIN communication_events e ON e.id=t.source_event_id WHERE lower(t.title)=lower($1) AND e.source_id=$2 AND (($3::text IS NOT NULL AND e.thread_external_id=$3) OR ($3::text IS NULL AND t.source_event_id=$4)) AND (t.status NOT IN ('CANCELLED','COMPLETED') OR t.source_event_id=$4) ORDER BY t.created_at,t.id LIMIT 1", candidate["title"], event["source_id"], event["thread_external_id"], event["id"])
 	if len(duplicate) > 0 {
 		task := duplicate[0]
-		if event["event_type"] == "email" && event["direction"] == "INCOMING" && task["status"] != "CANCELLED" && !boolean(task, "manually_created") {
+		if event["event_type"] == "email" && event["direction"] == "INCOMING" && task["status"] != "CANCELLED" && task["status"] != "COMPLETED" && !boolean(task, "manually_created") {
 			previous := q.get("communication_events", str(task, "source_event_id"))
 			incoming, old := timestamp(event["occurred_at"]), timestamp(previous["occurred_at"])
 			if incoming != nil && old != nil && incoming.After(*old) {
@@ -415,6 +438,9 @@ func (q *request) taskCandidate(event, candidate, assignment M, addresses, names
 				q.update("tasks", task["id"], update)
 			}
 		}
+		return
+	}
+	if !q.initialAssignmentAllowed(event) {
 		return
 	}
 	auto := owner != "uncertain" && candidate["assignee"] == "user" && !boolean(assignment, "name_ambiguous") && num(candidate, "confidence") >= num(llm, "auto_create_confidence")

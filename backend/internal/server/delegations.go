@@ -79,17 +79,25 @@ func (s *Server) delegationRoutes() {
 		if status != "" {
 			enum(M{"status": status}, "status", "ASSIGNED", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED")
 		}
+		archive := p.Get("archive")
+		if archive != "" && archive != "true" && archive != "1" {
+			fail(422, "Invalid archive filter")
+		}
+		statusScope := "status NOT IN ('COMPLETED','CANCELLED')"
+		if archive != "" || status == "COMPLETED" || status == "CANCELLED" {
+			statusScope = "status IN ('COMPLETED','CANCELLED')"
+		}
 		offset, limit, _ := q.pagination()
 		due := p.Get("due")
 		if due != "" && due != "overdue" && due != "none" {
 			fail(422, "Invalid due filter")
 		}
-		rows := q.rows(`SELECT * FROM delegations WHERE ($1='' OR `+searchClause("delegations", "$1")+`) AND ($2='' OR assignee_email=$2 OR (assignee_email='' AND assignee_name=$2)) AND ($3='' OR status=$3) AND ($4='' OR ($4='overdue' AND due_at<$5 AND status NOT IN ('COMPLETED','CANCELLED')) OR ($4='none' AND due_at IS NULL)) ORDER BY created_at DESC,id LIMIT $6 OFFSET $7`, query, p.Get("assignee"), status, due, q.now(), limit+1, offset)
+		rows := q.rows(`SELECT * FROM delegations WHERE `+statusScope+` AND ($1='' OR `+searchClause("delegations", "$1")+`) AND ($2='' OR assignee_email=$2 OR (assignee_email='' AND assignee_name=$2)) AND ($3='' OR status=$3) AND ($4='' OR ($4='overdue' AND due_at<$5 AND status NOT IN ('COMPLETED','CANCELLED')) OR ($4='none' AND due_at IS NULL)) ORDER BY created_at DESC,id LIMIT $6 OFFSET $7`, query, p.Get("assignee"), status, due, q.now(), limit+1, offset)
 		more := len(rows) > limit
 		if more {
 			rows = rows[:limit]
 		}
-		recipients := q.rows("SELECT assignee_email,min(assignee_name) AS assignee_name FROM delegations GROUP BY assignee_email,CASE WHEN assignee_email='' THEN assignee_name ELSE '' END ORDER BY min(assignee_name),assignee_email")
+		recipients := q.rows("SELECT assignee_email,min(assignee_name) AS assignee_name FROM delegations WHERE " + statusScope + " GROUP BY assignee_email,CASE WHEN assignee_email='' THEN assignee_name ELSE '' END ORDER BY min(assignee_name),assignee_email")
 		for _, r := range rows {
 			delete(r, "search_vector")
 		}
@@ -177,6 +185,9 @@ func (q *request) analyzeDelegations(event, payload M) {
 	if event["direction"] != "OUTGOING" && !meeting && len(existing) == 0 {
 		return
 	}
+	if len(existing) == 0 && !q.initialAssignmentAllowed(event) {
+		return
+	}
 	for _, d := range existing {
 		delete(d, "search_vector")
 	}
@@ -235,6 +246,9 @@ func (q *request) applyDelegationAnalysis(event, result M, existing []M, body st
 						q.insert("delegation_history", M{"delegation_id": target["id"], "source_event_id": event["id"], "old_status": target["status"], "new_status": target["status"], "actor": "AI", "explanation": evidence})
 					}
 				}
+				continue
+			}
+			if !q.initialAssignmentAllowed(event) || promiseToAskWithoutAddressee(event, evidence) {
 				continue
 			}
 			if str(c, "delegation_id") != "" || c["is_new"] != true || clean(str(c, "title")) == "" {

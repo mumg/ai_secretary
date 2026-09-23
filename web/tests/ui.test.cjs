@@ -81,6 +81,27 @@ test("initial plan, task action, same reading pane and API-confirmed completion"
   assert.match(d.querySelector("#detail").textContent, /Завершена/);
   assert.ok(!d.querySelector('#list [data-open-id="task1"]'));
 });
+test("completed task moves from active list into archive", async (t) => {
+  const { d, api } = setup(t);
+  await settle();
+  assert.equal(d.querySelector('#archive-tabs').hidden, false);
+  assert.equal(d.querySelector('#active-toggle').textContent, 'План на сегодня');
+  assert.equal(d.querySelector('#active-toggle').getAttribute('aria-pressed'), 'true');
+  click(d, '[data-open-id="task1"]');
+  await settle();
+  click(d, '[data-action="complete"]');
+  await settle();
+  assert.ok(!d.querySelector('#list [data-open-id="task1"]'));
+  click(d, '#archive-toggle');
+  await settle();
+  assert.ok(d.querySelector('#list [data-open-id="task1"]'));
+  assert.ok(api.calls.some((call) => call.path === "/tasks" && call.query.includes("archive=true")));
+  assert.equal(d.querySelector('#archive-toggle').getAttribute('aria-pressed'), 'true');
+  click(d, '#active-toggle');
+  await settle();
+  assert.equal(d.querySelector('#active-toggle').getAttribute('aria-pressed'), 'true');
+  assert.ok(!d.querySelector('#list [data-open-id="task1"]'));
+});
 test("confirmed task can be rejected and disappears from active plan", async (t) => {
   const { d, api } = setup(t);
   await settle();
@@ -230,6 +251,30 @@ test("manual creation submits priority and due time in the server zone", async (
   assert.equal(create.body.priority, "HIGH");
   assert.equal(d.querySelector("#task-dialog").open, false);
   assert.match(d.querySelector("#detail h2").textContent, /Новая задача/);
+});
+test("task priority and due date can be changed and cleared", async (t) => {
+  const { w, d, api } = setup(t);
+  await settle();
+  click(d, '[data-open-id="task1"]');
+  await settle();
+  click(d, '[data-action="edit-task"]');
+  assert.equal(d.querySelector("#edit-task-priority").value, api.data.tasks[0].priority);
+  d.querySelector("#edit-task-priority").value = "CRITICAL";
+  d.querySelector("#edit-task-due").value = "2030-09-15T13:00";
+  d.querySelector("#edit-task-form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  await settle();
+  let update = api.calls.filter((call) => call.path === "/tasks/task1" && call.method === "PATCH").at(-1);
+  assert.deepEqual(update.body, { priority: "CRITICAL", due_at: "2030-09-15T10:00:00.000Z" });
+  assert.equal(api.data.tasks[0].priority, "CRITICAL");
+  assert.equal(d.querySelector("#edit-task-dialog").open, false);
+  click(d, '[data-action="edit-task"]');
+  assert.equal(d.querySelector("#edit-task-due").value, "2030-09-15T13:00");
+  d.querySelector("#edit-task-due").value = "";
+  d.querySelector("#edit-task-form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  await settle();
+  update = api.calls.filter((call) => call.path === "/tasks/task1" && call.method === "PATCH").at(-1);
+  assert.equal(update.body.due_at, null);
+  assert.equal(api.data.tasks[0].due_at, null);
 });
 test("busy global indicator stays green; missing connection is a problem", async (t) => {
   const { w, d } = setup(t);
@@ -414,10 +459,13 @@ test("delegations filter, search, manual acceptance, history and source links", 
     if(!p.includes('/delegations')) return original(url,options);
     calls.push({url:u,options});
     if(options.method==='PATCH') { record.status=JSON.parse(options.body).status;record.history.push({id:"h2",new_status:record.status,actor:"USER",explanation:"Статус изменён пользователем",created_at:new Date().toISOString()}); }
-    return {ok:true,status:200,json:async()=>structuredClone(p.endsWith('/delegations') ? {items:[record],has_more:false,recipients:[{assignee_name:"Иван",assignee_email:"ivan@example.test"}]} : record)};
+    const archived = ["COMPLETED", "CANCELLED"].includes(record.status);
+    const visible = u.searchParams.get("archive") === "true" ? archived : !archived;
+    return {ok:true,status:200,json:async()=>structuredClone(p.endsWith('/delegations') ? {items:visible ? [record] : [],has_more:false,recipients:[{assignee_name:"Иван",assignee_email:"ivan@example.test"}]} : record)};
   };
   const {d,w}=setup(t,api);
   await settle();click(d,'[data-tab="delegations"]');await settle();
+  assert.equal(d.querySelector('#active-toggle').textContent, 'Поручения');
   assert.match(d.querySelector('#detail').textContent,/Ожидаемый результат/);
   const assignee=d.querySelector('#delegation-assignee'); assignee.value='ivan@example.test';assignee.dispatchEvent(new w.Event('change'));await settle();
   assert.equal(calls.at(-2).url.searchParams.get('assignee'),'ivan@example.test');
@@ -425,6 +473,10 @@ test("delegations filter, search, manual acceptance, history and source links", 
   assert.ok(calls.some(c=>c.url.searchParams.get('q')==='поставки' && c.url.searchParams.get('assignee')==='ivan@example.test'));
   click(d,'[data-delegation-status="COMPLETED"]');await settle();
   assert.equal(record.status,'COMPLETED');assert.match(d.querySelector('#detail').textContent,/Пользователь/);
+  assert.ok(!d.querySelector('#list [data-open-id="delegation1"]'));
+  click(d, '#archive-toggle'); await settle();
+  assert.ok(d.querySelector('#list [data-open-id="delegation1"]'));
+  assert.ok(calls.some(c => c.url.searchParams.get('archive') === 'true'));
   click(d,'#detail [data-open-kind="event"]');await settle();
   assert.ok(api.calls.some(c=>c.path==='/events/event1'));
 });

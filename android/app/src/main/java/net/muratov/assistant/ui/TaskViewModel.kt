@@ -31,6 +31,8 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
     val todayMeetings = MutableStateFlow<List<MeetingDto>>(emptyList())
     val searchQuery = MutableStateFlow("")
     val searchResults = MutableStateFlow<List<TaskEntity>?>(null)
+    val archivedTasks = MutableStateFlow<List<TaskEntity>>(emptyList())
+    private var archiveMode = false
     val searchLoading = MutableStateFlow(false)
     val searchError = MutableStateFlow<String?>(null)
     private var searchJob: Job? = null
@@ -42,6 +44,7 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
 
     fun refresh() = execute {
         repository.refresh()
+        if (archiveMode) archivedTasks.value = repository.archivedTasks()
         todayMeetings.value = repository.today().meetings
         updateSearch()
     }
@@ -50,6 +53,7 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
         refreshing.value = true
         execute(onFinished = { refreshing.value = false }) {
             repository.refresh()
+            if (archiveMode) archivedTasks.value = repository.archivedTasks()
             todayMeetings.value = repository.today(refresh = true).meetings
             updateSearch()
         }
@@ -71,6 +75,18 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
             delay(300)
             updateSearch(limitedValue.trim())
         }
+    }
+
+    fun setArchiveMode(enabled: Boolean) {
+        archiveMode = enabled
+        searchJob?.cancel()
+        searchResults.value = null
+        if (enabled) viewModelScope.launch {
+            runCatching { repository.archivedTasks() }
+                .onSuccess { archivedTasks.value = it }
+                .onFailure { error.value = it.message ?: tr("Не удалось загрузить задачи") }
+        }
+        if (searchQuery.value.isNotBlank()) searchJob = viewModelScope.launch { updateSearch() }
     }
 
     fun create(title: String, priority: String, dueAt: String?) = execute {
@@ -118,7 +134,7 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
         searchLoading.value = true
         searchError.value = null
         try {
-            searchResults.value = repository.searchTasks(query)
+            searchResults.value = repository.searchTasks(query, archiveMode)
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {

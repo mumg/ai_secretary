@@ -30,6 +30,7 @@ class TaskDetailViewModel(
 
     private var loadJob: Job? = null
     private var rejectJob: Job? = null
+    private var updateJob: Job? = null
 
     init {
         observeRealtime("tasks", "events") { load(silent = true) }
@@ -67,6 +68,22 @@ class TaskDetailViewModel(
                     loading = false,
                     error = exception.message ?: tr("Не удалось отказаться от задачи"),
                 )
+            }
+        }
+    }
+
+    fun update(priority: String, dueAt: String?) {
+        if (updateJob?.isActive == true) return
+        loadJob?.cancel()
+        updateJob = viewModelScope.launch {
+            _state.value = _state.value.copy(loading = true, error = null)
+            try {
+                repository.updateTask(taskId, priority, dueAt)
+                load()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _state.value = _state.value.copy(loading = false, error = exception.message ?: tr("Не удалось сохранить изменения"))
             }
         }
     }

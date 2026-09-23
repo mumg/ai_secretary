@@ -384,7 +384,9 @@ function createAPI(data = fixtures()) {
       return ok(
         data.tasks.filter(
           (t) =>
-            !["COMPLETED", "CANCELLED"].includes(t.status) &&
+            (u.searchParams.get("archive") === "true"
+              ? ["COMPLETED", "CANCELLED"].includes(t.status)
+              : !["COMPLETED", "CANCELLED"].includes(t.status)) &&
             t.title
               .toLowerCase()
               .includes((u.searchParams.get("q") || "").toLowerCase()),
@@ -415,6 +417,10 @@ function createAPI(data = fixtures()) {
     if (seg[0] === "tasks" && id) {
       const t = data.tasks.find((t) => t.id === id);
       if (!t) return { ok: false, status: 404, json: async () => ({}) };
+      if (method === "PATCH") {
+        Object.assign(t, body);
+        return ok(t);
+      }
       if (seg[2]) {
         if (seg[2] === "reminders")
           t.reminders.push({

@@ -56,8 +56,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
@@ -65,6 +63,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -202,6 +201,7 @@ private fun ImproverScreen(
     onOpenThread: (String) -> Unit,
 ) {
     val tasks by viewModel.tasks.collectAsState()
+    val archivedTasks by viewModel.archivedTasks.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val taskRefreshing by viewModel.refreshing.collectAsState()
     val voiceProcessing by viewModel.voiceProcessing.collectAsState()
@@ -223,6 +223,8 @@ private fun ImproverScreen(
     var showCreate by remember { mutableStateOf(false) }
     var reminderTask by remember { mutableStateOf<TaskEntity?>(null) }
     var sortByDue by rememberSaveable { mutableStateOf(false) }
+    var taskArchive by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(taskArchive) { viewModel.setArchiveMode(taskArchive) }
     var voiceError by remember { mutableStateOf<String?>(null) }
     val pagerState = rememberPagerState(pageCount = { HomeTab.entries.size })
     val pagerScope = rememberCoroutineScope()
@@ -288,9 +290,11 @@ private fun ImproverScreen(
             microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
-    val searchedTasks = if (taskSearchQuery.isBlank()) tasks else taskSearchResults.orEmpty()
-    val displayedTasks = remember(searchedTasks, sortByDue) {
-        if (!sortByDue) {
+    val searchedTasks = if (taskSearchQuery.isBlank()) {
+        if (taskArchive) archivedTasks else tasks
+    } else taskSearchResults.orEmpty()
+    val displayedTasks = remember(searchedTasks, sortByDue, taskArchive) {
+        if (taskArchive || !sortByDue) {
             searchedTasks
         } else {
             val priorityWeight = mapOf("CRITICAL" to 4, "HIGH" to 3, "NORMAL" to 2, "LOW" to 1)
@@ -310,7 +314,7 @@ private fun ImproverScreen(
                             Text(
                                 when (selectedTab) {
                                     HomeTab.DELEGATIONS -> tr("Поручения")
-                                    HomeTab.TASKS -> tr("План на сегодня")
+                                    HomeTab.TASKS -> if (taskArchive) tr("Архив задач") else tr("План на сегодня")
                                     HomeTab.MEETINGS -> tr("Встречи")
                                     HomeTab.RESULTS -> tr("Результаты встреч")
                                     HomeTab.THREADS -> tr("Резюме переписок")
@@ -318,7 +322,7 @@ private fun ImproverScreen(
                             )
                             val subtitle = when (selectedTab) {
                                 HomeTab.DELEGATIONS -> null
-                                HomeTab.TASKS -> if (sortByDue) tr("По приоритету и сроку") else tr("По рейтингу")
+                                HomeTab.TASKS -> if (taskArchive) null else if (sortByDue) tr("По приоритету и сроку") else tr("По рейтингу")
                                 HomeTab.MEETINGS -> tr("Предстоящие по времени")
                                 HomeTab.RESULTS, HomeTab.THREADS -> tr("Сначала новые")
                             }
@@ -374,7 +378,7 @@ private fun ImproverScreen(
             }
         },
         bottomBar = {
-            if (selectedTab == HomeTab.TASKS) {
+            if (selectedTab == HomeTab.TASKS && !taskArchive) {
                 RightThumbActionBar(
                     sortByDue = sortByDue,
                     voiceProcessing = voiceProcessing,
@@ -441,6 +445,10 @@ private fun ImproverScreen(
                     HomeTab.TASKS -> Column(
                         Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { taskArchive = false }, enabled = taskArchive) { Text(tr("Активные")) }
+                    OutlinedButton(onClick = { taskArchive = true }, enabled = !taskArchive) { Text(tr("Архив")) }
+                }
                 if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
                 if (taskSearchError != null) {
                     Text(taskSearchError!!, color = MaterialTheme.colorScheme.error)
@@ -453,10 +461,10 @@ private fun ImproverScreen(
                 }
                 voiceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 if (
-                    taskSearchQuery.isBlank() && tasks.isEmpty() &&
-                    visibleTodayMeetings.isEmpty() && !loading
+                    taskSearchQuery.isBlank() && searchedTasks.isEmpty() &&
+                    (taskArchive || visibleTodayMeetings.isEmpty()) && !loading
                 ) {
-                    Text(tr("На сегодня ничего не запланировано"), Modifier.padding(top = 24.dp))
+                    Text(if (taskArchive) tr("В архиве пока нет задач") else tr("На сегодня ничего не запланировано"), Modifier.padding(top = 24.dp))
                 } else if (
                     taskSearchQuery.isNotBlank() && displayedTasks.isEmpty() &&
                     !taskSearchLoading
@@ -467,7 +475,7 @@ private fun ImproverScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    if (taskSearchQuery.isBlank() && visibleTodayMeetings.isNotEmpty()) {
+                    if (!taskArchive && taskSearchQuery.isBlank() && visibleTodayMeetings.isNotEmpty()) {
                         item {
                             Text(
                                 tr("Встречи сегодня"),
@@ -1397,6 +1405,8 @@ private fun TaskCard(
                     }
                 } else if (task.status == "POSSIBLY_COMPLETED") {
                     Text(tr("Возможно выполнена — подтвердите"), color = priority.accent)
+                } else if (task.status in setOf("COMPLETED", "CANCELLED")) {
+                    Text(if (task.status == "COMPLETED") tr("Завершена") else tr("Отменена"), color = priority.accent)
                 }
             }
             Row(
@@ -1424,7 +1434,7 @@ private fun TaskCard(
                 if (task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED")) {
                     RejectTaskButton(onClick = onReject)
                 }
-                FilledTonalIconButton(
+                if (task.status !in setOf("COMPLETED", "CANCELLED")) FilledTonalIconButton(
                     onClick = onAddReminder,
                     modifier = Modifier
                         .size(48.dp)
@@ -1440,16 +1450,13 @@ private fun TaskCard(
                 ) {
                     Icon(Icons.Default.Alarm, contentDescription = tr("Добавить напоминание"))
                 }
-                Checkbox(
-                    checked = false,
+                if (task.status !in setOf("COMPLETED", "CANCELLED")) FilledTonalIconButton(
+                    onClick = onComplete,
                     enabled = task.status != "NEEDS_CONFIRMATION",
-                    onCheckedChange = { if (it) onComplete() },
                     modifier = Modifier.size(48.dp),
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = priority.accent,
-                        uncheckedColor = priority.accent,
-                    ),
-                )
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = tr("✓ Завершить"))
+                }
             }
         }
     }
@@ -1553,15 +1560,16 @@ private fun CreateTaskDialog(
 }
 
 @Composable
-private fun DateTimeField(
+fun DateTimeField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val now = ZonedDateTime.now()
+    val initial = runCatching { java.time.OffsetDateTime.parse(value).atZoneSameInstant(ZoneId.systemDefault()) }
+        .getOrElse { ZonedDateTime.now() }
     Column {
-        Text(if (value.isBlank()) tr("{0} не задан" , label) else "${label}: ${value}")
+        Text(if (value.isBlank()) tr("{0} не задан" , label) else "$label: ${initial.format(net.muratov.assistant.i18n.dateTimeFormatter())}")
         Row {
             Button(
                 onClick = {
@@ -1584,14 +1592,14 @@ private fun DateTimeField(
                                         ).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
                                     )
                                 },
-                                now.hour,
-                                now.minute,
+                                initial.hour,
+                                initial.minute,
                                 true,
                             ).show()
                         },
-                        now.year,
-                        now.monthValue - 1,
-                        now.dayOfMonth,
+                        initial.year,
+                        initial.monthValue - 1,
+                        initial.dayOfMonth,
                     ).show()
                 },
             ) { Text(tr("Выбрать")) }
@@ -1601,4 +1609,3 @@ private fun DateTimeField(
         }
     }
 }
-

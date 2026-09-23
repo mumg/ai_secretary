@@ -26,6 +26,33 @@ button { cursor: pointer; color: var(--ink); background: transparent; border: 1p
 .state-dot.ok { background: var(--accent); box-shadow: none; }
 
 .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto 72px; }
+.setup-wizard { margin-top: 22px; padding: 22px 24px; border: 1px solid var(--accent); border-radius: 10px; background: var(--surface); }
+.setup-wizard[hidden] { display: none; }
+.setup-wizard h2 { margin: 4px 0 8px; font-size: 24px; }
+.setup-wizard #setupWizardInstructions { white-space: pre-line; max-width: 850px; }
+.setup-wizard #setupWizardInstructions a, #sourceWizardInstructions a { overflow-wrap: anywhere; }
+.setup-wizard #setupWizardStatus { min-height: 1.5em; color: var(--muted); }
+.setup-wizard #setupWizardStatus:empty { display: none; }
+.setup-wizard-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.setup-wizard-actions button:disabled { opacity: .55; cursor: default; }
+body.setup-mode > .topbar, body.setup-mode > #version-notice,
+body.setup-mode .shell > :not(#setupWizard), body.setup-mode .copyright { display: none !important; }
+body.setup-mode .shell { width: min(900px, calc(100% - 28px)); margin: min(9vh, 80px) auto 72px; }
+body.setup-mode .setup-wizard { margin-top: 0; }
+body.setup-mode:has(dialog[open]) .shell { visibility: hidden; }
+body.setup-mode.setup-model #setupWizard #analysis { display: block !important; margin: 20px 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+body.setup-mode.setup-identity #setupWizard #analysis { display: block !important; margin: 20px 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+body.setup-mode.setup-model #analysis .section-heading,
+body.setup-mode.setup-identity #analysis .section-heading,
+body.setup-mode.setup-model #settingsForm > fieldset:not(#llmSettings) { display: none; }
+body.setup-mode.setup-identity #settingsForm > fieldset:not(#identitySettings) { display: none; }
+body.setup-mode.setup-model #settingsForm, body.setup-mode.setup-identity #settingsForm { display: block; }
+body.setup-mode.setup-model #llmSettings { width: 100%; }
+body.setup-mode.setup-identity #identitySettings { width: 100%; }
+.source-wizard-context { margin: 12px 0 20px; padding: 14px 16px; border: 1px solid var(--accent); border-radius: 8px; background: #19352a; }
+.source-wizard-context[hidden] { display: none; }
+.source-wizard-context strong { display: block; font-size: 16px; }
+.source-wizard-context p:not(.eyebrow) { margin: 8px 0; white-space: pre-line; }
 .copyright { padding: 0 20px 24px; text-align: center; color: var(--muted); font-size: 12px; }
 .intro { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; padding: 28px 0 24px; align-items: end; }
 .intro h1 { margin: 4px 0 10px; font-size: 26px; line-height: 1.25; letter-spacing: -.02em; font-weight: 650; }

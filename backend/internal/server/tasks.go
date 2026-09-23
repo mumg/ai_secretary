@@ -109,9 +109,16 @@ func (s *Server) taskRoutes() {
 		} else if order != "" && order != "rank" {
 			fail(422, "Invalid order")
 		}
-		where := "TRUE"
-		if q.r.URL.Query().Get("include_closed") != "true" && q.r.URL.Query().Get("include_closed") != "1" {
-			where = "status NOT IN ('COMPLETED','CANCELLED')"
+		archive := q.r.URL.Query().Get("archive")
+		if archive != "" && archive != "true" && archive != "1" {
+			fail(422, "Invalid archive filter")
+		}
+		where := "status NOT IN ('COMPLETED','CANCELLED')"
+		if archive != "" {
+			where = "status IN ('COMPLETED','CANCELLED')"
+			sortSQL = "completed_at DESC NULLS LAST,updated_at DESC,id"
+		} else if q.r.URL.Query().Get("include_closed") == "true" || q.r.URL.Query().Get("include_closed") == "1" {
+			where = "TRUE"
 		}
 		result := []M{}
 		for _, t := range q.rows("SELECT * FROM tasks WHERE "+where+" AND ($1='' OR "+searchClause("tasks", "$1")+") ORDER BY "+sortSQL, query) {

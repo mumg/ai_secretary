@@ -34,7 +34,9 @@ func (s *Server) PreparePreconfiguration(ctx context.Context) error {
 		}
 		// A new endpoint needs a fresh synchronization cursor. Persist only a
 		// fingerprint, never the baseline connection fields themselves.
-		fingerprint := hash([]any{source.SourceType, source.Settings, source.Enabled})
+		connection := config.Clone(source.Settings)
+		delete(connection, "initial_assignment_days")
+		fingerprint := hash([]any{source.SourceType, connection, source.Enabled})
 		var previous string
 		if err = tx.QueryRow(ctx, "SELECT configuration_fingerprint FROM communication_sources WHERE id=$1 FOR UPDATE", source.ID).Scan(&previous); err != nil {
 			return err
@@ -43,7 +45,7 @@ func (s *Server) PreparePreconfiguration(ctx context.Context) error {
 			if _, err = tx.Exec(ctx, "DELETE FROM source_cursors WHERE source_id=$1 AND EXISTS (SELECT 1 FROM communication_sources WHERE id=$1 AND preconfigured)", source.ID); err != nil {
 				return err
 			}
-			if _, err = tx.Exec(ctx, "UPDATE communication_sources SET configuration_fingerprint=$2 WHERE id=$1 AND preconfigured", source.ID, fingerprint); err != nil {
+			if _, err = tx.Exec(ctx, "UPDATE communication_sources SET configuration_fingerprint=$2,last_verified_at=NULL WHERE id=$1 AND preconfigured", source.ID, fingerprint); err != nil {
 				return err
 			}
 		}
@@ -56,6 +58,9 @@ func validateFileValues(settings config.Object) (err error) {
 			err = fmt.Errorf("invalid preconfiguration link patterns")
 		}
 	}()
+	if err := config.ValidateInitialAssignmentDays(settings); err != nil {
+		return err
+	}
 	if patterns, ok := settings["link_patterns"]; ok {
 		validatePatterns(patterns)
 	}
@@ -89,7 +94,7 @@ func (q *request) sourceQuery(sql string, args []any) (string, []any) {
  CASE WHEN s.preconfigured THEN COALESCE(s.source_type,` + field("source_type") + `,'external_tasks') ELSE s.source_type END AS source_type,
  CASE WHEN s.preconfigured THEN (` + base + `) IS NOT NULL AND COALESCE(s.enabled,(` + field("enabled") + `)::boolean,false) ELSE s.enabled END AS enabled,
  CASE WHEN s.preconfigured AND (s.source_type IS NULL OR s.source_type=` + field("source_type") + `) THEN COALESCE((` + base + `)->'settings','{}'::jsonb) || s.settings::jsonb ELSE s.settings::jsonb END AS settings,
- s.credential_encrypted,s.last_sync_at,s.last_error,s.created_at,s.updated_at,s.preconfigured,s.configuration_deleted
+ s.credential_encrypted,s.last_sync_at,s.last_error,s.last_verified_at,s.created_at,s.updated_at,s.preconfigured,s.configuration_deleted
  FROM communication_sources s WHERE NOT s.configuration_deleted` + lock + `)
  `
 	if strings.HasPrefix(sql, "WITH ") {

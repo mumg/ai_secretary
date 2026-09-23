@@ -189,11 +189,14 @@ function populateSettings(data) {
   $("firebaseState").classList.toggle("ok", data.firebase_configured);
 }
 
-async function saveSettings() {
+async function saveSettings(event) {
   try {
     if (!settingsState) throw new Error(tr("Настройки ещё не загружены"));
     const fields = document.querySelectorAll("#analysis input, #notifications input");
-    if (![...fields].filter(field => !field.closest("#localOllama") && !field.closest("[hidden]")).every((field) => field.reportValidity())) return;
+    const setupIdentity = document.body.classList.contains("setup-identity");
+    const setupModel = document.body.classList.contains("setup-model");
+    if (![...fields].filter(field => !field.closest("#localOllama") && !field.closest("[hidden]")
+      && (!document.body.classList.contains("setup-mode") || field.closest(setupIdentity ? "#identitySettings" : "#llmSettings"))).every((field) => field.reportValidity())) return;
     const s = structuredClone(settingsState);
     s.relationships = {};
     for (const [key, id] of [["managers", "relationshipManagers"], ["reports", "relationshipReports"]]) {
@@ -236,6 +239,8 @@ async function saveSettings() {
     s.notifications.daily_summary = $("notificationDaily").checked;
     s.worker.ranking_interval_seconds = Number($("rankingInterval").value);
     s.worker.poll_interval_seconds = Number($("pollInterval").value);
+    const llmChanged = JSON.stringify(settingsState.llm) !== JSON.stringify(s.llm) ||
+      Boolean($("llmApiKey").value.trim()) || $("clearLlmApiKey").checked;
     const result = await request("/settings", { method: "PUT", body: JSON.stringify({
       settings: s,
 
@@ -255,6 +260,13 @@ async function saveSettings() {
       : "";
     toast(tr("Настройки сохранены.{0}", scanMessage));
     loadStatus();
+    if (!setupIdentity && (llmChanged || setupModel)) {
+      document.dispatchEvent(new CustomEvent("secretary:settings-saved", { detail: { llm: true } }));
+    }
+    const panel = setupIdentity ? "identity" : event?.currentTarget?.closest(".panel")?.id;
+    if (panel === "identity" || (!setupModel && (panel === "analysis" || panel === "notifications"))) {
+      document.dispatchEvent(new CustomEvent("secretary:settings-saved", { detail: { panel } }));
+    }
   } catch (error) { toast(error.message, true); }
 }
 
@@ -275,18 +287,27 @@ function renderSources() {
     return;
   }
   list.innerHTML = sourcesState.map((source) => `
-    <article class="source-card">
+    <article class="source-card" data-configuration-widget="source:${escapeAttr(source.id)}">
       <div class="source-card-header"><div><h3>${escapeText(source.label)}</h3><p>${sourceKind[source.source_type] || source.source_type}</p></div><span class="badge ${source.enabled ? "" : "off"}">${source.enabled ? tr("ВКЛЮЧЁН") : tr("ВЫКЛЮЧЕН")}</span></div>
       ${source.tags.length ? `<div class="source-tags">${source.tags.map((tag) => `<span>${escapeText(tag.name)}</span>`).join("")}</div>` : ""}
       <div class="source-details"><div>${tr("Подключение")}<strong>${escapeText(sourceEndpoint(source))}</strong></div><div>${tr("Последняя синхронизация")}<strong>${source.last_sync_at ? new Date(source.last_sync_at).toLocaleString() : tr("ещё не запускалась")}</strong></div></div>
       ${source.source_type === "mts_link" ? `<p class="credential-state">${source.refresh_token_configured ? tr("SSO подключён · токены обновляются автоматически") : tr("Автоматическое обновление токенов не настроено")}</p>` : ""}
+      <p class="credential-state">${source.configuration_verified ? tr("Подключение работает") : tr("Проверить подключение")}</p>
       ${source.last_error ? `<div class="source-error">${tr("Последняя ошибка:")} ${escapeText(source.last_error)}</div>` : ""}
       <div class="card-actions">${source.source_type === "mts_link" ? `<button data-action="mts-sso" data-id="${source.id}">${tr("Войти через SSO")}</button>` : ""}<button data-action="test" data-id="${source.id}">${tr("Проверить")}</button><button data-action="edit" data-id="${source.id}">${tr("Изменить")}</button><button class="danger" data-action="delete" data-id="${source.id}">${tr("Удалить")}</button></div>
     </article>`).join("");
+  sourcesState.forEach(source => window.ConfigurationWidgets?.get(`source:${source.id}`));
 }
 
 async function loadSources() {
-  try { sourcesState = await request("/sources"); renderSources(); } catch (error) { toast(error.message, true); }
+  try {
+    const [sources, status] = await Promise.all([
+      request("/sources"), request("/configuration-widgets").catch(() => ({ widgets: {} })),
+    ]);
+    sourcesState = sources.map(source => ({ ...source,
+      configuration_verified: Boolean(status.widgets?.[`source:${source.id}`]?.verified) }));
+    renderSources();
+  } catch (error) { toast(error.message, true); }
 }
 
 function renderTags() {
@@ -317,6 +338,7 @@ async function createTag(event) {
     input.value = "";
     toast(tr("Тег добавлен"));
     await loadTags();
+    document.dispatchEvent(new CustomEvent("secretary:widget-saved", { detail: { id: "tags" } }));
   } catch (error) { toast(error.message, true); }
 }
 
@@ -334,6 +356,7 @@ async function tagAction(event) {
       await request(`/tags/${tag.id}`, { method: "DELETE" });
       toast(tr("Тег удалён"));
       await Promise.all([loadTags(), loadSources()]);
+      document.dispatchEvent(new CustomEvent("secretary:widget-saved", { detail: { id: "tags" } }));
     } catch (error) { toast(error.message, true); }
     return;
   }
@@ -344,6 +367,7 @@ async function tagAction(event) {
   try {
     await request(`/tags/${tag.id}`, { method: "PUT", body: JSON.stringify({ name }) });
     toast(tr("Тег сохранён"));
+    document.dispatchEvent(new CustomEvent("secretary:widget-saved", { detail: { id: "tags" } }));
     await Promise.all([loadTags(), loadSources()]);
   } catch (error) { toast(error.message, true); }
   finally { button.disabled = false; }
@@ -390,6 +414,9 @@ function openSourceDialog(source = null) {
   $("sourceType").disabled = Boolean(source);
   setValue("sourceId", source?.id || ""); $("sourceId").readOnly = Boolean(source);
   setValue("sourceLabel", source?.label || ""); $("sourceEnabled").checked = source?.enabled ?? true;
+  setValue("sourceAssignmentDays", source ? (source.settings?.initial_assignment_days ?? "") : (settingsState?.communication_sources?.initial_sync_days ?? 30));
+  $("sourceAssignmentDays").required = !source || source.settings?.initial_assignment_days != null;
+  $("sourceAssignmentLegacyHint").hidden = !source || source.settings?.initial_assignment_days != null;
   renderSourceTagPicker(source?.tags || []);
   $("sourceCredential").value = "";
   sourceLinkType = $("sourceType").value;
@@ -416,6 +443,8 @@ function readSourceSettings() {
   });
   const patterns = listValuesByLine($("sourceLinkPatterns").value);
   result.link_patterns = patterns;
+  const days = $("sourceAssignmentDays").value.trim();
+  if (days !== "") result.initial_assignment_days = Number(days);
   return result;
 }
 
@@ -442,6 +471,7 @@ async function testSourceLink() {
 
 async function saveSource(event) {
   event.preventDefault();
+  if (!$("sourceAssignmentDays").reportValidity()) return;
   setSourceFormError();
   const submit = $("sourceSubmit");
   submit.disabled = true;
@@ -450,7 +480,14 @@ async function saveSource(event) {
   const payload = { id: $("sourceId").value.trim(), label: $("sourceLabel").value.trim(), source_type: $("sourceType").value, enabled: $("sourceEnabled").checked, settings: readSourceSettings(), credential: $("sourceCredential").value || null, tag_ids };
   try {
     await request(editingSourceId ? `/sources/${editingSourceId}` : "/sources", { method: editingSourceId ? "PUT" : "POST", body: JSON.stringify(payload) });
-    $("sourceDialog").close(); toast(tr("Источник сохранён")); await Promise.all([loadSources(), loadTags()]); loadStatus();
+    if (document.body.classList.contains("setup-mode")) {
+      const verified = await window.ConfigurationWidgets.get(`source:${payload.id}`).verify();
+      if (!verified) return;
+    } else {
+      $("sourceDialog").close();
+      document.dispatchEvent(new CustomEvent("secretary:source-saved", { detail: { sourceId: payload.id } }));
+    }
+    toast(tr("Источник сохранён")); await Promise.all([loadSources(), loadTags()]); loadStatus();
   } catch (error) {
     setSourceFormError(error.message);
   } finally {
@@ -462,15 +499,23 @@ async function saveSource(event) {
 async function sourceAction(event) {
   const button = event.target.closest("button[data-action]"); if (!button) return;
   const source = sourcesState.find((item) => item.id === button.dataset.id); if (!source) return;
-  if (button.dataset.action === "edit") return openSourceDialog(source);
-  if (button.dataset.action === "mts-sso") return openMtsSso(source);
+  const widget = window.ConfigurationWidgets?.get(`source:${source.id}`);
+  if (button.dataset.action === "edit") return widget ? widget.configure() : openSourceDialog(source);
+  if (button.dataset.action === "mts-sso") {
+    try { if (widget) await widget.beginSSO(); else openMtsSso(source); }
+    catch (error) { toast(error.message, true); }
+    return;
+  }
   if (button.dataset.action === "delete") {
     if (!confirm(tr("Удалить источник «{0}» вместе со всеми его переписками, задачами и вложениями? Ручные задачи сохранятся.", source.label))) return;
     try { await request(`/sources/${source.id}`, { method: "DELETE" }); toast(tr("Источник и связанные данные удалены")); await loadSources(); loadStatus(); } catch (error) { toast(error.message, true); }
     return;
   }
   button.disabled = true; button.textContent = tr("Проверяем…");
-  try { await request(`/sources/${source.id}/test`, { method: "POST" }); toast(tr("Подключение работает")); } catch (error) { toast(error.message, true); }
+  try {
+    if (widget) await widget.verify();
+    else { await request(`/sources/${source.id}/test`, { method: "POST" }); toast(tr("Подключение работает")); }
+  } catch (error) { toast(error.message, true); }
   finally { button.disabled = false; button.textContent = tr("Проверить"); await loadSources(); }
 }
 
@@ -658,6 +703,7 @@ async function saveDirectSettings(event) {
     $("firebaseState").classList.toggle("ok", result.firebase_configured);
     hideMobileIdentity();
     toast(tr("Настройки прямого подключения сохранены"));
+    document.dispatchEvent(new CustomEvent("secretary:widget-saved", { detail: { id: "connection" } }));
   } catch (error) { toast(error.message, true); }
 }
 $("directSettingsForm").addEventListener("submit", saveDirectSettings);
@@ -704,6 +750,7 @@ async function gatewayAction(path, body, method = "POST") {
   try {
     renderGateway(await request(path, { method, body: body ? JSON.stringify(body) : undefined }));
     if (path === "/gateway/reregister") toast(tr("Новый UID и сертификаты получены. Подключите устройства по новому QR-коду"));
+    document.dispatchEvent(new CustomEvent("secretary:widget-saved", { detail: { id: "connection" } }));
   } catch (error) { $("gatewayError").textContent = error.message; }
   finally {
     gatewayBusy = false;

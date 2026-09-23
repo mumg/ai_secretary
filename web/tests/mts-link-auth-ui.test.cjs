@@ -88,6 +88,26 @@ test('SSO dialog without extension can switch to the same source manual token fo
   assert.equal(w.document.activeElement.id, 'sourceCredential');
 });
 
+test('completed desktop SSO notifies the setup wizard after the server accepts tokens', async t => {
+  const { w, el, source } = setup(t);
+  const savedSources = [];
+  w.document.addEventListener('secretary:source-saved', event => savedSources.push(event.detail.sourceId));
+  w.openMtsSso(source, true);
+  w.eval("mtsLogin.flowId = '00000000-0000-4000-8000-000000000001'; mtsLogin.ticket = 'ticket';");
+  w.fetch = async (url, options = {}) => ({
+    ok: true,
+    json: async () => url.endsWith('/sources') ? [source] : url.endsWith('/status') ? {} : {},
+  });
+  w.dispatchEvent(new w.MessageEvent('message', {
+    source: w, origin: w.location.origin,
+    data: { channel: 'improver-mts-sso-v1', from: 'extension', action: 'complete',
+      flowId: '00000000-0000-4000-8000-000000000001', authCode: 'test-code' },
+  }));
+  await settle(30);
+  assert.deepEqual(savedSources, ['mts']);
+  assert.equal(el('mtsSsoDialog').open, false);
+});
+
 test('SSO remembers email on reopening, isolates sources and restores browser storage', t => {
   const { w, el, source } = setup(t);
   w.openMtsSso(source);
@@ -148,6 +168,8 @@ test('SSO restores existing account email, but never overwrites typing or anothe
 
 test('source link editor restores patterns, previews unsaved regex and saves it intact', async t => {
   const { w, el, source } = setup(t);
+  const savedSources = [];
+  w.document.addEventListener('secretary:source-saved', event => savedSources.push(event.detail.sourceId));
   const pattern = String.raw`^https://mts\.mts-link\.ru/j/MTC/(?P<meeting_id>\d{1,20})(?:/.*)?$`;
   w.openSourceDialog({ ...source, settings: { link_patterns: [pattern] } });
   assert.equal(el('sourceLinkPatterns').value, pattern);
@@ -166,4 +188,30 @@ test('source link editor restores patterns, previews unsaved regex and saves it 
   assert.match(el('sourceLinkTestResult').textContent, /meeting_id: 23854886808/);
   await w.saveSource({ preventDefault() {} });
   assert.deepEqual(saved.settings.link_patterns, [pattern]);
+  assert.deepEqual(savedSources, [source.id]);
+});
+
+test('source initialization depth preserves zero and legacy values across editing and type changes', t => {
+  const { w, el, source } = setup(t);
+  w.openSourceDialog();
+  assert.equal(el('sourceAssignmentDays').value, '30');
+  assert.equal(w.readSourceSettings().initial_assignment_days, 30);
+  el('sourceAssignmentDays').value = '0';
+  el('sourceType').value = 'exchange';
+  el('sourceType').dispatchEvent(new w.Event('change'));
+  assert.equal(w.readSourceSettings().initial_assignment_days, 0);
+  for (const value of ['-1', '366', '1.5', '']) {
+    el('sourceAssignmentDays').value = value;
+    assert.equal(el('sourceAssignmentDays').checkValidity(), false);
+  }
+  w.openSourceDialog({ ...source, settings: { initial_assignment_days: 0 } });
+  assert.equal(el('sourceAssignmentDays').value, '0');
+  assert.equal(w.readSourceSettings().initial_assignment_days, 0);
+  w.openSourceDialog(source);
+  assert.equal(el('sourceAssignmentDays').value, '');
+  assert.equal(el('sourceAssignmentDays').required, false);
+  assert.equal(el('sourceAssignmentLegacyHint').hidden, false);
+  assert.equal('initial_assignment_days' in w.readSourceSettings(), false);
+  el('sourceAssignmentDays').value = '7';
+  assert.equal(w.readSourceSettings().initial_assignment_days, 7);
 });

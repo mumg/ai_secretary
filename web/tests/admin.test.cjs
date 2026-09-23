@@ -6,6 +6,46 @@ const { JSDOM } = require('jsdom');
 const root = path.resolve(__dirname, '../../backend/web');
 const settle = () => new Promise(resolve => setTimeout(resolve, 20));
 
+test('wizard source Save persists and tests again while keeping the form open after failure', async t => {
+  const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {
+    url: 'http://localhost/admin', runScripts: 'outside-only',
+  });
+  t.after(() => dom.window.close());
+  const w = dom.window;
+  w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  w.HTMLDialogElement.prototype.close = function () { this.open = false; };
+  w.checkMtsExtension = () => {};
+  const source = { id: 'mail', label: 'Почта', source_type: 'imap', enabled: true,
+    settings: { host: 'mail.example.test', port: 993, tls: true, username: 'user@example.test', initial_assignment_days: 30 },
+    tags: [], credential_configured: true };
+  const writes = [];
+  w.fetch = async (url, options = {}) => {
+    if (options.method === 'PUT' && url.endsWith('/sources/mail')) writes.push(JSON.parse(options.body));
+    const value = url.endsWith('/sources') ? [source] : url.endsWith('/tags') ? [] : {};
+    return { ok: true, json: async () => value };
+  };
+  let checks = 0;
+  w.ConfigurationWidgets = { get: () => ({ verify: async () => {
+    checks++;
+    if (checks === 1) return false;
+    w.document.getElementById('sourceDialog').close();
+    return true;
+  } }) };
+  w.eval(fs.readFileSync(path.join(root, 'assets/admin.js'), 'utf8'));
+  await settle();
+  w.document.body.classList.add('setup-mode');
+  w.openSourceDialog(source);
+  const dialog = w.document.getElementById('sourceDialog');
+  assert.equal(dialog.open, true);
+  await w.saveSource({ preventDefault() {} });
+  assert.equal(dialog.open, true);
+  assert.equal(w.document.getElementById('sourceSubmit').disabled, false);
+  await w.saveSource({ preventDefault() {} });
+  assert.equal(dialog.open, false);
+  assert.equal(checks, 2);
+  assert.equal(writes.length, 2);
+});
+
 test('model settings save, preserve and remove API key without echoing it', async t => {
   const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {
     url: 'http://localhost/admin', runScripts: 'outside-only',

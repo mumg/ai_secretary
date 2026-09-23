@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -66,6 +67,13 @@ func TestDelegationLifecycleSearchAndReplay(t *testing.T) {
 		t.Fatal("AI accepted result")
 	}
 	call(t, s, "PATCH", "/api/v1/delegations/"+id, M{"status": "COMPLETED"}, 200)
+	if rows := call(t, s, "GET", "/api/v1/delegations", nil, 200).(map[string]any)["items"].([]any); len(rows) != 0 {
+		t.Fatal("completed delegation remained active", rows)
+	}
+	if rows := call(t, s, "GET", "/api/v1/delegations?archive=true", nil, 200).(map[string]any)["items"].([]any); len(rows) != 1 || str(rows[0].(map[string]any), "id") != id {
+		t.Fatal("completed delegation missing from archive", rows)
+	}
+	call(t, s, "GET", "/api/v1/delegations?archive=invalid", nil, 422)
 	call(t, s, "PATCH", "/api/v1/delegations/"+id, M{"status": "INVALID"}, 422)
 	_, err := s.job(context.Background(), func(q *request) bool {
 		_, found := q.retrieveArchive(M{"query": "поручения Петров отчёт"})
@@ -254,5 +262,37 @@ func TestMeetingAssignmentRequiresUserSpeaker(t *testing.T) {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestPromiseToAskDoesNotBecomeDelegation(t *testing.T) {
+	s := testServer(t)
+	call(t, s, "POST", "/api/v1/admin/sources", M{"id": "mail", "label": "Mail", "source_type": "imap", "enabled": false}, 201)
+	candidate := M{"delegation_id": "", "is_new": true, "title": "Обновить нейминг и описание сервисов", "assignee_name": "Георгий Дзодзуашвили", "assignee_email": "georgiy@example.test", "confidence": 0.99, "status": "ASSIGNED"}
+	for i, test := range []struct {
+		body    string
+		created bool
+	}{{"Да, попрошу обновить", false}, {"Я попрошу Георгия обновить нейминг", false}, {"Георгий, обнови нейминг и описание сервисов", true}, {"Георгий, попрошу тебя обновить нейминг", true}} {
+		event := call(t, s, "POST", "/api/v1/events", M{"source_id": "mail", "source_type": "imap", "external_id": fmt.Sprint(i), "event_type": "email", "direction": "OUTGOING", "thread_external_id": fmt.Sprint(i), "body": test.body, "occurred_at": time.Now().Add(time.Duration(i) * time.Second).Format(time.RFC3339)}, 202).(map[string]any)
+		candidate["evidence"] = test.body
+		before := policyCount(t, s, "delegations")
+		_, err := s.job(context.Background(), func(q *request) bool {
+			q.applyDelegationAnalysis(event, M{"items": []any{map[string]any(candidate)}}, nil, test.body)
+			if i == 0 {
+				own := M{"title": "Попросить обновить нейминг и описание сервисов", "assignee": "user", "assignee_address": "me@example.test", "confidence": 0.99, "evidence": test.body, "assignment_evidence": test.body, "priority": "NORMAL"}
+				q.taskCandidate(event, own, M{"eligible": true}, []string{"me@example.test"}, nil, obj(q.settings(), "llm"))
+			}
+			return true
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := policyCount(t, s, "delegations") - before
+		if (got == 1) != test.created {
+			t.Fatalf("%q: created %d", test.body, got)
+		}
+		if i == 0 && policyCount(t, s, "tasks") != 1 {
+			t.Fatal("user promise could not become a task")
+		}
 	}
 }

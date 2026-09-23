@@ -238,7 +238,7 @@ func (s *Server) mtsAuthRoutes() {
 			fail(502, e.Error())
 		}
 		encrypted := must(q.server.Config.Encrypt(tokenPrefix + string(must(json.Marshal(tokens)))))
-		row = q.update("communication_sources", row["id"], M{"credential_encrypted": encrypted, "enabled": ticket["enable_source"], "last_error": nil})
+		row = q.update("communication_sources", row["id"], M{"credential_encrypted": encrypted, "enabled": ticket["enable_source"], "last_error": nil, "last_verified_at": nil})
 		return q.sourceRead(row, false)
 	})
 	s.mux.HandleFunc("GET /api/v1/admin/mts-link/extension.zip", func(w http.ResponseWriter, r *http.Request) {

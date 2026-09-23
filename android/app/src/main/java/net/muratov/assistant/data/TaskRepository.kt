@@ -35,6 +35,7 @@ import net.muratov.assistant.data.remote.MeetingResultPageDto
 import net.muratov.assistant.data.remote.MeetingResultDetailDto
 import net.muratov.assistant.data.remote.TaskDetailDto
 import net.muratov.assistant.data.remote.TaskDto
+import net.muratov.assistant.data.remote.UpdateTaskRequest
 import net.muratov.assistant.data.remote.SystemStatusDto
 
 class TaskRepository(
@@ -46,7 +47,7 @@ class TaskRepository(
 
     private val apiSession = ApiSession { url, alias -> ApiFactory.client(context, url, alias) }
 
-    suspend fun delegations(query: String, assignee: String, status: String, due: String, offset: Int = 0) = api().delegations(query,assignee,status,due,offset)
+    suspend fun delegations(query: String, assignee: String, status: String, due: String, offset: Int = 0, archive: Boolean = false) = api().delegations(query,assignee,status,due,offset,archive=if (archive) "true" else null)
     suspend fun delegation(id: String) = api().delegation(id)
     suspend fun delegationStatus(id: String, status: String) = api().delegationStatus(id,mapOf("status" to status))
     suspend fun relationships() = api().relationships()
@@ -80,10 +81,18 @@ class TaskRepository(
         }
     }
 
-    suspend fun searchTasks(query: String): List<TaskEntity> =
-        api().tasks(query = query).map { it.toEntity() }
+    suspend fun searchTasks(query: String, archive: Boolean = false): List<TaskEntity> =
+        api().tasks(query = query, archive = if (archive) "true" else null).map { it.toEntity() }
+
+    suspend fun archivedTasks(): List<TaskEntity> =
+        api().tasks(archive = "true").map { it.toEntity() }
 
     suspend fun detail(id: String): TaskDetailDto = api().task(id)
+
+    suspend fun updateTask(id: String, priority: String, dueAt: String?) {
+        api().updateTask(id, UpdateTaskRequest(priority, dueAt))
+        refresh()
+    }
 
     suspend fun event(id: String): EventDto = api().event(id)
 

@@ -334,5 +334,69 @@
   "События объединяются за 2 минуты. Между обычными уведомлениями — минимум 5 минут. История до добавления источника не вызывает уведомлений.": {
     "en": "Events are grouped over 2 minutes, with at least 5 minutes between notifications. History from before the source was added never triggers notifications.",
     "zh": "事件在 2 分钟内合并，通知间隔至少 5 分钟。添加来源之前的历史记录不会触发通知。"
+  },
+  "Глубина создания задач и поручений, дней": {
+    "en": "Task and delegation creation history, days",
+    "zh": "创建任务和委派的历史天数"
+  },
+  "Период до добавления источника, из которого можно создавать задачи и поручения. 0 — только новые события. Более старая переписка остаётся в архиве. Глубина загрузки истории задаётся отдельно.": {
+    "en": "Period before the source was added from which tasks and delegations may be created. 0 means new events only. Older messages remain in the archive. Import history depth is set separately.",
+    "zh": "允许创建任务和委派的时间范围，以添加来源的时间为基准。0 表示仅处理新事件。更早的消息保留在归档中。历史导入范围需单独设置。"
+  },
+  "У этого источника ограничение не задано. Оставьте поле пустым, чтобы сохранить прежнее поведение. Уже созданные задачи и поручения сохранятся.": {
+    "en": "This source has no limit. Leave the field empty to keep its current behavior. Existing tasks and delegations are preserved.",
+    "zh": "此来源未设置限制。将此字段留空以保留原有行为。已创建的任务和委派将保留。"
+  },
+  "Открыть инструкцию": {
+    "en": "Open instructions",
+    "zh": "打开说明"
+  },
+  "Открыть настройки": {
+    "en": "Open settings",
+    "zh": "打开设置"
+  },
+  "Проверить подключение": {
+    "en": "Test connection",
+    "zh": "测试连接"
+  },
+  "Шаг {0} из {1}": {
+    "en": "Step {0} of {1}",
+    "zh": "第 {0} 步，共 {1} 步"
+  },
+  "Проверить модель": {
+    "en": "Test model",
+    "zh": "测试模型"
+  },
+  "Завершить": {
+    "en": "Finish",
+    "zh": "完成"
+  },
+  "Проверка прошла успешно": {
+    "en": "Check passed",
+    "zh": "检查通过"
+  },
+  "Настройки сохранены. Проверьте подключение.": {
+    "en": "Settings saved. Test the connection.",
+    "zh": "设置已保存。请测试连接。"
+  },
+  "Источник больше не доступен": {
+    "en": "The source is no longer available",
+    "zh": "来源已不可用"
+  },
+  "Проверяем подключение…": {
+    "en": "Testing connection…",
+    "zh": "正在测试连接…"
+  },
+  "Сначала сохраните и включите источник с нужными учётными данными.": {
+    "en": "Save and enable the source with the required credentials first.",
+    "zh": "请先保存并启用来源，填写所需凭据。"
+  },
+  "Модель отвечает": {
+    "en": "Model is responding",
+    "zh": "模型正在响应"
+  },
+  "Один из источников ещё не настроен.": {
+    "en": "One source is not configured yet.",
+    "zh": "仍有一个来源尚未配置。"
   }
 }

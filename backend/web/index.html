@@ -9,7 +9,7 @@
   <meta name="description" content="Настройки AI Секретаря">
   <title>AI Секретарь — Настройки</title>
   <link rel="icon" type="image/svg+xml" href="/admin/assets/secretary-robot.svg">
-  <link rel="stylesheet" href="/admin/assets/admin.css">
+  <link rel="stylesheet" href="/admin/assets/admin.css?v=8">
   <link rel="stylesheet" href="/admin/assets/version.css?v=1">
   <script src="/admin/assets/version.js?v=1" defer></script>
 </head>
@@ -25,6 +25,17 @@
   </div>
 
   <main class="shell">
+    <section id="setupWizard" class="setup-wizard" aria-labelledby="setupWizardTitle" hidden>
+      <p id="setupWizardProgress" class="eyebrow"></p>
+      <h2 id="setupWizardTitle"></h2>
+      <p id="setupWizardInstructions"></p>
+      <a id="setupWizardHelp" target="_blank" rel="noopener noreferrer" hidden>Открыть инструкцию</a>
+      <div id="setupWizardModel" hidden></div>
+      <p id="setupWizardStatus" role="status" aria-live="polite"></p>
+      <div class="setup-wizard-actions">
+        <button id="setupWizardSSO" type="button" hidden>Войти через SSO</button>
+      </div>
+    </section>
     <section class="intro">
       <div>
         <h1>Настройки</h1>
@@ -46,7 +57,7 @@
       <button id="mobileTab" class="tab" data-panel="mobile">Удалённое подключение</button>
     </nav>
 
-    <section id="mobile" class="panel">
+    <section id="mobile" class="panel" data-configuration-widget="connection">
       <div class="section-heading"><div><h2>Удалённое подключение</h2><p>Выберите способ подключения. Приложение распознает его после сканирования QR-кода.</p></div></div>
       <div class="connection-tabs" role="tablist" aria-label="Способ подключения">
         <button id="directConnectionTab" class="tab" type="button" role="tab" aria-selected="true" aria-controls="directConnection" data-connection="direct">Прямое подключение</button>
@@ -107,7 +118,7 @@
       </div>
     </section>
 
-    <section id="sources" class="panel active">
+    <section id="sources" class="panel active" data-configuration-widget="sources">
       <div class="section-heading">
         <div><p class="eyebrow">АДАПТЕРЫ</p><h2>Источники переписки</h2><p>IMAP, локальный Exchange и интеграции встреч работают независимо.</p></div>
         <button id="addSource" class="primary">+ Подключить источник</button>
@@ -115,7 +126,7 @@
       <div id="sourceList" class="source-grid"><div class="empty">Загрузка источников…</div></div>
     </section>
 
-    <section id="tags" class="panel">
+    <section id="tags" class="panel" data-configuration-widget="tags">
       <div class="section-heading">
         <div><p class="eyebrow">СПРАВОЧНИК</p><h2>Теги источников</h2><p>Группируйте источники сейчас — позднее эти теги станут фильтрами воронки поиска.</p></div>
       </div>
@@ -126,10 +137,10 @@
       <div id="tagList" class="tag-list"><div class="empty">Загрузка тегов…</div></div>
     </section>
 
-    <section id="analysis" class="panel">
+    <section id="analysis" class="panel" data-configuration-widget="analysis">
       <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Анализ и рабочий день</h2></div></div>
       <form id="settingsForm" class="settings-grid">
-        <fieldset><legend>Пользователь</legend>
+        <fieldset id="identitySettings" data-configuration-widget="identity"><legend>Пользователь</legend>
           <section class="relationship-section" aria-labelledby="relationshipManagersTitle">
             <h3 id="relationshipManagersTitle">Мои руководители</h3>
             <div class="relationship-scroll"><table class="relationship-table"><thead><tr><th scope="col">Имя</th><th scope="col">Email</th><th scope="col">Действия</th></tr></thead><tbody id="relationshipManagers"></tbody></table></div>
@@ -151,7 +162,7 @@
           <label>Дополнительные нерабочие даты <small>YYYY-MM-DD, через запятую</small><input id="nonWorkingDates"></label>
           <label>Дополнительные рабочие даты <small>YYYY-MM-DD, через запятую</small><input id="workingDates"></label>
         </fieldset>
-        <fieldset class="wide"><legend>Модель</legend>
+        <fieldset id="llmSettings" class="wide" data-configuration-widget="llm"><legend>Модель</legend>
           <label>Подключение модели<select id="llmProvider"><option value="ollama">Ollama</option><option value="openai">OpenAI</option><option value="local">Локальная Ollama</option></select></label>
           <div id="remoteModelSettings">
           <div class="two-columns"><label>URL API<input id="llmUrl" type="url"><small id="ollamaUrlHint">Адрес сервера Ollama, например http://localhost:11434</small><small id="openaiUrlHint" hidden>Для OpenAI укажите https://api.openai.com/v1 или URL совместимого API.</small></label><label>Модель<input id="llmModel"></label></div>
@@ -201,7 +212,7 @@
       <div class="bottom-actions"><button class="primary save-settings">Сохранить настройки</button></div>
     </section>
 
-    <section id="notifications" class="panel">
+    <section id="notifications" class="panel" data-configuration-widget="notifications">
       <div class="section-heading"><div><p id="notificationsEyebrow" class="eyebrow">FCM</p><h2>Уведомления и расписание</h2></div></div>
       <p id="localWebNotice" class="hint" hidden>В локальной установке мобильные push-уведомления доступны через шлюз. Настройте его в разделе «Удалённое подключение».</p>
       <div class="settings-grid">
@@ -234,12 +245,21 @@
   <dialog id="sourceDialog">
     <form id="sourceForm" method="dialog">
       <div class="dialog-heading"><div><p class="eyebrow">НОВЫЙ АДАПТЕР</p><h2 id="sourceDialogTitle">Подключить источник</h2></div><button type="button" class="icon-button" id="closeDialog" aria-label="Закрыть">×</button></div>
+      <div id="sourceWizardContext" class="source-wizard-context" hidden>
+        <p id="sourceWizardProgress" class="eyebrow"></p>
+        <strong id="sourceWizardTitle"></strong>
+        <p id="sourceWizardInstructions"></p>
+        <a id="sourceWizardHelp" target="_blank" rel="noopener noreferrer" hidden>Открыть инструкцию</a>
+      </div>
       <div class="form-stack">
         <label>Тип<select id="sourceType"><option value="imap">IMAP</option><option value="exchange">Microsoft Exchange (EWS)</option><option value="mts_link">МТС Линк</option><option value="external_tasks">Внешний API задач</option></select></label>
         <div class="inline"><label>Идентификатор<input id="sourceId" pattern="[a-zA-Z0-9_-]+" required placeholder="work_mail"></label><label>Название<input id="sourceLabel" required placeholder="Рабочая почта"></label></div>
         <label class="toggle"><input id="sourceEnabled" type="checkbox" checked><span>Адаптер включён</span></label>
         <fieldset class="source-tag-fieldset"><legend>Теги</legend><div id="sourceTagPicker" class="tag-picker"></div></fieldset>
         <div id="sourceFields"></div>
+        <label>Глубина создания задач и поручений, дней<input id="sourceAssignmentDays" type="number" min="0" max="365" step="1" required></label>
+        <p class="hint">Период до добавления источника, из которого можно создавать задачи и поручения. 0 — только новые события. Более старая переписка остаётся в архиве. Глубина загрузки истории задаётся отдельно.</p>
+        <p id="sourceAssignmentLegacyHint" class="hint" hidden>У этого источника ограничение не задано. Оставьте поле пустым, чтобы сохранить прежнее поведение. Уже созданные задачи и поручения сохранятся.</p>
         <details id="sourceLinkRules">
           <summary>Правила разбора ссылок на источник</summary>
           <p class="hint">По одному регулярному выражению на строку. Идентификатор встречи извлекается из группы <code>(?P&lt;meeting_id&gt;...)</code>. Тип и идентификатор источника берутся из этой формы. Применяется первое совпавшее правило.</p>
@@ -275,8 +295,10 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="/admin/assets/admin.js?v=20260921-local-verified" defer></script>
-  <script src="/admin/assets/ollama-setup.js?v=6" defer></script>
-  <script src="/admin/assets/mts-link-auth.js?v=20260916-email-profile" defer></script>
+  <script src="/admin/assets/admin.js?v=20260923-setup-save-retry" defer></script>
+  <script src="/admin/assets/ollama-setup.js?v=7" defer></script>
+  <script src="/admin/assets/mts-link-auth.js?v=20260923-setup-sso" defer></script>
+  <script src="/admin/assets/configuration-widgets.js?v=2" defer></script>
+  <script src="/admin/assets/setup-wizard.js?v=12" defer></script>
 </body>
 </html>

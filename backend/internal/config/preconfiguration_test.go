@@ -59,8 +59,43 @@ func TestShippedPreconfigurationExample(t *testing.T) {
 	if err := c.LoadPreconfiguration("../../../config/secretary-config.example.json", true); err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Preconfiguration.Sources) != 1 {
-		t.Fatal("expected sample source")
+	if len(c.Preconfiguration.Sources) != 2 || len(c.Preconfiguration.SetupWizard.Steps) != 4 {
+		t.Fatal("expected sample wizard and sources")
+	}
+}
+
+func TestPreconfigurationWizardValidation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "secretary-config.json")
+	c := Config{PublicURL: "https://localhost", LLMURL: "http://localhost:11434"}
+	base := `{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"type":"source","source_id":"mail","auth":"password","instructions":"Enter the mail password"},{"type":"llm","instructions":"Enter the model token"}]}}`
+	if err := os.WriteFile(path, []byte(base), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.LoadPreconfiguration(path, true); err != nil {
+		t.Fatal(err)
+	}
+	grouped := `{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"},{"id":"meetings","label":"Meetings","source_type":"mts_link"}],"setup_wizard":{"steps":[{"widgets":["source:mail","source:meetings"],"instructions":"Connect both"},{"widgets":["identity"],"instructions":"Enter people"},{"widgets":["llm"],"instructions":"Enter the model token"}]}}`
+	if err := os.WriteFile(path, []byte(grouped), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.LoadPreconfiguration(path, true); err != nil {
+		t.Fatal("multi-widget step", err)
+	}
+	for _, bad := range []string{
+		`{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"type":"source","source_id":"other","instructions":"Password"},{"type":"llm","instructions":"Token"}]}}`,
+		`{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"type":"source","source_id":"mail","auth":"sso","instructions":"Password"},{"type":"llm","instructions":"Token"}]}}`,
+		`{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"type":"source","source_id":"mail","instructions":"Password"}]}}`,
+		`{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"type":"source","source_id":"mail","instructions":"Password"},{"type":"llm","instructions":"Token","help_url":"javascript:alert(1)"}]}}`,
+		`{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"widgets":["source:mail","source:mail"],"instructions":"Password"},{"widgets":["llm"],"instructions":"Token"}]}}`,
+		`{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"widgets":["source:missing"],"instructions":"Password"},{"widgets":["llm"],"instructions":"Token"}]}}`,
+		`{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap"}],"setup_wizard":{"steps":[{"widgets":["source:mail"],"instructions":"Password"},{"widgets":["identity","identity"],"instructions":"People"},{"widgets":["llm"],"instructions":"Token"}]}}`,
+	} {
+		if err := os.WriteFile(path, []byte(bad), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.LoadPreconfiguration(path, true); err == nil {
+			t.Fatalf("accepted invalid wizard: %s", bad)
+		}
 	}
 }
 
@@ -77,5 +112,21 @@ func TestLoadUsesExplicitPolicyFile(t *testing.T) {
 	}
 	if Text(Section(c.Defaults(), "llm"), "model") != "loaded-from-file" {
 		t.Fatal("baseline lost in Load")
+	}
+}
+
+func TestPreconfigurationInitialAssignmentDays(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "config.json")
+	c := Config{PublicURL: "https://localhost", LLMURL: "http://localhost:11434"}
+	for _, value := range []string{"0", "7", "365", "-1", "366", "1.5", `"7"`, "null"} {
+		data := `{"schema_version":1,"sources":[{"id":"mail","label":"Mail","source_type":"imap","settings":{"initial_assignment_days":` + value + `}}]}`
+		if err := os.WriteFile(file, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+		err := c.LoadPreconfiguration(file, true)
+		valid := value == "0" || value == "7" || value == "365"
+		if (err == nil) != valid {
+			t.Fatal(value, err)
+		}
 	}
 }

@@ -121,6 +121,11 @@
       "type": "TEXT",
       "primary": false
     },
+    "last_verified_at": {
+      "nullable": true,
+      "type": "DATETIME",
+      "primary": false
+    },
     "created_at": {
       "nullable": false,
       "type": "DATETIME",

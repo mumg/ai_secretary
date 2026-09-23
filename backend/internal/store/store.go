@@ -220,11 +220,11 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	current := 0
 	if len(revisions) == 1 {
 		current, e = strconv.Atoi(revisions[0])
-		if e != nil || current < 1 || current > 26 {
+		if e != nil || current < 1 || current > 29 {
 			return errors.New("unsupported database revision")
 		}
 	}
-	for n := current + 1; n <= 26; n++ {
+	for n := current + 1; n <= 29; n++ {
 		revision := fmt.Sprintf("%04d", n)
 		sql, e := assets.ReadFile("migrations/" + revision + ".sql")
 		if e != nil {
@@ -240,7 +240,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 			return e
 		}
 	}
-	if _, e = tx.Exec(ctx, "INSERT INTO database_schema_version (id,version,revision) VALUES (1,26,'0026') ON CONFLICT(id) DO UPDATE SET version=26,revision='0026',updated_at=now()"); e != nil {
+	if _, e = tx.Exec(ctx, "INSERT INTO database_schema_version (id,version,revision) VALUES (1,29,'0029') ON CONFLICT(id) DO UPDATE SET version=29,revision='0029',updated_at=now()"); e != nil {
 		return e
 	}
 	return tx.Commit(ctx)

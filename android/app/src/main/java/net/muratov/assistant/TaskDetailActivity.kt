@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,6 +32,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -71,6 +75,7 @@ class TaskDetailActivity : net.muratov.assistant.i18n.LocalizedActivity() {
                     onBack = ::finish,
                     onRetry = detailViewModel::load,
                     onReject = detailViewModel::reject,
+                    onUpdate = detailViewModel::update,
                 )
             }
         }
@@ -91,7 +96,14 @@ private fun TaskDetailScreen(
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onReject: () -> Unit,
+    onUpdate: (String, String?) -> Unit,
 ) {
+    var editing by remember { mutableStateOf(false) }
+    if (editing && state.detail != null) {
+        EditTaskScheduleDialog(state.detail.task.priority, state.detail.task.dueAt,
+            onDismiss = { editing = false },
+            onSave = { priority, due -> editing = false; onUpdate(priority, due) })
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -130,6 +142,7 @@ private fun TaskDetailScreen(
                 detail = state.detail,
                 modifier = Modifier.padding(padding),
                 onReject = onReject,
+                onEdit = { editing = true },
             )
         }
     }
@@ -140,6 +153,7 @@ private fun TaskDetailContent(
     detail: TaskDetailDto,
     modifier: Modifier = Modifier,
     onReject: () -> Unit,
+    onEdit: () -> Unit,
 ) {
     val source = detail.source
     val uriHandler = LocalUriHandler.current
@@ -150,6 +164,9 @@ private fun TaskDetailContent(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        DetailField(tr("Приоритет"), taskPriorityLabel(detail.task.priority))
+        DetailField(tr("Срок"), detail.task.dueAt?.let { eventDateTime(it).let { (date, time) -> "$date $time" } } ?: tr("Без срока"))
+        Button(onClick = onEdit) { Text(tr("Изменить приоритет и срок")) }
         if (detail.task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED", "NEEDS_CONFIRMATION")) {
             RejectTaskButton(onClick = onReject, modifier = Modifier.align(Alignment.End))
         } else if (detail.task.status == "CANCELLED") {
@@ -188,6 +205,45 @@ private fun TaskDetailContent(
             )
         }
     }
+}
+
+private fun taskPriorityLabel(value: String): String = when (value) {
+    "LOW" -> tr("Низкий")
+    "HIGH" -> tr("Высокий")
+    "CRITICAL" -> tr("Критический")
+    else -> tr("Обычный")
+}
+
+@Composable
+private fun EditTaskScheduleDialog(
+    initialPriority: String,
+    initialDue: String?,
+    onDismiss: () -> Unit,
+    onSave: (String, String?) -> Unit,
+) {
+    var priority by remember(initialPriority) { mutableStateOf(initialPriority) }
+    var due by remember(initialDue) { mutableStateOf(initialDue.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Изменить задачу")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(tr("Приоритет"))
+                listOf("LOW", "NORMAL", "HIGH", "CRITICAL").chunked(2).forEach { choices ->
+                    androidx.compose.foundation.layout.Row {
+                        choices.forEach { value ->
+                            TextButton(onClick = { priority = value }) {
+                                Text((if (priority == value) "✓ " else "") + taskPriorityLabel(value))
+                            }
+                        }
+                    }
+                }
+                DateTimeField(tr("Срок"), due) { due = it }
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(priority, due.ifBlank { null }) }) { Text(tr("Сохранить")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Отмена")) } },
+    )
 }
 
 @Composable

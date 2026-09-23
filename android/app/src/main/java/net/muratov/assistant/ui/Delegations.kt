@@ -36,7 +36,7 @@ import net.muratov.assistant.data.remote.*
 import net.muratov.assistant.notifications.observeRealtime
 
 val delegationStatuses get() = linkedMapOf("ASSIGNED" to tr("Назначено"), "IN_PROGRESS" to tr("В работе"), "IN_REVIEW" to tr("На проверке"), "COMPLETED" to tr("Выполнено"), "CANCELLED" to tr("Отменено"))
-data class DelegationState(val items: List<DelegationDto> = emptyList(), val recipients: List<DelegationRecipient> = emptyList(), val query: String = "", val assignee: String = "", val status: String = "", val due: String = "", val more: Boolean = false, val loading: Boolean = false, val error: String? = null)
+data class DelegationState(val items: List<DelegationDto> = emptyList(), val recipients: List<DelegationRecipient> = emptyList(), val query: String = "", val assignee: String = "", val status: String = "", val due: String = "", val archive: Boolean = false, val more: Boolean = false, val loading: Boolean = false, val error: String? = null)
 class DelegationsViewModel(private val repository: TaskRepository): ViewModel() {
     private val mutable = MutableStateFlow(DelegationState())
     val state = mutable.asStateFlow()
@@ -46,6 +46,10 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
         mutable.value = mutable.value.copy(query=query.take(200),assignee=assignee,status=status,due=due,items=emptyList())
         load(debounce=true)
     }
+    fun setArchive(archive: Boolean) {
+        mutable.value = mutable.value.copy(archive = archive, status = "", due = "", items = emptyList())
+        load()
+    }
     fun load(more: Boolean = false, debounce: Boolean = false) {
         job?.cancel()
         val before=mutable.value
@@ -53,7 +57,7 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
             mutable.value=before.copy(loading=true,error=null)
             try {
                 if(debounce) delay(300)
-                val page=repository.delegations(before.query,before.assignee,before.status,before.due,if(more) before.items.size else 0)
+                val page=repository.delegations(before.query,before.assignee,before.status,before.due,if(more) before.items.size else 0,before.archive)
                 mutable.value=before.copy(items=(if(more) before.items else emptyList())+page.items,recipients=page.recipients,more=page.hasMore,loading=false)
             } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.value=before.copy(loading=false,error=e.message ?: tr("Не удалось загрузить поручения")) }
         }
@@ -74,10 +78,14 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
     val s by vm.state.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         var showFilters by rememberSaveable { mutableStateOf(false) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { vm.setArchive(false) }, enabled = s.archive) { Text(tr("Активные")) }
+            OutlinedButton(onClick = { vm.setArchive(true) }, enabled = !s.archive) { Text(tr("Архив")) }
+        }
         if(showFilters) AlertDialog(onDismissRequest={showFilters=false},title={Text(tr("Фильтры поручений"))},text={Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DelegationFilter(tr("Исполнитель"),s.assignee, linkedMapOf("" to tr("Все исполнители")) + s.recipients.filter { it.key.isNotBlank() }.associate { it.key to (it.name.ifBlank { it.email } + if(it.name.isNotBlank() && it.email.isNotBlank()) " · ${it.email}" else "") }) { vm.filters(assignee=it) }
-            DelegationFilter(tr("Статус"),s.status,linkedMapOf("" to tr("Все статусы"))+delegationStatuses) { vm.filters(status=it) }
-            DelegationFilter(tr("Срок"),s.due,linkedMapOf("" to tr("Все сроки"),"overdue" to tr("Просрочено"),"none" to tr("Без срока"))) { vm.filters(due=it) }
+            DelegationFilter(tr("Статус"),s.status,linkedMapOf("" to tr("Все статусы"))+delegationStatuses.filterKeys { if (s.archive) it in setOf("COMPLETED", "CANCELLED") else it !in setOf("COMPLETED", "CANCELLED") }) { vm.filters(status=it) }
+            if (!s.archive) DelegationFilter(tr("Срок"),s.due,linkedMapOf("" to tr("Все сроки"),"overdue" to tr("Просрочено"),"none" to tr("Без срока"))) { vm.filters(due=it) }
         }},confirmButton={TextButton(onClick={showFilters=false}) {Text(tr("Готово"))}},dismissButton={TextButton(onClick={vm.filters(assignee="",status="",due="")}) {Text(tr("Сбросить"))}})
         s.error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
         if(s.loading) LinearProgressIndicator(Modifier.fillMaxWidth())

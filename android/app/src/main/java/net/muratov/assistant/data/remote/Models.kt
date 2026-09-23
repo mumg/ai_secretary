@@ -163,6 +163,11 @@ data class CreateTaskRequest(
     @SerializedName("due_at") val dueAt: String? = null,
 )
 
+data class UpdateTaskRequest(
+    val priority: String,
+    @SerializedName("due_at") val dueAt: String?,
+)
+
 data class CreateTaskFromTextRequest(val text: String)
 
 data class CreateReminderRequest(@SerializedName("remind_at") val remindAt: String)

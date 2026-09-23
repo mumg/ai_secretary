@@ -260,3 +260,14 @@ func Clone(o Object) Object {
 	_ = json.Unmarshal(b, &r)
 	return r
 }
+
+// ValidateInitialAssignmentDays validates the optional per-source history window.
+func ValidateInitialAssignmentDays(settings Object) error {
+	if value, exists := settings["initial_assignment_days"]; exists {
+		days, ok := value.(float64)
+		if !ok || days < 0 || days > 365 || days != float64(int(days)) {
+			return errors.New("initial_assignment_days must be an integer from 0 to 365")
+		}
+	}
+	return nil
+}

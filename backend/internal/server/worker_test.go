@@ -58,6 +58,34 @@ func TestWorkerAnalysisAndChat(t *testing.T) {
 		t.Fatal(chat)
 	}
 }
+
+func TestCompletedTaskIsNotRecreatedWhenSourceEventIsReanalyzed(t *testing.T) {
+	s := testServer(t)
+	call(t, s, "POST", "/api/v1/admin/sources", M{"id": "mail", "label": "Mail", "source_type": "imap", "enabled": false}, 201)
+	policyJob(t, s, func(q *request) {
+		at := time.Now().UTC()
+		event := q.insert("communication_events", M{"source_id": "mail", "source_type": "imap", "external_id": "first", "thread_external_id": "thread", "event_type": "email", "direction": "INCOMING", "body": "Подготовь отчёт", "occurred_at": at, "content_hash": "first"})
+		candidate := M{"title": "Подготовить отчёт", "priority": "NORMAL", "assignee": "user", "assignee_address": "me@example.test", "confidence": 0.99, "evidence": "Подготовь отчёт", "assignment_evidence": "Подготовь отчёт"}
+		assignment := M{"eligible": true}
+		addresses := []string{"me@example.test"}
+		llm := obj(q.settings(), "llm")
+		q.taskCandidate(event, candidate, assignment, addresses, nil, llm)
+		rows := q.rows("SELECT id FROM tasks")
+		if len(rows) != 1 {
+			t.Fatalf("first analysis created %d tasks", len(rows))
+		}
+		q.update("tasks", rows[0]["id"], M{"status": "COMPLETED", "completed_at": q.now()})
+		q.taskCandidate(event, candidate, assignment, addresses, nil, llm)
+		if count := len(q.rows("SELECT id FROM tasks")); count != 1 {
+			t.Fatalf("reanalysis created %d tasks", count)
+		}
+		newEvent := q.insert("communication_events", M{"source_id": "mail", "source_type": "imap", "external_id": "second", "thread_external_id": "thread", "event_type": "email", "direction": "INCOMING", "body": "Подготовь отчёт", "occurred_at": at.Add(time.Minute), "content_hash": "second"})
+		q.taskCandidate(newEvent, candidate, assignment, addresses, nil, llm)
+		if count := len(q.rows("SELECT id FROM tasks")); count != 2 {
+			t.Fatalf("new message should create a new task, got %d", count)
+		}
+	})
+}
 func TestCalendarWorkerAndMIME(t *testing.T) {
 	s := testServer(t)
 	raw := []byte("From: sender@example.test\r\nTo: me@example.test\r\nSubject: Meeting\r\nMessage-ID: <m1>\r\nDate: Thu, 17 Sep 2026 10:00:00 +0300\r\nMIME-Version: 1.0\r\nContent-Type: text/calendar; method=REQUEST; charset=utf-8\r\n\r\nBEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:meeting-1\r\nDTSTART;TZID=Europe/Moscow:20990917T103000\r\nDTEND;TZID=Europe/Moscow:20990917T113000\r\nSUMMARY:Рабочая встреча\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")

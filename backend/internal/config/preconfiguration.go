@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 // Preconfiguration is an installation baseline, never a database import.
@@ -18,6 +20,19 @@ type Preconfiguration struct {
 	SchemaVersion int              `json:"schema_version"`
 	Settings      Object           `json:"settings"`
 	Sources       []SourceDefaults `json:"sources"`
+	SetupWizard   SetupWizard      `json:"setup_wizard,omitempty"`
+}
+type SetupWizard struct {
+	Steps []SetupStep `json:"steps"`
+}
+type SetupStep struct {
+	Type         string   `json:"type"`
+	SourceID     string   `json:"source_id,omitempty"`
+	Widgets      []string `json:"widgets,omitempty"`
+	Title        string   `json:"title,omitempty"`
+	Instructions string   `json:"instructions,omitempty"`
+	Auth         string   `json:"auth,omitempty"`
+	HelpURL      string   `json:"help_url,omitempty"`
 }
 type SourceDefaults struct {
 	Credential string `json:"credential,omitempty"`
@@ -27,6 +42,7 @@ type SourceDefaults struct {
 	Enabled    bool   `json:"enabled"`
 	Settings   Object `json:"settings"`
 }
+
 
 // An explicit path is required to exist. The conventional adjacent file is optional.
 func (c *Config) LoadPreconfiguration(path string, required bool) error {
@@ -109,6 +125,7 @@ func (c *Config) LoadPreconfiguration(path string, required bool) error {
 	for i := range p.Sources {
 		s := &p.Sources[i]
 		allowed, ok := fields[s.SourceType]
+		allowed = append(allowed, "initial_assignment_days")
 		if !validID.MatchString(s.ID) || ids[s.ID] || !ok || len([]rune(s.Label)) == 0 || len([]rune(s.Label)) > 255 {
 			return fmt.Errorf("invalid preconfigured source at index %d", i)
 		}
@@ -127,6 +144,9 @@ func (c *Config) LoadPreconfiguration(path string, required bool) error {
 		if s.Settings == nil {
 			s.Settings = Object{}
 		}
+		if err := ValidateInitialAssignmentDays(s.Settings); err != nil {
+			return err
+		}
 		for k, v := range s.Settings {
 			found := false
 			for _, a := range allowed {
@@ -136,6 +156,8 @@ func (c *Config) LoadPreconfiguration(path string, required bool) error {
 				return errors.New("unknown or null preconfigured source setting")
 			}
 			switch k {
+			case "initial_assignment_days":
+				// Validated above; zero explicitly disables historical assignments.
 			case "port", "poll_interval_seconds":
 				n, ok := v.(float64)
 				if !ok || n != float64(int(n)) || n < 1 || n > 65535 {
@@ -156,8 +178,96 @@ func (c *Config) LoadPreconfiguration(path string, required bool) error {
 			}
 		}
 	}
+	if len(p.SetupWizard.Steps) > 0 {
+		seen := map[string]bool{}
+		llm := false
+		identity := false
+		for _, step := range p.SetupWizard.Steps {
+			if len([]rune(step.Title)) > 160 || strings.TrimSpace(step.Instructions) == "" || len([]rune(step.Instructions)) > 4000 || len(step.HelpURL) > 2048 {
+				return errors.New("invalid setup wizard instruction")
+			}
+			if step.HelpURL != "" {
+				u, err := url.Parse(step.HelpURL)
+				if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.Opaque != "" || u.User != nil || strings.ContainsAny(step.HelpURL, "\r\n") {
+					return errors.New("invalid setup wizard help URL")
+				}
+			}
+			if len(step.Widgets) > 0 {
+				if step.Type != "" || step.SourceID != "" || step.Auth != "" {
+					return errors.New("widget step cannot use legacy source fields")
+				}
+				for _, widget := range step.Widgets {
+					if widget == "identity" {
+						if identity {
+							return errors.New("duplicate setup wizard identity")
+						}
+						identity = true
+						continue
+					}
+					if widget == "llm" {
+						if llm {
+							return errors.New("duplicate setup wizard model")
+						}
+						llm = true
+						continue
+					}
+					if !strings.HasPrefix(widget, "source:") {
+						return errors.New("unknown setup wizard widget")
+					}
+					id := strings.TrimPrefix(widget, "source:")
+					if !ids[id] || seen[id] {
+						return errors.New("invalid setup wizard source widget")
+					}
+					seen[id] = true
+				}
+				continue
+			}
+			switch step.Type {
+			case "source":
+				if !ids[step.SourceID] || seen[step.SourceID] || !wizardAuthValid(step.Auth, step.SourceID, p.Sources) {
+					return errors.New("invalid setup wizard source step")
+				}
+				seen[step.SourceID] = true
+			case "llm":
+				if llm || step.SourceID != "" || step.Auth != "" {
+					return errors.New("invalid setup wizard model step")
+				}
+				llm = true
+			default:
+				return errors.New("invalid setup wizard step type")
+			}
+		}
+		if !llm || len(seen) != len(p.Sources) {
+			return errors.New("setup wizard must include each source and the model")
+		}
+	}
 	c.Preconfiguration = p
 	return nil
+}
+func wizardAuthValid(auth, sourceID string, sources []SourceDefaults) bool {
+	if auth == "" {
+		return true
+	}
+	for _, source := range sources {
+		if source.ID != sourceID {
+			continue
+		}
+		switch source.SourceType {
+		case "imap", "exchange":
+			if auth == "password" {
+				return true
+			}
+		case "mts_link":
+			if auth == "sso" || auth == "token" {
+				return true
+			}
+		case "external_tasks":
+			if auth == "none" {
+				return true
+			}
+		}
+	}
+	return false
 }
 func (c *Config) loadAdjacentPreconfiguration() error {
 	if p := os.Getenv("APP_CONFIG_FILE"); p != "" {

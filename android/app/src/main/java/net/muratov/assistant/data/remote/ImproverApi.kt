@@ -12,7 +12,7 @@ import retrofit2.http.Streaming
 
 interface ImproverApi {
     @GET("api/v1/delegations")
-    suspend fun delegations(@Query("q") query: String, @Query("assignee") assignee: String, @Query("status") status: String, @Query("due") due: String, @Query("offset") offset: Int, @Query("limit") limit: Int = 30): DelegationPage
+    suspend fun delegations(@Query("q") query: String, @Query("assignee") assignee: String, @Query("status") status: String, @Query("due") due: String, @Query("offset") offset: Int, @Query("limit") limit: Int = 30, @Query("archive") archive: String? = null): DelegationPage
     @GET("api/v1/delegations/{id}")
     suspend fun delegation(@Path("id") id: String): DelegationDto
     @retrofit2.http.PATCH("api/v1/delegations/{id}")
@@ -26,10 +26,14 @@ interface ImproverApi {
     suspend fun tasks(
         @Query("order") order: String = "rank",
         @Query("q") query: String? = null,
+        @Query("archive") archive: String? = null,
     ): List<TaskDto>
 
     @GET("api/v1/tasks/{id}")
     suspend fun task(@Path("id") id: String): TaskDetailDto
+
+    @retrofit2.http.PATCH("api/v1/tasks/{id}")
+    suspend fun updateTask(@Path("id") id: String, @Body request: UpdateTaskRequest): TaskDto
 
     @GET("api/v1/plans/today")
     suspend fun today(@Query("refresh") refresh: Boolean = false): DailyPlanDto

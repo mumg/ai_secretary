@@ -120,10 +120,10 @@ func run() error {
 	for {
 		var schema int
 		e = pool.QueryRow(ctx, "SELECT version FROM database_schema_version WHERE id=1").Scan(&schema)
-		if e == nil && schema >= 25 {
+		if e == nil && schema >= 28 {
 			break
 		}
-		slog.Info("waiting for database schema", "minimum_version", 25)
+		slog.Info("waiting for database schema", "minimum_version", 28)
 		select {
 		case <-ctx.Done():
 			return nil

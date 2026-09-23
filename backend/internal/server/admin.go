@@ -81,7 +81,17 @@ func (q *request) saveSource(m M, existing M) M {
 		fail(422, "Invalid enabled")
 	}
 	fields := map[string][]string{"imap": {"host", "port", "tls", "username", "inbox_folder", "sent_folder"}, "exchange": {"ews_url", "primary_smtp_address", "username", "auth_type", "inbox_folder", "sent_folder"}, "mts_link": {"base_url", "poll_interval_seconds"}, "external_tasks": {}}
-	settings := pick(obj(m, "settings"), append(fields[str(m, "source_type")], "link_patterns")...)
+	settings := pick(obj(m, "settings"), append(fields[str(m, "source_type")], "link_patterns", "initial_assignment_days")...)
+	if _, ok := settings["initial_assignment_days"]; !ok {
+		if existing == nil {
+			settings["initial_assignment_days"] = num(obj(q.settings(), "communication_sources"), "initial_sync_days")
+		} else if value, present := obj(existing, "settings")["initial_assignment_days"]; present {
+			settings["initial_assignment_days"] = value
+		}
+	}
+	if err := config.ValidateInitialAssignmentDays(config.Object(settings)); err != nil {
+		fail(422, err.Error())
+	}
 	if _, ok := settings["link_patterns"]; !ok {
 		settings["link_patterns"] = []any{}
 		if m["source_type"] == "mts_link" {
@@ -126,6 +136,7 @@ func (q *request) saveSource(m M, existing M) M {
 	v := pick(m, "id", "label", "source_type", "enabled")
 	v["settings"] = settings
 	v["last_error"] = nil
+	v["last_verified_at"] = nil
 	if str(m, "credential") != "" {
 		v["credential_encrypted"] = must(q.server.Config.Encrypt(str(m, "credential")))
 	}
@@ -135,8 +146,11 @@ func (q *request) saveSource(m M, existing M) M {
 	} else {
 		delete(v, "id")
 		row = q.update("communication_sources", id, v)
-		before, _ := json.Marshal(existing["settings"])
-		after, _ := json.Marshal(settings)
+		previousConnection, nextConnection := copyMap(obj(existing, "settings")), copyMap(settings)
+		delete(previousConnection, "initial_assignment_days")
+		delete(nextConnection, "initial_assignment_days")
+		before, _ := json.Marshal(previousConnection)
+		after, _ := json.Marshal(nextConnection)
 		if string(before) != string(after) || existing["source_type"] != m["source_type"] || (!boolean(existing, "enabled") && boolean(m, "enabled")) {
 			q.exec("DELETE FROM source_cursors WHERE source_id=$1", id)
 		}
@@ -176,6 +190,7 @@ func (q *request) settingsRead() M {
 	return M{"settings": settings, "local_web_only": q.server.Config.LocalOnly, "firebase_configured": firebase, "llm_api_key_configured": key, "filter_reconciliation": nil, "identity_requeued": nil}
 }
 func (s *Server) adminRoutes() {
+	s.setupWizardRoutes()
 	s.mobileIdentityRoutes()
 	s.gatewayRoutes()
 	s.route("GET /api/v1/admin/settings", false, func(q *request) any { return q.settingsRead() })
@@ -241,6 +256,12 @@ func (s *Server) adminRoutes() {
 			q.insert("system_settings", v)
 		} else {
 			q.update("system_settings", 1, v)
+		}
+		if hash(previous["llm"]) != hash(p["llm"]) || key != "" || boolean(m, "clear_llm_api_key") {
+			q.exec("UPDATE setup_wizard_state SET llm_verified=false,updated_at=now() WHERE id=1")
+		}
+		if hash(previous["identity"]) != hash(p["identity"]) || hash(previous["relationships"]) != hash(p["relationships"]) {
+			q.exec("UPDATE setup_wizard_state SET identity_verified=false,updated_at=now() WHERE id=1")
 		}
 		result := q.settingsRead()
 		if hash(previous["analysis_filters"]) != hash(p["analysis_filters"]) {

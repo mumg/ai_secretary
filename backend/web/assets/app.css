@@ -224,11 +224,37 @@ nav button[aria-current="page"] {
   font-weight: 600;
   margin: 0 0 5px;
 }
+.archive-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+  margin: -4px 0 14px;
+}
+.archive-tabs[hidden] {
+  display: none;
+}
+.archive-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+}
+.archive-tabs button[aria-pressed="true"] {
+  border-bottom-color: var(--green);
+  color: var(--green);
+}
 .page-heading p {
   margin: 0 0 12px;
 }
 .page-heading button {
   font-size: 12px;
+}
+.page-heading .archive-tabs button {
+  font-size: 20px;
 }
 p {
   margin: 0 0 14px;

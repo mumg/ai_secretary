@@ -200,6 +200,7 @@ window.addEventListener("message", async event => {
     mtsLogin = null;
     $("mtsSsoDialog").close();
     toast(tr("МТС Линк подключён. Обновление access token настроено."));
+    document.dispatchEvent(new CustomEvent("secretary:source-saved", { detail: { sourceId: login.sourceId } }));
     await loadSources();
     loadStatus();
   } catch (error) {

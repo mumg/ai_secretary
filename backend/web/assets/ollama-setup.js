@@ -176,6 +176,7 @@
       setLocalOllamaRuntime({ available: true, installedModels: [llm.model], models: [] });
       connected = true;
       toast(tr('Локальная модель подключена.')); loadStatus();
+      document.dispatchEvent(new CustomEvent('secretary:settings-saved', { detail: { llm: true } }));
     } catch (error) { toast(error.message, true); }
     finally { saving = false; installing = false; renderModelSettings(); render(); }
   }

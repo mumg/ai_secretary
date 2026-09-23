@@ -13,13 +13,14 @@
       type="image/svg+xml"
       href="/app/assets/secretary-robot.svg"
     />
-    <link rel="stylesheet" href="/app/assets/app.css" />
+    <link rel="stylesheet" href="/app/assets/app.css?v=0.7.34" />
     <link rel="stylesheet" href="/app/assets/version.css?v=1" />
     <script src="/app/assets/version.js?v=1" defer></script>
     <script src="/app/assets/markdown-it.min.js" defer></script>
     <script src="/app/assets/app-core.js" defer></script>
     <script src="/app/assets/realtime.js" defer></script>
-    <script src="/app/assets/app.js" defer></script>
+    <script src="/app/assets/setup-wizard-redirect.js?v=1" defer></script>
+    <script src="/app/assets/app.js?v=0.7.34" defer></script>
   </head>
   <body>
     <header class="app-header">
@@ -77,6 +78,10 @@
           </nav>
           <div class="page-heading">
             <h1 id="page-title">План на сегодня</h1>
+            <div id="archive-tabs" class="archive-tabs" aria-label="Раздел списка" hidden>
+              <button id="active-toggle" type="button" aria-pressed="true">План на сегодня</button>
+              <button id="archive-toggle" type="button" aria-pressed="false">Архив</button>
+            </div>
             <p id="page-sub" class="muted"></p>
             <button id="create-task" class="primary">＋ Новая задача</button>
           </div>
@@ -246,6 +251,17 @@
           <button type="submit" class="primary">Создать задачу</button
           ><button type="button" data-close>Закрыть, сохранив черновик</button>
         </div>
+      </form>
+    </dialog>
+    <dialog id="edit-task-dialog" aria-labelledby="edit-task-title">
+      <form id="edit-task-form">
+        <div class="dialog-heading"><h2 id="edit-task-title">Изменить задачу</h2><button type="button" data-close aria-label="Закрыть форму">×</button></div>
+        <p id="edit-task-name"></p>
+        <label>Приоритет<select id="edit-task-priority"><option value="LOW">Низкий</option><option value="NORMAL">Обычный</option><option value="HIGH">Высокий</option><option value="CRITICAL">Критический</option></select></label>
+        <label>Срок (необязательно)<input id="edit-task-due" type="datetime-local" /></label>
+        <p class="muted form-zone"></p>
+        <p id="edit-task-error" class="inline-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="primary">Сохранить</button><button type="button" data-close>Отмена</button></div>
       </form>
     </dialog>
     <dialog id="reminder-dialog" aria-labelledby="reminder-title">

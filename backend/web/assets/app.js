@@ -61,6 +61,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     tab: "tasks",
     q: "",
     order: "rank",
+    archive: false,
     selected: null,
     chat: false,
     zone: "UTC",
@@ -126,6 +127,14 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
           minute: "2-digit",
         }).format(new Date(value))
       : "";
+  const dateInput = (value) => {
+    if (!value) return "";
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+      timeZone: state.zone, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  };
   const interval = (x) =>
     x.all_day
       ? tr("{0} · весь день", date(x.starts_at, false))
@@ -200,6 +209,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     const params = new URLSearchParams({ tab: state.tab });
     if (state.q) params.set("q", state.q);
     if (state.order !== "rank") params.set("order", state.order);
+    if (state.archive && ["tasks", "delegations"].includes(state.tab)) params.set("archive", "1");
     if (state.selected) {
       params.set("kind", state.selected.kind);
       params.set("id", state.selected.id);
@@ -233,6 +243,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     state.tab = tabs.includes(p.get("tab")) ? p.get("tab") : "tasks";
     state.q = (p.get("q") || "").slice(0, 200);
     state.order = p.get("order") === "due" ? "due" : "rank";
+    state.archive = p.get("archive") === "1" && ["tasks", "delegations"].includes(state.tab);
     const kind = p.get("kind"),
       id = p.get("id");
     state.selected =
@@ -250,9 +261,17 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     state.chat = p.get("chat") === "1";
   }
   function chrome() {
-    $("page-title").textContent = names[state.tab];
+    $("page-title").textContent = state.archive
+      ? state.tab === "tasks" ? tr("Архив задач") : tr("Архив поручений")
+      : names[state.tab];
+    const hasArchive = ["tasks", "delegations"].includes(state.tab);
+    $("page-title").hidden = hasArchive;
+    $("archive-tabs").hidden = !hasArchive;
+    $("active-toggle").textContent = state.tab === "tasks" ? tr("План на сегодня") : tr("Поручения");
+    $("active-toggle").setAttribute("aria-pressed", String(!state.archive));
+    $("archive-toggle").setAttribute("aria-pressed", String(state.archive));
     $("page-sub").textContent =
-      state.tab === "tasks"
+      state.tab === "tasks" && !state.archive
         ? tr("Встречи сегодня и активные задачи")
         : state.tab === "status"
           ? tr("Загрузчики, обработка и сервисы")
@@ -263,9 +282,12 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     $("search-wrap").hidden = state.tab === "status";
     $("clear-search").hidden = !state.q;
     $("delegation-filters").hidden = state.tab !== "delegations";
-    $("sort").hidden = state.tab !== "tasks";
+    $("delegation-status").querySelectorAll("option").forEach((option) => {
+      option.hidden = option.value && (state.archive ? !closed({ status: option.value }) : closed({ status: option.value }));
+    });
+    $("sort").hidden = state.tab !== "tasks" || state.archive;
     $("sort").value = state.order;
-    $("create-task").hidden = state.tab !== "tasks";
+    $("create-task").hidden = state.tab !== "tasks" || state.archive;
     document
       .querySelectorAll("[data-tab]")
       .forEach((b) =>
@@ -382,7 +404,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     if (!state.configured) return;
     const tab = state.tab,
       v = view(),
-      signature = `${state.q}|${state.order}|${$("delegation-assignee").value}|${$("delegation-status").value}|${$("delegation-due").value}`,
+      signature = `${state.q}|${state.order}|${state.archive}|${$("delegation-assignee").value}|${$("delegation-status").value}|${$("delegation-due").value}`,
       serial = ++listSerial;
     listController?.abort();
     listController = new AbortController();
@@ -407,10 +429,10 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
       } else if (tab === "tasks") {
         const [tasks, plan] = await Promise.all([
           api(
-            `/tasks?${new URLSearchParams({ q: state.q, order: state.order })}`,
+            `/tasks?${new URLSearchParams({ q: state.q, order: state.order, ...(state.archive ? { archive: "true" } : {}) })}`,
             { signal },
           ),
-          state.q
+          state.q || state.archive
             ? Promise.resolve({ meetings: [] })
             : api("/plans/today", { signal }),
         ]);
@@ -436,7 +458,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
         do {
           const limit = Math.min(100, target - items.length);
           page = await api(
-            `/${path}?${new URLSearchParams({ q: state.q, offset, limit, ...(tab === "delegations" ? { assignee: $("delegation-assignee").value, status: $("delegation-status").value, due: $("delegation-due").value } : {}) })}`,
+            `/${path}?${new URLSearchParams({ q: state.q, offset, limit, ...(tab === "delegations" ? { assignee: $("delegation-assignee").value, status: $("delegation-status").value, due: $("delegation-due").value, ...(state.archive ? { archive: "true" } : {}) } : {}) })}`,
             { signal },
           );
           items.push(...page.items);
@@ -582,7 +604,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
       `<button class="icon-button task-reject" data-action="reject" title="${tr("Отказаться от задачи")}" aria-label="${tr("Отказаться от задачи")}"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></button>`;
     return (
       head(tr("Задача")) +
-      `<h2>${e(t.title)}</h2><div class="tags">${badge(priorities[t.priority], t.priority.toLowerCase())}${badge(label(t.status))}</div><div class="actions">${!closed(t) ? `${t.status === "NEEDS_CONFIRMATION" ? `<button class="primary" data-action="confirm">${tr("Подтвердить")}</button>` : `<button class="primary" data-action="complete">${tr("✓ Завершить")}</button>`}${rejectButton}<button data-action="remind">${tr("◷ Напомнить")}</button>` : ""}</div><div class="facts">${fact(tr("Срок"), e(t.due_at ? date(t.due_at) : tr("Без срока")))}${fact(tr("Статус"), e(label(t.status)))}${fact(tr("Приоритет"), e(priorities[t.priority]))}${fact(tr("Рейтинг"), e(t.ranking_score.toFixed(2)))}</div><h3>${tr("Что нужно сделать")}</h3>${t.description ? markdown(t.description) : `<p class="muted">${tr("Описание не указано.")}</p>`}${t.ranking_reasons.length ? `<h3>${tr("Почему задача в плане")}</h3><ul>${t.ranking_reasons.map((r) => `<li>${e(r)}</li>`).join("")}</ul>` : ""}${t.evidence ? `<h3>${tr("Основание назначения")}</h3><div class="callout text-body">${e(t.evidence)}</div>` : ""}<h3>${tr("Напоминания")}</h3>${t.reminders.length ? `<ul>${t.reminders.map((r) => `<li>${e(date(r.remind_at))} · ${r.sent_at ? tr("Отправлено") : r.enabled ? tr("Запланировано") : tr("Отключено")} ${!r.sent_at ? `<button class="link-button" data-remove-reminder="${e(r.id)}">${tr("Удалить")}</button>` : ""}</li>`).join("")}</ul>` : `<p class="muted">${tr("Напоминания не установлены.")}</p>`}<h3>${tr("Первоисточник")}</h3>${sourceHTML(data.source)}`
+      `<h2>${e(t.title)}</h2><div class="tags">${badge(priorities[t.priority], t.priority.toLowerCase())}${badge(label(t.status))}</div><div class="actions"><button data-action="edit-task">${tr("Изменить приоритет и срок")}</button>${!closed(t) ? `${t.status === "NEEDS_CONFIRMATION" ? `<button class="primary" data-action="confirm">${tr("Подтвердить")}</button>` : `<button class="primary" data-action="complete">${tr("✓ Завершить")}</button>`}${rejectButton}<button data-action="remind">${tr("◷ Напомнить")}</button>` : ""}</div><div class="facts">${fact(tr("Срок"), e(t.due_at ? date(t.due_at) : tr("Без срока")))}${fact(tr("Статус"), e(label(t.status)))}${fact(tr("Приоритет"), e(priorities[t.priority]))}${fact(tr("Рейтинг"), e(t.ranking_score.toFixed(2)))}</div><h3>${tr("Что нужно сделать")}</h3>${t.description ? markdown(t.description) : `<p class="muted">${tr("Описание не указано.")}</p>`}${t.ranking_reasons.length ? `<h3>${tr("Почему задача в плане")}</h3><ul>${t.ranking_reasons.map((r) => `<li>${e(r)}</li>`).join("")}</ul>` : ""}${t.evidence ? `<h3>${tr("Основание назначения")}</h3><div class="callout text-body">${e(t.evidence)}</div>` : ""}<h3>${tr("Напоминания")}</h3>${t.reminders.length ? `<ul>${t.reminders.map((r) => `<li>${e(date(r.remind_at))} · ${r.sent_at ? tr("Отправлено") : r.enabled ? tr("Запланировано") : tr("Отключено")} ${!r.sent_at ? `<button class="link-button" data-remove-reminder="${e(r.id)}">${tr("Удалить")}</button>` : ""}</li>`).join("")}</ul>` : `<p class="muted">${tr("Напоминания не установлены.")}</p>`}<h3>${tr("Первоисточник")}</h3>${sourceHTML(data.source)}`
     );
   }
   function delegationHTML(d) {
@@ -793,6 +815,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     storeScroll();
     const old = state.views[tab];
     state.tab = tab;
+    state.archive = false;
     state.q = "";
     state.order = "rank";
     state.selected = null;
@@ -927,6 +950,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     }
   }
   let reminderTaskId = null,
+    editTaskId = null,
     dialogFocus = null;
   function openDialog(id) {
     dialogFocus = document.activeElement;
@@ -988,6 +1012,15 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
       return;
     }
     if (!selected) return;
+    if (b.dataset.action === "edit-task" && selected.kind === "task") {
+      editTaskId = selected.id;
+      $("edit-task-name").textContent = state.detail.task.title;
+      $("edit-task-priority").value = state.detail.task.priority;
+      $("edit-task-due").value = dateInput(state.detail.task.due_at);
+      errorBox("edit-task-error", "");
+      openDialog("edit-task-dialog");
+      return;
+    }
     if (
       ["complete", "confirm", "reject"].includes(b.dataset.action) &&
       selected.kind === "task"
@@ -1035,6 +1068,25 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     const b = ev.target.closest("[data-tab]");
     if (b) switchTab(b.dataset.tab);
   });
+  async function switchArchive(archive) {
+    if (state.archive === archive) return;
+    state.archive = archive;
+    state.selected = null;
+    state.detailKey = "";
+    state.detail = null;
+    $("delegation-status").value = "";
+    $("delegation-due").value = "";
+    view().rows = [];
+    view().loaded = false;
+    view().hasMore = false;
+    saveLocation();
+    chrome();
+    renderList();
+    setDetail(`<p class="empty">${tr("Выберите запись слева.")}</p>`);
+    await loadList();
+  }
+  $("active-toggle").onclick = () => switchArchive(false);
+  $("archive-toggle").onclick = () => switchArchive(true);
   $("search").addEventListener("input", () => {
     clearTimeout(searchTimer);
     state.q = $("search").value;
@@ -1110,6 +1162,29 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
       await selectRecord("task", task.id);
     } catch (err) {
       errorBox("task-form-error", failText(err));
+    } finally {
+      button.disabled = false;
+    }
+  };
+  $("edit-task-form").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const button = ev.submitter || $("edit-task-form").querySelector("[type=submit]");
+    if (button.disabled || !editTaskId) return;
+    button.disabled = true;
+    errorBox("edit-task-error", "");
+    try {
+      await api(`/tasks/${editTaskId}`, { method: "PATCH", body: JSON.stringify({
+        priority: $("edit-task-priority").value,
+        due_at: C.zonedISO($("edit-task-due").value, state.zone),
+      }) });
+      button.disabled = false;
+      closeDialog($("edit-task-dialog"));
+      toast(tr("Изменения сохранены"));
+      await loadList({ quiet: true });
+      if (state.selected?.kind === "task" && state.selected.id === editTaskId)
+        await loadDetail({ quiet: true });
+    } catch (err) {
+      errorBox("edit-task-error", failText(err));
     } finally {
       button.disabled = false;
     }

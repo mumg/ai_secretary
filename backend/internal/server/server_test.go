@@ -114,6 +114,11 @@ func TestTaskLifecycle(t *testing.T) {
 	if len(closed) != 1 {
 		t.Fatal(closed)
 	}
+	archive := call(t, s, "GET", "/api/v1/tasks?archive=true", nil, 200).([]any)
+	if len(archive) != 1 || str(archive[0].(map[string]any), "id") != id {
+		t.Fatal("completed task missing from archive", archive)
+	}
+	call(t, s, "GET", "/api/v1/tasks?archive=invalid", nil, 422)
 	call(t, s, "POST", "/api/v1/tasks", M{"title": "bad", "priority": "INVALID"}, 422)
 	call(t, s, "POST", "/api/v1/tasks", M{"title": "   "}, 422)
 }
