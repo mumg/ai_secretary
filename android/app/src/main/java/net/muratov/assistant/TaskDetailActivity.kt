@@ -7,23 +7,31 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,7 +51,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.muratov.assistant.data.remote.TaskDetailDto
 import net.muratov.assistant.ui.ImproverTheme
-import net.muratov.assistant.ui.RejectTaskButton
 import net.muratov.assistant.ui.LinkedMessageText
 import net.muratov.assistant.ui.TaskDetailUiState
 import net.muratov.assistant.ui.TaskDetailViewModel
@@ -157,6 +164,7 @@ private fun TaskDetailContent(
 ) {
     val source = detail.source
     val uriHandler = LocalUriHandler.current
+    val canCancel = detail.task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED", "NEEDS_CONFIRMATION")
     Column(
         modifier
             .fillMaxSize()
@@ -166,10 +174,33 @@ private fun TaskDetailContent(
     ) {
         DetailField(tr("Приоритет"), taskPriorityLabel(detail.task.priority))
         DetailField(tr("Срок"), detail.task.dueAt?.let { eventDateTime(it).let { (date, time) -> "$date $time" } } ?: tr("Без срока"))
-        Button(onClick = onEdit) { Text(tr("Изменить приоритет и срок")) }
-        if (detail.task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED", "NEEDS_CONFIRMATION")) {
-            RejectTaskButton(onClick = onReject, modifier = Modifier.align(Alignment.End))
-        } else if (detail.task.status == "CANCELLED") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(
+                onClick = onEdit,
+                modifier = Modifier.weight(1f, fill = false),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Text(tr("Изменить приоритет и срок"), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (canCancel) {
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = onReject,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Text(tr("Отменить"))
+                }
+            }
+        }
+        if (detail.task.status == "CANCELLED") {
             Text(tr("Задача отменена"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (source == null) {

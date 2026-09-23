@@ -58,7 +58,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -108,6 +107,8 @@ import net.muratov.assistant.data.remote.MeetingResultDto
 import net.muratov.assistant.data.remote.ComponentStatusDto
 import net.muratov.assistant.ui.ImproverTheme
 import net.muratov.assistant.ui.RejectTaskButton
+import net.muratov.assistant.ui.TaskActionIconButton
+import net.muratov.assistant.ui.ArchiveSwitch
 import net.muratov.assistant.ui.MeetingResultsViewModel
 import net.muratov.assistant.ui.MeetingsViewModel
 import net.muratov.assistant.ui.TaskViewModel
@@ -445,10 +446,7 @@ private fun ImproverScreen(
                     HomeTab.TASKS -> Column(
                         Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { taskArchive = false }, enabled = taskArchive) { Text(tr("Активные")) }
-                    OutlinedButton(onClick = { taskArchive = true }, enabled = !taskArchive) { Text(tr("Архив")) }
-                }
+                ArchiveSwitch(archive = taskArchive, onSelect = { taskArchive = it })
                 if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
                 if (taskSearchError != null) {
                     Text(taskSearchError!!, color = MaterialTheme.colorScheme.error)
@@ -1365,7 +1363,6 @@ private fun TaskCard(
 ) {
     val priority = priorityVisual(task.priority)
     val rankingReasons = visibleRankingReasons(task.rankingReasons)
-    val activeReminderColor = Color(0xFFFFD166)
     Card(
         onClick = onOpen,
         modifier = Modifier.fillMaxWidth(),
@@ -1434,26 +1431,15 @@ private fun TaskCard(
                 if (task.status in setOf("NEW", "IN_PROGRESS", "POSSIBLY_COMPLETED")) {
                     RejectTaskButton(onClick = onReject)
                 }
-                if (task.status !in setOf("COMPLETED", "CANCELLED")) FilledTonalIconButton(
+                if (task.status !in setOf("COMPLETED", "CANCELLED")) TaskActionIconButton(
                     onClick = onAddReminder,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .border(
-                            width = 2.dp,
-                            color = if (task.hasActiveReminder) {
-                                activeReminderColor
-                            } else {
-                                Color.Transparent
-                            },
-                            shape = CircleShape,
-                        ),
+                    highlighted = task.hasActiveReminder,
                 ) {
                     Icon(Icons.Default.Alarm, contentDescription = tr("Добавить напоминание"))
                 }
-                if (task.status !in setOf("COMPLETED", "CANCELLED")) FilledTonalIconButton(
+                if (task.status !in setOf("COMPLETED", "CANCELLED")) TaskActionIconButton(
                     onClick = onComplete,
                     enabled = task.status != "NEEDS_CONFIRMATION",
-                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(Icons.Default.Check, contentDescription = tr("✓ Завершить"))
                 }

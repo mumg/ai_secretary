@@ -78,10 +78,7 @@ class DelegationsViewModel(private val repository: TaskRepository): ViewModel() 
     val s by vm.state.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         var showFilters by rememberSaveable { mutableStateOf(false) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { vm.setArchive(false) }, enabled = s.archive) { Text(tr("Активные")) }
-            OutlinedButton(onClick = { vm.setArchive(true) }, enabled = !s.archive) { Text(tr("Архив")) }
-        }
+        ArchiveSwitch(archive = s.archive, onSelect = vm::setArchive)
         if(showFilters) AlertDialog(onDismissRequest={showFilters=false},title={Text(tr("Фильтры поручений"))},text={Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DelegationFilter(tr("Исполнитель"),s.assignee, linkedMapOf("" to tr("Все исполнители")) + s.recipients.filter { it.key.isNotBlank() }.associate { it.key to (it.name.ifBlank { it.email } + if(it.name.isNotBlank() && it.email.isNotBlank()) " · ${it.email}" else "") }) { vm.filters(assignee=it) }
             DelegationFilter(tr("Статус"),s.status,linkedMapOf("" to tr("Все статусы"))+delegationStatuses.filterKeys { if (s.archive) it in setOf("COMPLETED", "CANCELLED") else it !in setOf("COMPLETED", "CANCELLED") }) { vm.filters(status=it) }
