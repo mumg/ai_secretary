@@ -87,6 +87,22 @@ def historic_versions():
             yield version, commit
 
 
+def version_key(version):
+    return tuple(map(int, version.split(".")))
+
+
+def latest_snapshot(releases, version):
+    eligible = (entry for release, entry in releases.items() if version_key(release) <= version_key(version))
+    return max(eligible, key=lambda entry: version_key(entry["release_version"]), default=None)
+
+
+def prompts_match(left, right):
+    fields = ("request_type", "system_prompt", "response_schema_name", "response_schema")
+    return [tuple(prompt[field] for field in fields) for prompt in left] == [
+        tuple(prompt[field] for field in fields) for prompt in right
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backfill", action="store_true", help="add available 0.7.x Git snapshots")
@@ -108,8 +124,8 @@ def main():
     current_version = (ROOT / "version").read_text(encoding="utf-8").strip()
     current = snapshot(current_version)
     if args.check:
-        old = releases.get(current_version)
-        if old is None or old["prompts"] != current["prompts"]:
+        baseline = latest_snapshot(releases, current_version)
+        if baseline is None or not prompts_match(baseline["prompts"], current["prompts"]):
             raise ValueError(f"LLM manifest is missing or stale for {current_version}")
         for release in releases.values():
             for entry in release["prompts"]:
@@ -123,22 +139,29 @@ def main():
         print(f"LLM manifest matches current source: {current_version}")
         return
     if args.backfill:
-        for version, commit in historic_versions():
-            if version not in releases:
-                releases[version] = snapshot(version, commit)
+        for version, commit in sorted(historic_versions(), key=lambda item: version_key(item[0])):
+            if version != current_version and version not in releases:
+                historical = snapshot(version, commit)
+                baseline = latest_snapshot(releases, version)
+                if baseline is None or not prompts_match(baseline["prompts"], historical["prompts"]):
+                    releases[version] = historical
     old = releases.get(current_version)
     if old:
-        if old["prompts"] != current["prompts"]:
+        if not prompts_match(old["prompts"], current["prompts"]):
             raise ValueError(f"{current_version} is immutable; raise version before changing LLM prompts")
-    else:
+    elif (baseline := latest_snapshot(releases, current_version)) is None or not prompts_match(baseline["prompts"], current["prompts"]):
         releases[current_version] = current
-    if args.finalize:
+    if args.finalize and current_version in releases:
         releases[current_version]["state"] = "released"
     manifest["releases"] = sorted(
         releases.values(), key=lambda item: tuple(map(int, item["release_version"].split(".")))
     )
-    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Updated {MANIFEST.name}: {len(manifest['releases'])} versions, current {current_version}")
+    serialized = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+    if not MANIFEST.exists() or MANIFEST.read_text(encoding="utf-8") != serialized:
+        MANIFEST.write_text(serialized, encoding="utf-8")
+        print(f"Updated {MANIFEST.name}: {len(manifest['releases'])} versions, current {current_version}")
+    else:
+        print(f"LLM prompts unchanged; {MANIFEST.name} left unchanged for {current_version}")
 
 
 if __name__ == "__main__":
