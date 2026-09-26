@@ -11,7 +11,7 @@ import (
 )
 
 func TestReleaseFixDisablesOnlyMatchingTemporaryCorrection(t *testing.T) {
-	manifest := llmReleaseManifest{ReleaseVersion: "0.7.52", Fixes: []llmReleaseFix{{FixID: "fix-task-status", IssueID: "issue-status", RequestType: "task_extraction", TemplateRevision: llmPromptTemplateRevision, Model: "qwen"}}}
+	manifest := llmReleaseManifest{ReleaseVersion: "0.7.52", Fixes: []llmReleaseFix{{FixID: "fix-task-status", IssueID: "issue-status", RequestType: "task_extraction", TemplateRevision: llmPromptTemplateRevision, Model: "qwen", FixedVersion: "0.7.52"}}}
 	row := M{"scope": "systemic", "issue_id": "issue-status", "release_fix_eligible": true, "request_type": "task_extraction", "rule_text": "Не создавать задачу из статуса", "model": "qwen", "template_revision": llmPromptTemplateRevision, "personal_correction_hash": correctionHash(""), "status": "active"}
 	status, reason, fixID, version := correctionTransition(row, manifest, "qwen", "")
 	if status != "disabled_by_fix" || reason != "Исправлено в версии 0.7.52" || fixID != "fix-task-status" || version != "0.7.52" {
@@ -45,7 +45,7 @@ func TestReleaseFixDisablesOnlyMatchingTemporaryCorrection(t *testing.T) {
 }
 
 func TestLLMFixManifestMustMatchInstalledRelease(t *testing.T) {
-	data, err := json.Marshal(llmReleaseManifest{SchemaVersion: 1, Component: "backend", ReleaseVersion: "0.7.52", Fixes: []llmReleaseFix{{FixID: "fix-1", IssueID: "issue-1", RequestType: "task_extraction", TemplateRevision: llmPromptTemplateRevision}}})
+	data, err := json.Marshal(llmReleaseManifest{SchemaVersion: 1, Component: "backend", ReleaseVersion: "0.7.52", Fixes: []llmReleaseFix{{FixID: "fix-1", IssueID: "issue-1", RequestType: "task_extraction", TemplateRevision: llmPromptTemplateRevision, FixedVersion: "0.7.51"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +54,33 @@ func TestLLMFixManifestMustMatchInstalledRelease(t *testing.T) {
 	}
 	if manifest, err := parseLLMReleaseManifest(data, "0.7.52"); err != nil || len(manifest.Fixes) != 1 {
 		t.Fatalf("valid installed manifest rejected: %+v %v", manifest, err)
+	}
+	manifest, err := parseLLMReleaseManifest(data, "0.7.52")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := M{"scope": "systemic", "issue_id": "issue-1", "release_fix_eligible": true, "request_type": "task_extraction", "rule_text": "Старое правило", "template_revision": llmPromptTemplateRevision, "status": "active"}
+	_, _, _, fixedVersion := correctionTransition(row, manifest, "", "")
+	if fixedVersion != "0.7.51" {
+		t.Fatalf("cumulative manifest lost original fix version: %q", fixedVersion)
+	}
+	manifest.Fixes[0].FixedVersion = "0.7.53"
+	data, _ = json.Marshal(manifest)
+	if _, err := parseLLMReleaseManifest(data, "0.7.52"); err == nil {
+		t.Fatal("future fix version accepted")
+	}
+}
+
+func TestReleaseFixRetiresCorrectionFromPreviousPromptRevision(t *testing.T) {
+	manifest := llmReleaseManifest{ReleaseVersion: "0.7.58", Fixes: []llmReleaseFix{{FixID: "fix-cc", IssueID: "issue-cc", RequestType: "task_extraction", TemplateRevision: "2026-09-26", FixedVersion: "0.7.58"}}}
+	row := M{"scope": "systemic", "issue_id": "issue-cc", "release_fix_eligible": true, "request_type": "task_extraction", "rule_text": "Не назначать задачу из Cc", "template_revision": "2026-09-26", "status": "active"}
+	status, _, _, version := correctionTransition(row, manifest, "", "")
+	if status != "disabled_by_fix" || version != "0.7.58" {
+		t.Fatalf("old revision fix did not retire the correction: %s %s", status, version)
+	}
+	row["issue_id"] = "other"
+	if status, _, _, _ := correctionTransition(row, manifest, "", ""); status != "needs_review" {
+		t.Fatal("unfixed correction from old revision stayed active")
 	}
 }
 
@@ -65,6 +92,22 @@ func TestBundledLLMFixManifestMatchesVersion(t *testing.T) {
 	if _, err := parseLLMReleaseManifest(llmFixManifestJSON, strings.TrimSpace(string(version))); err != nil {
 		t.Fatal(err)
 	}
+	manifest, err := parseLLMReleaseManifest(llmFixManifestJSON, strings.TrimSpace(string(version)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"82c29617-cb04-41c7-bd86-e899f75d2259": "message_analysis",
+		"ed6dae0f-2b0a-4c38-8b79-21fad02a2601": "task_extraction",
+	}
+	for _, fix := range manifest.Fixes {
+		if want[fix.IssueID] == fix.RequestType && fix.FixedVersion == "0.7.58" {
+			delete(want, fix.IssueID)
+		}
+	}
+	if len(want) != 0 {
+		t.Fatalf("accepted gateway issues missing from bundled manifest: %v", want)
+	}
 }
 
 func TestInstalledFixReconciliationIsIdempotentAndRollbackRestores(t *testing.T) {
@@ -72,7 +115,7 @@ func TestInstalledFixReconciliationIsIdempotentAndRollbackRestores(t *testing.T)
 	s.Version = "0.7.51"
 	original := llmFixManifestJSON
 	defer func() { llmFixManifestJSON = original }()
-	llmFixManifestJSON = must(json.Marshal(llmReleaseManifest{SchemaVersion: 1, Component: "backend", ReleaseVersion: "0.7.51", Fixes: []llmReleaseFix{{FixID: "fix-1", IssueID: "issue-1", RequestType: "task_extraction", TemplateRevision: llmPromptTemplateRevision}}}))
+	llmFixManifestJSON = must(json.Marshal(llmReleaseManifest{SchemaVersion: 1, Component: "backend", ReleaseVersion: "0.7.51", Fixes: []llmReleaseFix{{FixID: "fix-1", IssueID: "issue-1", RequestType: "task_extraction", TemplateRevision: llmPromptTemplateRevision, FixedVersion: "0.7.51"}}}))
 	id := store.UUID()
 	individualID := store.UUID()
 	ctx := context.Background()

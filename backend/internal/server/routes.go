@@ -12,5 +12,6 @@ func (s *Server) routes() {
 	s.connectorRoutes()
 	s.diagnosticRoutes()
 	s.diagnosticDeliveryRoutes()
+	s.diagnosticRecommendationRoutes()
 	s.temporaryCorrectionRoutes()
 }

@@ -195,11 +195,14 @@ function populateSettings(data) {
 async function saveSettings(event) {
   try {
     if (!settingsState) throw new Error(tr("Настройки ещё не загружены"));
-    const fields = document.querySelectorAll("#analysis input, #analysis textarea, #notifications input");
     const setupIdentity = document.body.classList.contains("setup-identity");
     const setupModel = document.body.classList.contains("setup-model");
-    if (![...fields].filter(field => !field.closest("#localOllama") && !field.closest("[hidden]")
-      && (!document.body.classList.contains("setup-mode") || field.closest(setupIdentity ? "#identitySettings" : "#llmSettings"))).every((field) => field.reportValidity())) return;
+    const editor = document.body.classList.contains("setup-mode")
+      ? $(setupIdentity ? "identitySettings" : "llmSettings")
+      : event?.currentTarget?.closest(".panel");
+    const fields = editor?.querySelectorAll("input, textarea, select") || [];
+    if (![...fields].filter(field => !field.closest("#localOllama") && !field.closest("[hidden]"))
+      .every(field => field.reportValidity())) return;
     const s = structuredClone(settingsState);
     s.relationships = {};
     for (const [key, id] of [["managers", "relationshipManagers"], ["reports", "relationshipReports"]]) {
@@ -272,7 +275,7 @@ async function saveSettings(event) {
       document.dispatchEvent(new CustomEvent("secretary:settings-saved", { detail: { llm: true } }));
     }
     const panel = setupIdentity ? "identity" : event?.currentTarget?.closest(".panel")?.id;
-    if (panel === "identity" || (!setupModel && (panel === "analysis" || panel === "notifications"))) {
+    if (panel === "identity" || (!setupModel && (panel === "analysis" || panel === "analysisConfig" || panel === "notifications"))) {
       document.dispatchEvent(new CustomEvent("secretary:settings-saved", { detail: { panel } }));
     }
   } catch (error) { toast(error.message, true); }
@@ -556,8 +559,24 @@ async function loadTemporaryCorrections() {
     text.textContent = item.rule_text;
     const details = document.createElement("p");
     details.className = "hint";
-    details.textContent = [item.scope === "systemic" ? "Системная проблема" : "Индивидуальная коррекция", item.scope === "systemic" && !item.release_fix_eligible && "Исключена из бэклога", item.status_reason, item.fixed_version && `Версия ${item.fixed_version}`, item.scope === "systemic" && item.issue_id && `Проблема ${item.issue_id}`].filter(Boolean).join(" · ");
+    details.textContent = [item.scope === "systemic" ? "Системная проблема" : "Индивидуальная коррекция", item.scope === "systemic" && !item.release_fix_eligible && "Исключена из бэклога", item.status_reason, item.fixed_version && `Версия ${item.fixed_version}`].filter(Boolean).join(" · ");
     article.append(heading, text, details);
+    const issue = document.createElement("p");
+    issue.className = "correction-issue";
+    issue.append("issue_id: ");
+    if (item.issue_id) {
+      const id = document.createElement("code");
+      id.textContent = item.issue_id;
+      issue.append(id);
+    } else {
+      const absence = document.createElement("span");
+      absence.className = "hint";
+      absence.textContent = item.scope === "individual"
+        ? tr("Не присваивается индивидуальной коррекции")
+        : tr("Не назначен");
+      issue.append(absence);
+    }
+    article.append(issue);
     const history = historyByID.get(item.correction_id) || [];
     if (history.length) {
       const disclosure = document.createElement("details");

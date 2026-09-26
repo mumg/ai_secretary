@@ -58,6 +58,13 @@ func diagnosticStatus(row M) M {
 	return M{"report_id": row["report_id"], "state": row["state"], "response": row["response_text"], "last_error": row["last_error"], "created_at": row["created_at"], "updated_at": row["updated_at"]}
 }
 
+func gatewayDiagnosticState(state string) string {
+	if state == "waiting_user" {
+		return "in_review"
+	}
+	return state
+}
+
 func technicalSupportPayload(id, problem, expected string) M {
 	return M{
 		"schema_version": 1,
@@ -238,8 +245,9 @@ func (s *Server) diagnosticDeliveryRoutes() {
 		if client, err := q.diagnosticClient(); err == nil {
 			if statuses, err := client.Statuses(q.Context); err == nil {
 				for id, status := range statuses {
-					if status.State == "received" || status.State == "in_review" || status.State == "resolved" || status.State == "rejected" {
-						q.exec("UPDATE diagnostic_reports SET state=$2,response_text=$3,updated_at=now() WHERE report_id=$1 AND (state<>$2 OR response_text<>$3)", id, status.State, status.Response)
+					state := gatewayDiagnosticState(status.State)
+					if state == "received" || state == "in_review" || state == "resolved" || state == "rejected" {
+						q.exec("UPDATE diagnostic_reports SET state=$2,response_text=$3,updated_at=now() WHERE report_id=$1 AND (state<>$2 OR response_text<>$3)", id, state, status.Response)
 					}
 				}
 			}
@@ -259,22 +267,42 @@ func (s *Server) diagnosticDeliveryRoutes() {
 			if client, err := q.diagnosticClient(); err == nil {
 				status, statusErr := client.Status(q.Context, id)
 				client.Close()
-				if statusErr == nil && (status.State == "received" || status.State == "in_review" || status.State == "resolved" || status.State == "rejected") && (status.State != str(row, "state") || status.Response != str(row, "response_text")) {
-					q.exec("UPDATE diagnostic_reports SET state=$2,response_text=$3,updated_at=now() WHERE report_id=$1", id, status.State, status.Response)
-					row["state"], row["response_text"] = status.State, status.Response
+				if statusErr == nil {
+					state := gatewayDiagnosticState(status.State)
+					q.receiveDiagnosticRecommendations(id, status)
+					if (state == "received" || state == "in_review" || state == "resolved" || state == "rejected") && (state != str(row, "state") || status.Response != str(row, "response_text")) {
+						q.exec("UPDATE diagnostic_reports SET state=$2,response_text=$3,updated_at=now() WHERE report_id=$1", id, state, status.Response)
+						row["state"], row["response_text"] = state, status.Response
+					}
 				}
 			}
 		}
 		return diagnosticStatus(row)
 	})
 	s.route("GET /api/v1/diagnostic-reports/details/{id}", false, func(q *request) any {
-		row := q.one("SELECT report_id::text,payload_cipher,state,response_text,last_error,created_at,updated_at FROM diagnostic_reports WHERE report_id=$1", q.id("id"))
+		id := q.id("id")
+		row := q.one("SELECT report_id::text,payload_cipher,state,response_text,last_error,created_at,updated_at FROM diagnostic_reports WHERE report_id=$1", id)
+		if str(row, "state") != "queued" {
+			if client, err := q.diagnosticClient(); err == nil {
+				gatewayStatus, statusErr := client.Status(q.Context, id)
+				client.Close()
+				if statusErr == nil {
+					q.receiveDiagnosticRecommendations(id, gatewayStatus)
+					state := gatewayDiagnosticState(gatewayStatus.State)
+					if state == "received" || state == "in_review" || state == "resolved" || state == "rejected" {
+						q.exec("UPDATE diagnostic_reports SET state=$2,response_text=$3,updated_at=now() WHERE report_id=$1 AND (state<>$2 OR response_text<>$3)", id, state, gatewayStatus.Response)
+						row["state"], row["response_text"] = state, gatewayStatus.Response
+					}
+				}
+			}
+		}
 		plaintext := must(q.server.Config.Decrypt(str(row, "payload_cipher")))
 		var payload M
 		check(json.Unmarshal([]byte(plaintext), &payload))
 		result := diagnosticStatus(row)
 		result["fields"] = diagnosticFields(payload)
 		result["issue_type"] = obj(payload, "issue")["type"]
+		result["corrections"] = q.diagnosticOffers(id)
 		return result
 	})
 	s.route("DELETE /api/v1/diagnostic-reports/{id}", false, func(q *request) any {

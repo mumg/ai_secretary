@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -17,7 +18,7 @@ import (
 
 // A change to a prompt or its response contract must change this revision.
 // Recommendations for another revision are withheld until reviewed again.
-const llmPromptTemplateRevision = "2026-09-26"
+const llmPromptTemplateRevision = "2026-09-26.1"
 
 //go:embed llm_fix_manifest.json
 var llmFixManifestJSON []byte
@@ -28,6 +29,7 @@ type llmReleaseFix struct {
 	RequestType      string `json:"request_type"`
 	TemplateRevision string `json:"template_revision"`
 	Model            string `json:"model,omitempty"`
+	FixedVersion     string `json:"fixed_version"`
 }
 
 type llmReleaseManifest struct {
@@ -52,6 +54,9 @@ func parseLLMReleaseManifest(data []byte, installedVersion string) (llmReleaseMa
 		if fix.FixID == "" || fix.IssueID == "" || fix.TemplateRevision == "" || len(fix.FixID) > 128 || len(fix.IssueID) > 128 || len(fix.TemplateRevision) > 128 || len(fix.Model) > 200 || seen[fix.FixID] {
 			return manifest, errors.New("invalid or duplicated LLM fix identity")
 		}
+		if !releaseAtOrAfter(installedVersion, fix.FixedVersion) {
+			return manifest, fmt.Errorf("invalid LLM fix version %q", fix.FixedVersion)
+		}
 		if _, ok := allowed[fix.RequestType]; !ok {
 			return manifest, fmt.Errorf("unknown LLM fix request type %q", fix.RequestType)
 		}
@@ -63,6 +68,38 @@ func parseLLMReleaseManifest(data []byte, installedVersion string) (llmReleaseMa
 		seenScope[scope] = true
 	}
 	return manifest, nil
+}
+
+func releaseAtOrAfter(installed, fixed string) bool {
+	parse := func(value string) ([]int, bool) {
+		parts := strings.Split(value, ".")
+		if len(parts) != 3 {
+			return nil, false
+		}
+		out := make([]int, 3)
+		for i, part := range parts {
+			if part == "" || strings.Trim(part, "0123456789") != "" {
+				return nil, false
+			}
+			n, err := strconv.Atoi(part)
+			if err != nil {
+				return nil, false
+			}
+			out[i] = n
+		}
+		return out, true
+	}
+	installedParts, installedOK := parse(installed)
+	fixedParts, fixedOK := parse(fixed)
+	if !installedOK || !fixedOK {
+		return false
+	}
+	for i := range installedParts {
+		if installedParts[i] != fixedParts[i] {
+			return installedParts[i] > fixedParts[i]
+		}
+	}
+	return true
 }
 
 func correctionHash(text string) string {
@@ -79,21 +116,24 @@ func correctionTransition(row M, manifest llmReleaseManifest, model, personal st
 	if _, ok := allowed[requestType]; !ok || !utf8.ValidString(str(row, "rule_text")) || strings.TrimSpace(str(row, "rule_text")) == "" || utf8.RuneCountInString(str(row, "rule_text")) > 4000 {
 		return "needs_review", "Недопустимый тип или текст коррекции", "", ""
 	}
-	if str(row, "template_revision") != llmPromptTemplateRevision || (str(row, "model") != "" && str(row, "model") != model) {
+	if str(row, "model") != "" && str(row, "model") != model {
 		return "needs_review", "Модель или шаблон запроса изменились", "", ""
-	}
-	approvedPersonalHash := str(row, "personal_correction_hash")
-	if approvedPersonalHash != correctionHash(personal) && !(approvedPersonalHash == "" && strings.TrimSpace(personal) == "") {
-		return "needs_review", "Постоянные персональные инструкции изменились", "", ""
 	}
 	// Individual rules have no release issue. Even an accidental matching ID
 	// must not turn a personal preference into an automatically retired fix.
 	if str(row, "scope") == "systemic" && boolean(row, "release_fix_eligible") && str(row, "issue_id") != "" {
 		for _, fix := range manifest.Fixes {
-			if fix.IssueID == str(row, "issue_id") && fix.RequestType == requestType && fix.TemplateRevision == llmPromptTemplateRevision && (fix.Model == "" || fix.Model == model) {
-				return "disabled_by_fix", "Исправлено в версии " + manifest.ReleaseVersion, fix.FixID, manifest.ReleaseVersion
+			if fix.IssueID == str(row, "issue_id") && fix.RequestType == requestType && fix.TemplateRevision == str(row, "template_revision") && (fix.Model == "" || fix.Model == model) {
+				return "disabled_by_fix", "Исправлено в версии " + fix.FixedVersion, fix.FixID, fix.FixedVersion
 			}
 		}
+	}
+	if str(row, "template_revision") != llmPromptTemplateRevision {
+		return "needs_review", "Модель или шаблон запроса изменились", "", ""
+	}
+	approvedPersonalHash := str(row, "personal_correction_hash")
+	if approvedPersonalHash != correctionHash(personal) && !(approvedPersonalHash == "" && strings.TrimSpace(personal) == "") {
+		return "needs_review", "Постоянные персональные инструкции изменились", "", ""
 	}
 	if str(row, "status") == "needs_review" && str(row, "status_reason") == "Несколько правил для одного типа запроса" {
 		return "needs_review", str(row, "status_reason"), "", ""

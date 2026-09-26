@@ -19,7 +19,7 @@ import (
 
 type Record map[string]any
 
-const LatestRevision = 32
+const LatestRevision = 33
 
 type DB interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)

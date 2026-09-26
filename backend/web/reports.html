@@ -6,11 +6,11 @@
   <meta name="color-scheme" content="dark" />
   <meta name="referrer" content="no-referrer" />
   <title>Обращения — AI Секретарь</title>
-  <script src="/app/assets/translations.js?v=0.7.53" defer></script>
+  <script src="/app/assets/translations.js?v=0.7.54" defer></script>
   <script src="/app/assets/i18n.js" defer></script>
-  <link rel="stylesheet" href="/app/assets/app.css?v=0.7.53" />
-  <link rel="stylesheet" href="/app/assets/reports.css?v=0.7.53" />
-  <script src="/app/assets/reports.js?v=0.7.53" defer></script>
+  <link rel="stylesheet" href="/app/assets/app.css?v=0.7.54" />
+  <link rel="stylesheet" href="/app/assets/reports.css?v=0.7.54" />
+  <script src="/app/assets/reports.js?v=0.7.54" defer></script>
 </head>
 <body>
   <header class="app-header"><a class="brand" href="/app/" aria-label="AI Секретарь — главная"><span aria-hidden="true">←</span><img class="brand-icon" src="/app/assets/secretary-robot.svg" alt="" width="32" height="32" />AI Секретарь</a><h1>Обращения</h1></header>
@@ -46,6 +46,10 @@
         <section id="report-answer" class="report-block" hidden>
           <h3>Ответ по обращению</h3>
           <p id="report-answer-text"></p>
+        </section>
+        <section id="report-corrections" class="report-block" hidden>
+          <h3>Предложенные коррекции анализа</h3>
+          <div id="report-corrections-list"></div>
         </section>
         <section class="report-block">
           <h3>Отправленные данные</h3>

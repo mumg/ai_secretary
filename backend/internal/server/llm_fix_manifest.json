@@ -1,6 +1,21 @@
 {
   "schema_version": 1,
   "component": "backend",
-  "release_version": "0.7.53",
-  "fixes": []
+  "release_version": "0.7.58",
+  "fixes": [
+    {
+      "fix_id": "fix-interest-question-not-task-0.7.58",
+      "issue_id": "82c29617-cb04-41c7-bd86-e899f75d2259",
+      "request_type": "message_analysis",
+      "template_revision": "2026-09-26",
+      "fixed_version": "0.7.58"
+    },
+    {
+      "fix_id": "fix-cc-without-assignment-0.7.58",
+      "issue_id": "ed6dae0f-2b0a-4c38-8b79-21fad02a2601",
+      "request_type": "task_extraction",
+      "template_revision": "2026-09-26",
+      "fixed_version": "0.7.58"
+    }
+  ]
 }

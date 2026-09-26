@@ -94,16 +94,19 @@
   const analysis = get("analysis");
   const analysisHome = document.createComment("analysis widget home");
   analysis.before(analysisHome);
+  const analysisConfig = get("analysisConfig");
+  const analysisConfigHome = document.createComment("analysis configuration widget home");
+  analysisConfig.before(analysisConfigHome);
   registry.set("llm", new ConfigurationWidget("llm", {
     check: () => status("llm"),
     test: () => request("/setup-wizard/llm/test", { method: "POST" }),
     show: async context => {
-      if (context.host) context.host.append(analysis);
-      else analysisHome.after(analysis);
+      if (context.host) context.host.append(analysisConfig);
+      else analysisConfigHome.after(analysisConfig);
       get("llmProvider").scrollIntoView({ block: "center" });
       get("llmProvider").focus();
     },
-    restore: () => analysisHome.after(analysis),
+    restore: () => analysisConfigHome.after(analysisConfig),
   }));
 
   registry.set("identity", new ConfigurationWidget("identity", {
@@ -121,7 +124,7 @@
   // Other admin settings are widgets too. They use the existing forms in place;
   // they can be referenced by a future setup step without copying their markup.
   for (const [id, panel] of [["sources", "sources"], ["tags", "tags"],
-    ["analysis", "analysis"], ["notifications", "notifications"],
+    ["analysis", "analysis"], ["analysisConfig", "analysisConfig"], ["notifications", "notifications"],
     ["connection", "mobile"]]) {
     const node = get(panel);
     const home = document.createComment(`${id} widget home`);

@@ -34,8 +34,12 @@
 .report-facts dt { color: var(--muted); }
 .report-facts dd { margin: 0; overflow-wrap: anywhere; }
 .report-state-line { color: var(--muted); }
-#report-answer { color: var(--green); }
+#report-answer { color: inherit; }
 #report-answer-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+#report-corrections-list { display: grid; gap: 12px; }
+.report-correction { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--card); }
+.report-correction p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.report-correction-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 #report-submitted-fields article h4 { margin: 0 0 6px; }
 #report-submitted-fields article { border-bottom: 1px solid var(--line); padding: 10px 0; }
 @media (max-width: 780px) { body { overflow: auto; height: auto; min-height: 100dvh; } .reports-layout { grid-template-columns: 1fr; } .reports-layout > section { overflow: visible; } #reports-sidebar { max-height: 35dvh; overflow-y: auto; } }

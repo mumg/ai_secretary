@@ -40,13 +40,13 @@ body.setup-mode .shell > :not(#setupWizard), body.setup-mode .copyright { displa
 body.setup-mode .shell { width: min(900px, calc(100% - 28px)); margin: min(9vh, 80px) auto 72px; }
 body.setup-mode .setup-wizard { margin-top: 0; }
 body.setup-mode:has(dialog[open]) .shell { visibility: hidden; }
-body.setup-mode.setup-model #setupWizard #analysis { display: block !important; margin: 20px 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+body.setup-mode.setup-model #setupWizard #analysisConfig { display: block !important; margin: 20px 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
 body.setup-mode.setup-identity #setupWizard #analysis { display: block !important; margin: 20px 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
-body.setup-mode.setup-model #analysis .section-heading,
+body.setup-mode.setup-model #analysisConfig .section-heading,
 body.setup-mode.setup-identity #analysis .section-heading,
-body.setup-mode.setup-model #settingsForm > fieldset:not(#llmSettings) { display: none; }
+body.setup-mode.setup-model #analysisConfigForm > fieldset:not(#llmSettings) { display: none; }
 body.setup-mode.setup-identity #settingsForm > fieldset:not(#identitySettings) { display: none; }
-body.setup-mode.setup-model #settingsForm, body.setup-mode.setup-identity #settingsForm { display: block; }
+body.setup-mode.setup-model #analysisConfigForm, body.setup-mode.setup-identity #settingsForm { display: block; }
 body.setup-mode.setup-model #llmSettings { width: 100%; }
 body.setup-mode.setup-identity #identitySettings { width: 100%; }
 .source-wizard-context { margin: 12px 0 20px; padding: 14px 16px; border: 1px solid var(--accent); border-radius: 8px; background: #19352a; }
@@ -124,6 +124,9 @@ textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, m
 .llm-corrections textarea { min-height: 75px; }
 .llm-corrections article { padding: 12px 0; border-top: 1px solid var(--line); }
 .llm-corrections article p { margin: 5px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.llm-corrections .correction-issue { color: var(--ink); font-weight: 650; }
+.llm-corrections .correction-issue code { font-weight: 500; user-select: text; }
+.llm-corrections .correction-issue .hint { font-weight: 400; }
 .inline, .two-columns, .three-columns, .four-columns { display: grid; gap: 12px; }
 .inline, .two-columns { grid-template-columns: 1fr 1fr; }
 .three-columns { grid-template-columns: repeat(3, 1fr); }

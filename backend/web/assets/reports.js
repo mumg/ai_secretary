@@ -102,9 +102,16 @@
     $("report-sent-error").hidden = !report.last_error;
     $("report-sent-error").textContent = report.last_error || "";
     $("report-sent-retry").hidden = report.state !== "queued";
-    const answered = report.state === "resolved" && !!report.response?.trim();
+    const answered = !!report.response?.trim();
     $("report-answer").hidden = !answered;
     $("report-answer-text").textContent = answered ? report.response : "";
+    const corrections = report.corrections || [];
+    $("report-corrections").hidden = corrections.length === 0;
+    $("report-corrections-list").innerHTML = corrections.map((offer) => {
+      const c = offer.payload || {};
+      const label = offer.status === "applied" ? tr("Применена") : offer.status === "declined" ? tr("Отклонена") : offer.status === "superseded" ? tr("Заменена системной проблемой") : tr("Ожидает решения");
+      return `<article class="report-correction"><strong>${escape(label)} · ${escape(c.request_type || "")}</strong>${c.issue_id ? `<p>${tr("ID проблемы")}: ${escape(c.issue_id)}</p>` : ""}<p>${escape(c.reason || "")}</p><p><strong>${tr("Дополнительное правило")}</strong><br>${escape(c.text || "")}</p><p>${tr("Ожидаемый результат")}: ${escape(c.expected || "")}</p>${offer.status === "offered" ? `<div class="report-correction-actions"><button class="primary" data-apply-correction="${escape(offer.correction_id)}" type="button">${tr("Применить временную коррекцию")}</button><button data-decline-correction="${escape(offer.correction_id)}" type="button">${tr("Отклонить")}</button></div>` : ""}</article>`;
+    }).join("");
     $("report-submitted-fields").innerHTML = (report.fields || []).map((field) => `<article><h4>${escape(fieldLabel(field, report.issue_type))}</h4><div class="report-submitted-value">${escape(field.value)}</div></article>`).join("");
   }
   function showSupportForm() {
@@ -154,6 +161,20 @@
     } catch (err) { $("reports-error").textContent = err.message; $("reports-error").hidden = false; }
   }
   $("reports-refresh").addEventListener("click", load);
+  $("report-corrections-list").addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-apply-correction],button[data-decline-correction]");
+    if (!button || busy || !selectedReport) return;
+    const id = button.dataset.applyCorrection || button.dataset.declineCorrection;
+    const operation = button.dataset.applyCorrection ? "apply" : "decline";
+    if (operation === "apply" && !confirm(tr("Применить это правило к будущему анализу сообщений?"))) return;
+    busy = true;
+    button.disabled = true;
+    try {
+      await api(`/${encodeURIComponent(selectedReport.report_id)}/corrections/${encodeURIComponent(id)}/${operation}`, {method: "POST", body: "{}"});
+      await loadReport(selectedReport.report_id);
+    } catch (err) { $("reports-error").textContent = err.message; $("reports-error").hidden = false; }
+    finally { busy = false; button.disabled = false; }
+  });
   $("report-sent-delete").addEventListener("click", async () => {
     if (busy || !selectedReport || !confirm(tr("Удалить обращение из приложения и поддержки? Это действие нельзя отменить."))) return;
     busy = true;

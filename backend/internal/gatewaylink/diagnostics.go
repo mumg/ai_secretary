@@ -19,8 +19,16 @@ type DiagnosticClient struct {
 }
 
 type DiagnosticStatus struct {
-	State    string `json:"state"`
-	Response string `json:"response"`
+	State    string              `json:"state"`
+	Response string              `json:"response"`
+	Messages []DiagnosticMessage `json:"messages,omitempty"`
+}
+
+type DiagnosticMessage struct {
+	ID      int64           `json:"id"`
+	Kind    string          `json:"kind"`
+	Public  bool            `json:"public"`
+	Content json.RawMessage `json:"content"`
 }
 
 func NewDiagnosticClient(dir string) (*DiagnosticClient, error) {
@@ -103,7 +111,7 @@ func (c *DiagnosticClient) Status(ctx context.Context, id string) (DiagnosticSta
 		return DiagnosticStatus{}, errors.New("gateway diagnostic status unavailable")
 	}
 	var result DiagnosticStatus
-	if err = json.NewDecoder(io.LimitReader(resp.Body, 8192)).Decode(&result); err != nil {
+	if err = json.NewDecoder(io.LimitReader(resp.Body, 256<<10)).Decode(&result); err != nil {
 		return DiagnosticStatus{}, err
 	}
 	return result, nil

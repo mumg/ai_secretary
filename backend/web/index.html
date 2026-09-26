@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru">
 <head>
-    <script src="/admin/assets/translations.js?v=20260925-llm-corrections" defer></script>
+    <script src="/admin/assets/translations.js?v=20260926-issue-id" defer></script>
     <script src="/admin/assets/i18n.js" defer></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
   <meta name="description" content="Настройки AI Секретаря">
   <title>AI Секретарь — Настройки</title>
   <link rel="icon" type="image/svg+xml" href="/admin/assets/secretary-robot.svg">
-  <link rel="stylesheet" href="/admin/assets/admin.css?v=20260926-release-corrections">
+  <link rel="stylesheet" href="/admin/assets/admin.css?v=20260926-issue-id">
   <link rel="stylesheet" href="/admin/assets/version.css?v=1">
   <script src="/admin/assets/version.js?v=1" defer></script>
 </head>
@@ -52,7 +52,8 @@
     <nav class="tabs" aria-label="Разделы настройки">
       <button class="tab active" data-panel="sources">Источники</button>
       <button class="tab" data-panel="tags">Теги</button>
-      <button class="tab" data-panel="analysis">Анализ и календарь</button>
+      <button class="tab" data-panel="analysis">Пользователь и календарь</button>
+      <button class="tab" data-panel="analysisConfig">Конфигурация анализа</button>
       <button class="tab" data-panel="notifications">Уведомления</button>
       <button id="mobileTab" class="tab" data-panel="mobile">Удалённое подключение</button>
     </nav>
@@ -138,7 +139,7 @@
     </section>
 
     <section id="analysis" class="panel" data-configuration-widget="analysis">
-      <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Анализ и рабочий день</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Пользователь и рабочий день</h2></div></div>
       <form id="settingsForm" class="settings-grid">
         <fieldset id="identitySettings" data-configuration-widget="identity"><legend>Пользователь</legend>
           <section class="relationship-section" aria-labelledby="relationshipManagersTitle">
@@ -162,6 +163,13 @@
           <label>Дополнительные нерабочие даты <small>YYYY-MM-DD, через запятую</small><input id="nonWorkingDates"></label>
           <label>Дополнительные рабочие даты <small>YYYY-MM-DD, через запятую</small><input id="workingDates"></label>
         </fieldset>
+      </form>
+      <div class="bottom-actions"><button class="primary save-settings">Сохранить настройки</button></div>
+    </section>
+
+    <section id="analysisConfig" class="panel" data-configuration-widget="analysisConfig">
+      <div class="section-heading"><div><p class="eyebrow">СЕРВЕР</p><h2>Конфигурация анализа</h2></div></div>
+      <form id="analysisConfigForm" class="settings-grid">
         <fieldset id="llmSettings" class="wide" data-configuration-widget="llm"><legend>Модель</legend>
           <label>Подключение модели<select id="llmProvider"><option value="ollama">Ollama</option><option value="openai">OpenAI</option><option value="local">Локальная Ollama</option></select></label>
           <div id="remoteModelSettings">
@@ -315,10 +323,10 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="/admin/assets/admin.js?v=20260926-release-corrections" defer></script>
+  <script src="/admin/assets/admin.js?v=20260926-issue-id" defer></script>
   <script src="/admin/assets/ollama-setup.js?v=7" defer></script>
   <script src="/admin/assets/mts-link-auth.js?v=20260923-setup-sso" defer></script>
-  <script src="/admin/assets/configuration-widgets.js?v=2" defer></script>
+  <script src="/admin/assets/configuration-widgets.js?v=3" defer></script>
   <script src="/admin/assets/setup-wizard.js?v=12" defer></script>
 </body>
 </html>

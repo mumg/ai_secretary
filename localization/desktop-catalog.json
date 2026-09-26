@@ -594,5 +594,25 @@
   "Ставим обращение в очередь…": {
     "en": "Queueing the report…",
     "zh": "正在将反馈加入队列…"
+  },
+  "Пользователь и календарь": {
+    "en": "User and calendar",
+    "zh": "用户与日历"
+  },
+  "Пользователь и рабочий день": {
+    "en": "User and working day",
+    "zh": "用户与工作日"
+  },
+  "Конфигурация анализа": {
+    "en": "Analysis configuration",
+    "zh": "分析配置"
+  },
+  "Не присваивается индивидуальной коррекции": {
+    "en": "Not assigned to an individual correction",
+    "zh": "个人修正不分配问题编号"
+  },
+  "Не назначен": {
+    "en": "Not assigned",
+    "zh": "未分配"
   }
 }
