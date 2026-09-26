@@ -82,11 +82,9 @@ jobs:
         run: |
           tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           "$tools/apksigner" verify --verbose android/app/build/outputs/apk/release/app-release.apk
+          python3 android/scripts/verify_public_apk.py android/app/build/outputs/apk/release/app-release.apk
           python3 - <<'PY'
-          import pathlib, zipfile
-          apk = pathlib.Path('android/app/build/outputs/apk/release/app-release.apk')
-          with zipfile.ZipFile(apk) as archive:
-              assert not any(n.lower().endswith(('.p12', '.pfx', '.jks', '.keystore', '.key', '.pem')) for n in archive.namelist()), 'Private identity in APK'
+          import pathlib
           config = pathlib.Path('android/app/build/generated/source/buildConfig/release/net/muratov/assistant/BuildConfig.java').read_text()
           assert 'DEFAULT_SERVER_URL = "";' in config, 'Release has a default server'
           assert 'CLIENT_CERT_RESOURCE = "";' in config and 'CLIENT_CERT_PASSWORD = "";' in config
