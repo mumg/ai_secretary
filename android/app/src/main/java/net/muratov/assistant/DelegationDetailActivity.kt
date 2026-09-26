@@ -57,6 +57,7 @@ class DelegationDetailActivity: net.muratov.assistant.i18n.LocalizedActivity() {
                     error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
                     data?.let { d ->
                         Text(d.title,style=MaterialTheme.typography.headlineSmall)
+                        if (d.sourceEventId != null) TextButton(onClick = { startActivity(DiagnosticReportActivity.intent(this@DelegationDetailActivity, "delegation", id)) }) { Text(tr("Сообщить об ошибке")) }
                         Text(d.assigneeName.ifBlank { d.assigneeEmail.ifBlank { tr("Исполнитель не определён") } })
                         Text("${delegationStatuses[d.status]} · ${d.dueAt ?: tr("Без срока")}")
                         Text(d.description ?: "")

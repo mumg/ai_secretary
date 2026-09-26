@@ -26,6 +26,13 @@ func TestLLMTransmitsAuthoredSchemaOrder(t *testing.T) {
 					w.WriteHeader(400)
 					return
 				}
+				var messages []struct {
+					Role    string `json:"role"`
+					Content string `json:"content"`
+				}
+				if err := json.Unmarshal(payload["messages"], &messages); err != nil || len(messages) == 0 || messages[0].Role != "system" || !strings.Contains(messages[0].Content, "Только персональная коррекция анализа") {
+					t.Error("selected correction missing from system prompt", err)
+				}
 				schema := payload["format"]
 				if provider == "openai" {
 					var format struct {
@@ -51,9 +58,9 @@ func TestLLMTransmitsAuthoredSchemaOrder(t *testing.T) {
 				}
 			}))
 			defer upstream.Close()
-			call(t, s, "PUT", "/api/v1/admin/settings", M{"settings": M{"llm": M{"provider": provider, "base_url": upstream.URL}}}, 200)
+			call(t, s, "PUT", "/api/v1/admin/settings", M{"settings": M{"llm": M{"provider": provider, "base_url": upstream.URL}, "llm_prompt_corrections": M{"message_analysis": "Только персональная коррекция анализа"}}}, 200)
 			_, err := s.job(context.Background(), func(q *request) bool {
-				answer := must(q.llm("Analyze", M{"body": "Message"}, "AnalysisResult", nil))
+				answer := must(q.llm("Analyze", M{"body": "Message"}, "AnalysisResult", nil, "message_analysis"))
 				if str(answer, "summary") != "Message summary" {
 					t.Error("unexpected analysis result")
 				}
@@ -63,6 +70,17 @@ func TestLLMTransmitsAuthoredSchemaOrder(t *testing.T) {
 				t.Fatal("schema request failed", err, calls)
 			}
 		})
+	}
+}
+
+func TestCorrectedLLMPromptUsesOnlySelectedPurpose(t *testing.T) {
+	corrections := M{"task_extraction": "Не назначай задачи по статусным письмам.", "delegation_analysis": "Другое требование."}
+	got := correctedLLMPrompt("Основной промпт", corrections, "task_extraction")
+	if !strings.HasPrefix(got, "Основной промпт\n\n") || !strings.Contains(got, "Не назначай задачи по статусным письмам.") || strings.Contains(got, "Другое требование.") {
+		t.Fatal(got)
+	}
+	if got := correctedLLMPrompt("Основной промпт", corrections, "archive_answer"); got != "Основной промпт" {
+		t.Fatal(got)
 	}
 }
 

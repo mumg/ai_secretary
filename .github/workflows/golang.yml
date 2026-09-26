@@ -2,9 +2,9 @@ name: Go server
 on:
   push:
     branches: [golang, main]
-    paths: ['backend/**', 'document-parser/**', 'windows/**', 'localization/**', 'version', '.gitattributes', '.github/workflows/golang.yml']
+    paths: ['backend/**', 'document-parser/**', 'windows/**', 'localization/**', 'version', 'llm_manifest.json', 'scripts/update_llm_manifest.py', '.gitattributes', '.github/workflows/golang.yml']
   pull_request:
-    paths: ['backend/**', 'document-parser/**', 'windows/**', 'localization/**', 'version', '.gitattributes', '.github/workflows/golang.yml']
+    paths: ['backend/**', 'document-parser/**', 'windows/**', 'localization/**', 'version', 'llm_manifest.json', 'scripts/update_llm_manifest.py', '.gitattributes', '.github/workflows/golang.yml']
 permissions:
   contents: read
 jobs:
@@ -27,6 +27,7 @@ jobs:
           go-version: '1.26.0'
           cache-dependency-path: backend/go.sum
       - run: python3 ../localization/generate.py --check
+      - run: python3 ../scripts/update_llm_manifest.py --check
       - run: go vet ./...
       - run: go test -race ./...
         env:

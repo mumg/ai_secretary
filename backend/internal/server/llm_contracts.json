@@ -597,6 +597,26 @@
       ],
       "type": "object"
     },
+    "DiagnosticRedaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entities": {
+          "type": "array",
+          "maxItems": 120,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "text": {"type": "string"},
+              "type": {"type": "string", "enum": ["PERSON", "ORG", "SYSTEM", "ADDRESS"]}
+            },
+            "required": ["text", "type"]
+          }
+        }
+      },
+      "required": ["entities"]
+    },
     "RelevantReferenceSelection": {
       "properties": {
         "reference_ids": {

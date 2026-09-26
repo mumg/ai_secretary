@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Обращения — AI Секретарь</title>
+  <script src="/app/assets/translations.js?v=0.7.53" defer></script>
+  <script src="/app/assets/i18n.js" defer></script>
+  <link rel="stylesheet" href="/app/assets/app.css?v=0.7.53" />
+  <link rel="stylesheet" href="/app/assets/reports.css?v=0.7.53" />
+  <script src="/app/assets/reports.js?v=0.7.53" defer></script>
+</head>
+<body>
+  <header class="app-header"><a class="brand" href="/app/" aria-label="AI Секретарь — главная"><span aria-hidden="true">←</span><img class="brand-icon" src="/app/assets/secretary-robot.svg" alt="" width="32" height="32" />AI Секретарь</a><h1>Обращения</h1></header>
+  <main class="reports-layout">
+    <section id="reports-sidebar" aria-labelledby="reports-list-title">
+      <div class="reports-heading"><h2 id="reports-list-title">Обращения</h2><div class="reports-heading-actions"><button id="reports-new-support" type="button">Техническая поддержка</button><button id="reports-refresh" type="button">Обновить</button></div></div>
+      <p id="reports-error" class="inline-error" role="alert" hidden></p>
+      <div id="reports-list"></div>
+    </section>
+    <section id="report-detail" aria-labelledby="report-detail-title">
+      <h2 id="report-detail-title">Детали обращения</h2>
+      <p id="report-message">Выберите обращение или черновик.</p>
+      <p id="report-warning" class="inline-error" role="alert" hidden></p>
+      <form id="support-form" hidden>
+        <p class="muted">Опишите техническую проблему. Это обращение не связано с анализом LLM.</p>
+        <label>Проблема<textarea id="support-problem" rows="8" maxlength="4000" required></textarea></label>
+        <label>Как должно было быть<textarea id="support-expected" rows="8" maxlength="4000" required></textarea></label>
+        <p class="muted">Оба поля будут отправлены в поддержку без обезличивания. Не добавляйте данные, которые не хотите передавать.</p>
+        <label class="report-consent"><input id="support-consent" type="checkbox" required /> Подтверждаю отправку без обезличивания</label>
+        <p id="support-error" class="inline-error" role="alert" hidden></p>
+        <button id="support-send" class="primary" type="submit">Отправить обращение</button>
+      </form>
+      <div id="report-sent-detail" hidden>
+        <p class="report-state-line"><strong id="report-sent-state"></strong></p>
+        <dl class="report-facts">
+          <dt>ID обращения</dt><dd id="report-sent-id"></dd>
+          <dt>Создано</dt><dd id="report-sent-created"></dd>
+          <dt>Обновлено</dt><dd id="report-sent-updated"></dd>
+        </dl>
+        <p id="report-sent-error" class="inline-error" hidden></p>
+        <button id="report-sent-retry" type="button" hidden>Повторить отправку</button>
+        <button id="report-sent-delete" type="button">Удалить обращение</button>
+        <section id="report-answer" class="report-block" hidden>
+          <h3>Ответ по обращению</h3>
+          <p id="report-answer-text"></p>
+        </section>
+        <section class="report-block">
+          <h3>Отправленные данные</h3>
+          <div id="report-submitted-fields"></div>
+        </section>
+      </div>
+      <div id="report-review" hidden>
+        <section class="report-block">
+          <h3 id="report-original-title">Исходное письмо</h3>
+          <p class="muted">Только для сравнения. Исходный текст не отправляется в поддержку.</p>
+          <div id="report-original"></div>
+        </section>
+        <section class="report-block">
+          <h3>Что создала система</h3>
+          <div id="report-processed"></div>
+        </section>
+        <section class="report-block">
+          <h3>Обезличенная версия для поддержки</h3>
+          <p class="muted">Проверьте имена людей, подписи, названия организаций и информационных систем. Можно исправить любой текст перед отправкой.</p>
+          <div id="report-anonymized"></div>
+        </section>
+        <section class="report-block">
+          <h3>Что нужно исправить в анализе</h3>
+          <p class="muted">Опишите разницу между результатом системы и тем, что должно было произойти. Это поможет подобрать коррекцию запроса к LLM.</p>
+          <div id="report-behavior"></div>
+        </section>
+        <details id="report-extra" class="report-block" hidden>
+          <summary>Другие обезличенные поля</summary>
+          <div id="report-extra-fields"></div>
+        </details>
+        <div class="report-replace"><label>Найти во всех полях<input id="report-find" maxlength="200" /></label><label>Заменить на<input id="report-replacement" maxlength="200" /></label><button id="report-replace-all" type="button">Заменить во всех полях</button></div>
+        <button id="report-save" type="button">Сохранить и проверить правки</button>
+        <p id="report-action-status" role="status" hidden></p>
+        <p class="muted">В поддержку отправится только проверенная обезличенная версия, описание ошибки и ожидаемый результат.</p>
+        <label class="report-consent"><input id="report-consent" type="checkbox" /> Я проверил обезличенную версию и согласен отправить обращение</label>
+        <div><button id="report-send" class="primary" type="button" disabled>Отправить обращение</button></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

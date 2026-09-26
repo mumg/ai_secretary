@@ -24,12 +24,15 @@ class ReleaseMetadataTests(unittest.TestCase):
         (self.output / 'output-metadata.json').write_text(json.dumps(self.metadata))
         return module.prepare(self.output, self.root / 'dist', ref)
 
-    def test_manifest_matches_real_artifact(self):
+    def test_release_files_match_real_artifact(self):
         result = self.prepare()
         self.assertEqual(13, result['size'])
         self.assertEqual(64, len(result['sha256']))
-        self.assertTrue(result['apkUrl'].endswith('/android-v0.5.0-12/ai-secretary-0.5.0.apk'))
+        self.assertEqual('android-v0.5.0-12', result['tag'])
         self.assertEqual(b'synthetic apk', (self.root / 'dist/ai-secretary-0.5.0.apk').read_bytes())
+        self.assertFalse((self.root / 'dist/android-update.json').exists())
+        self.assertEqual(f"{result['sha256']}  ai-secretary-0.5.0.apk\n",
+                         (self.root / 'dist/SHA256SUMS').read_text())
 
     def test_reject_wrong_tag_or_manual_branch(self):
         for ref in ['refs/tags/android-v0.4.0-10', 'refs/heads/feature']:

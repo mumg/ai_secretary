@@ -10,4 +10,7 @@ func (s *Server) routes() {
 	s.systemRoutes()
 	s.mtsAuthRoutes()
 	s.connectorRoutes()
+	s.diagnosticRoutes()
+	s.diagnosticDeliveryRoutes()
+	s.temporaryCorrectionRoutes()
 }

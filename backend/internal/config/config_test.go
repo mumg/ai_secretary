@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -61,5 +62,26 @@ func TestNotificationPolicyValidation(t *testing.T) {
 		if Validate(p) == nil {
 			t.Fatal("invalid policy accepted", patch)
 		}
+	}
+}
+
+func TestLLMPromptCorrectionsValidation(t *testing.T) {
+	c := Config{PublicURL: "https://localhost", LLMURL: "http://localhost:11434"}
+	p := c.Defaults()
+	Section(p, "llm_prompt_corrections")["task_extraction"] = "Не создавай задачу из информационного статуса."
+	if err := Validate(p); err != nil {
+		t.Fatal(err)
+	}
+	for _, invalid := range []any{42, strings.Repeat("a", 4001), "test\x00value"} {
+		bad := c.Defaults()
+		Section(bad, "llm_prompt_corrections")["task_extraction"] = invalid
+		if Validate(bad) == nil {
+			t.Fatal("invalid prompt correction accepted")
+		}
+	}
+	bad := c.Defaults()
+	Section(bad, "llm_prompt_corrections")["unknown"] = "text"
+	if Validate(bad) == nil {
+		t.Fatal("unknown prompt correction accepted")
 	}
 }

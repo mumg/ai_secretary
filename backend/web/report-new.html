@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Сообщить об ошибке анализа — AI Секретарь</title>
+  <script src="/app/assets/translations.js?v=0.7.53" defer></script>
+  <script src="/app/assets/i18n.js" defer></script>
+  <link rel="stylesheet" href="/app/assets/app.css?v=0.7.53" />
+  <link rel="stylesheet" href="/app/assets/report-new.css?v=0.7.53" />
+  <script src="/app/assets/report-new.js?v=0.7.53" defer></script>
+</head>
+<body>
+  <header class="app-header report-page-header">
+    <a class="brand" href="/app/">← AI Секретарь</a>
+    <h1>Сообщить об ошибке анализа</h1>
+    <a href="/app/reports">Обращения</a>
+  </header>
+  <main class="report-workspace">
+    <section class="report-pane report-form-pane" aria-labelledby="report-form-title">
+      <h2 id="report-form-title">Описание ошибки</h2>
+      <p id="report-origin-title" class="muted"></p>
+      <p id="report-error" class="inline-error" role="alert" hidden></p>
+      <div id="report-create">
+        <label>Что произошло
+          <select id="report-type">
+            <option value="false_task">Задача создана ошибочно</option>
+            <option value="false_delegation">Поручение создано ошибочно</option>
+            <option value="missing_task">Задача не создана</option>
+            <option value="missing_delegation">Поручение не создано</option>
+            <option value="wrong_assignee">Неверный исполнитель</option>
+            <option value="wrong_content">Неверное содержание</option>
+            <option value="other">Другая ошибка</option>
+          </select>
+        </label>
+        <label>Полученное некорректное поведение<textarea id="report-comment" rows="4" maxlength="4000"></textarea></label>
+        <label>Ожидаемое поведение<textarea id="report-expected" rows="4" maxlength="4000"></textarea></label>
+        <button id="report-create-button" class="primary" type="button">Сформировать обращение</button>
+      </div>
+      <div id="report-progress" hidden>
+        <p id="report-progress-text" role="status">Обезличивание выполняется в фоне. Можно вернуться позже.</p>
+        <button id="report-retry" type="button" hidden>Повторить попытку</button>
+      </div>
+      <div id="report-review" hidden>
+        <h3>Что создала система</h3>
+        <div id="report-processed"></div>
+        <details id="report-extra" hidden>
+          <summary>Другие обезличенные поля</summary>
+          <div id="report-extra-fields"></div>
+        </details>
+        <div class="report-replace">
+          <label>Найти во всех полях<input id="report-find" maxlength="200" /></label>
+          <label>Заменить на<input id="report-replacement" maxlength="200" /></label>
+          <button id="report-replace-button" type="button">Заменить во всех полях</button>
+        </div>
+        <button id="report-save" type="button" disabled>Сохранить и проверить правки</button>
+        <p id="report-action-status" role="status" hidden></p>
+        <p class="muted">В поддержку отправится только проверенная обезличенная версия, описание ошибки и ожидаемый результат.</p>
+        <label class="report-consent"><input id="report-consent" type="checkbox" /> Я проверил обезличенную версию и согласен отправить обращение</label>
+        <button id="report-send" class="primary" type="button" disabled>Отправить обращение</button>
+      </div>
+    </section>
+    <section class="report-pane report-message-pane" aria-labelledby="report-message-title">
+      <h2 id="report-message-title">Исходное письмо</h2>
+      <p class="muted">Исходный текст показан для сравнения и не отправляется в поддержку.</p>
+      <p id="report-source-status" role="status">Загрузка исходного письма…</p>
+      <pre id="report-source" hidden></pre>
+      <div id="report-anonymized" hidden>
+        <h3>Обезличенная версия для поддержки</h3>
+        <p class="muted">Проверьте имена людей, подписи, названия организаций и информационных систем. Можно исправить любой текст перед отправкой.</p>
+        <div id="report-message-fields"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

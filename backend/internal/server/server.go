@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -33,6 +34,10 @@ type Server struct {
 	live    liveState
 	gateway gatewayState
 	push    notificationTransport
+	reports struct {
+		sync.Mutex
+		drafts map[string]diagnosticDraft
+	}
 }
 type request struct {
 	context.Context
@@ -256,7 +261,7 @@ func New(pool *pgxpool.Pool, c config.Config, version string) *Server {
 	s.route("GET /health/live", false, func(q *request) any { return M{"status": "ok", "version": s.Version} })
 	s.route("GET /health/ready", false, func(q *request) any {
 		r := q.one("SELECT version,revision FROM database_schema_version WHERE id=1")
-		if num(r, "version") < 25 {
+		if num(r, "version") < store.LatestRevision {
 			fail(503, "Database schema is not ready")
 		}
 		return M{"status": "ready", "database_schema_version": r["version"], "database_schema_revision": r["revision"]}
@@ -282,6 +287,14 @@ func New(pool *pgxpool.Pool, c config.Config, version string) *Server {
 			http.ServeFile(w, r, filepath.Join(c.WebDir, file))
 		})
 	}
+	s.mux.HandleFunc("GET /app/reports", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFile(w, r, filepath.Join(c.WebDir, "reports.html"))
+	})
+	s.mux.HandleFunc("GET /app/report/new", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFile(w, r, filepath.Join(c.WebDir, "report-new.html"))
+	})
 	return s
 }
 func (s *Server) route(pattern string, transaction bool, fn func(*request) any) {

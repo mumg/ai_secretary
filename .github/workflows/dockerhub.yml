@@ -27,6 +27,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+      - name: Validate LLM prompt manifest
+        run: python3 scripts/update_llm_manifest.py --check
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26.0"

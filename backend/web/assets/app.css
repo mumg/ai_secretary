@@ -134,14 +134,6 @@ select:focus {
   text-decoration: none;
   white-space: nowrap;
 }
-.task-reject {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 10px;
-}
 .health {
   font-size: 12px;
 }
@@ -921,3 +913,6 @@ dialog select {
 #delegation-filters:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 #delegation-filters label { min-width: 0; flex: 1 1 120px; }
 #delegation-filters select { width: 100%; }
+/* The report editor must remain usable on phone-sized web views. */
+.diagnostic-badge { display: inline-block; min-width: 1.2em; padding: 0 0.3em; border-radius: 1em; background: #d83b32; color: white; font-weight: 700; }
+.diagnostic-badge[hidden] { display: none; }

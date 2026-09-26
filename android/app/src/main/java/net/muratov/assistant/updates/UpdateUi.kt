@@ -1,35 +1,44 @@
 package net.muratov.assistant.updates
 
-import net.muratov.assistant.i18n.tr
-
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.activity.compose.LocalActivity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.muratov.assistant.BuildConfig
+import net.muratov.assistant.i18n.tr
 
 @Composable
 fun UpdatePrompt(updates: AppUpdates) {
     val state by updates.state.collectAsState()
-    var dismissed by rememberSaveable { mutableLongStateOf(0) }
+    var dismissed by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     LaunchedEffect(updates) { updates.check() }
-    val release = state.release
-    if (state.ready && release != null && dismissed != release.versionCode) {
-        AlertDialog(onDismissRequest = { dismissed = release.versionCode },
-            title = { Text(tr("Доступна версия {0}" , release.versionName)) },
-            text = { Text(tr("Обновление скачано и проверено. Android предложит подтвердить установку. Настройки и данные сохранятся.")) },
-            confirmButton = { InstallButton(updates) },
-            dismissButton = { TextButton(onClick = { dismissed = release.versionCode }) { Text(tr("Позже")) } })
+    if (state.available && !dismissed) {
+        AlertDialog(onDismissRequest = { dismissed = true },
+            title = { Text(tr("Доступно обновление приложения")) },
+            text = { Text(state.message.orEmpty()) },
+            confirmButton = { TextButton(onClick = { dismissed = true; updates.store.open(context) }) {
+                Text(tr("Открыть {0}", updates.store.title))
+            } },
+            dismissButton = { TextButton(onClick = { dismissed = true }) { Text(tr("Позже")) } })
     }
 }
 
@@ -37,53 +46,18 @@ fun UpdatePrompt(updates: AppUpdates) {
 fun UpdatePanel(updates: AppUpdates) {
     val state by updates.state.collectAsState()
     val scope = rememberCoroutineScope()
-    var automatic by remember { mutableStateOf(updates.automatic) }
+    val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(tr("Версия {0} ({1})" , BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE))
-        Row {
-            Switch(checked = automatic, onCheckedChange = {
-                automatic = it; updates.automatic = it
-                if (it) scope.launch { updates.check(force = true) }
-            })
-            Text(tr("Автоматически скачивать обновления по Wi-Fi"), Modifier.padding(start = 8.dp))
-        }
-        Text(tr("Проверка при запуске и каждые 12 часов. Установку нужно подтвердить в Android."), style = MaterialTheme.typography.bodySmall)
+        Text(tr("Версия {0} ({1})", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE))
+        Text(tr("Обновления устанавливаются через {0}.", updates.store.title),
+            style = MaterialTheme.typography.bodySmall)
         state.message?.let { Text(it) }
         if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        OutlinedButton(enabled = !state.busy, onClick = { scope.launch { updates.check(force = true) } }) { Text(tr("Проверить обновления")) }
-        if (state.release != null && !state.ready) {
-            Button(enabled = !state.busy, onClick = { scope.launch { updates.download() } }) { Text(tr("Скачать обновление")) }
+        OutlinedButton(enabled = !state.busy, onClick = { scope.launch { updates.check(force = true) } }) {
+            Text(tr("Проверить обновления"))
         }
-        if (state.ready) InstallButton(updates)
-    }
-}
-
-@Composable
-private fun InstallButton(updates: AppUpdates) {
-    val activity = checkNotNull(LocalActivity.current)
-    val scope = rememberCoroutineScope()
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    fun install() {
-        if (busy) return
-        scope.launch {
-            busy = true; error = null
-            try { activity.startActivity(updates.installIntent()) }
-            catch (failure: Exception) { error = tr("Не удалось открыть установщик: {0}" , failure.message.orEmpty().take(160)) }
-            finally { busy = false }
+        if (state.available) Button(onClick = { updates.store.open(context) }) {
+            Text(tr("Открыть {0}", updates.store.title))
         }
-    }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (activity.packageManager.canRequestPackageInstalls()) install()
-        else error = tr("Разрешите установку обновлений для AI Секретаря и нажмите «Установить» ещё раз.")
-    }
-    Column {
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(enabled = !busy, onClick = {
-            if (activity.packageManager.canRequestPackageInstalls()) install()
-            else runCatching {
-                permission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}")))
-            }.onFailure { error = tr("Откройте настройки Android и разрешите установку из этого приложения.") }
-        }) { Text(if (busy) tr("Проверяем APK…") else tr("Установить")) }
     }
 }

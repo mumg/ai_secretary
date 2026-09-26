@@ -14,6 +14,6 @@ class ImproverApplication : Application() {
         container = AppContainer(this)
         net.muratov.assistant.ui.AdaptiveActivityLayout.install(this, container.settings.isConfigured)
         container.realtime.install()
-        container.updates.schedule()
+        androidx.work.WorkManager.getInstance(this).cancelUniqueWork("android-updates")
     }
 }

@@ -61,7 +61,8 @@ class EventDetailActivity : net.muratov.assistant.i18n.LocalizedActivity() {
                     ),
                 )
                 val state by detailViewModel.state.collectAsState()
-                EventDetailScreen(state, sourceLabel, ::finish, detailViewModel::load)
+                EventDetailScreen(state, sourceLabel, ::finish, detailViewModel::load,
+                    { startActivity(DiagnosticReportActivity.intent(this, "conversation_event", eventId)) })
             }
         }
     }
@@ -84,6 +85,7 @@ private fun EventDetailScreen(
     sourceLabel: String?,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onReport: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -120,6 +122,7 @@ private fun EventDetailScreen(
             state.event != null -> EventDetailContent(
                 event = state.event,
                 sourceLabel = sourceLabel,
+                onReport = onReport,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -130,6 +133,7 @@ private fun EventDetailScreen(
 private fun EventDetailContent(
     event: EventDto,
     sourceLabel: String?,
+    onReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -138,6 +142,7 @@ private fun EventDetailContent(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         EventField(tr("Источник"), sourceLabel ?: event.sourceId)
+        TextButton(onClick = onReport) { Text(tr("Сообщить об ошибке")) }
         EventField(tr("Дата и время"), formatEventDate(event.occurredAt))
         event.subject?.takeIf(String::isNotBlank)?.let { EventField(tr("Тема"), it) }
         event.author?.takeIf(String::isNotBlank)?.let { EventField(tr("Автор"), it) }

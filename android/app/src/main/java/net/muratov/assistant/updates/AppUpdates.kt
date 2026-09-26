@@ -1,238 +1,105 @@
 package net.muratov.assistant.updates
 
-import net.muratov.assistant.i18n.tr
-
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.content.FileProvider
-import androidx.core.content.pm.PackageInfoCompat
-import androidx.work.*
-import kotlinx.coroutines.*
+import android.net.Uri
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.install.model.UpdateAvailability as PlayUpdateAvailability
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import net.muratov.assistant.BuildConfig
-import net.muratov.assistant.MainActivity
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONObject
+import net.muratov.assistant.i18n.tr
+import ru.rustore.sdk.appupdate.manager.factory.RuStoreAppUpdateManagerFactory
+import ru.rustore.sdk.appupdate.model.UpdateAvailability as RuStoreUpdateAvailability
 import java.io.File
-import java.io.IOException
-import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
-/** This transport never uses the server's mTLS identity or server credentials. */
-class AppUpdates(private val context: Context) {
-    private val preferences = context.getSharedPreferences("app_updates", Context.MODE_PRIVATE)
-    private val mutex = Mutex()
-    private val directory = File(context.cacheDir, "updates").apply { mkdirs() }
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
-        .callTimeout(3, TimeUnit.MINUTES)
-        .addNetworkInterceptor { chain ->
-            val url = chain.request().url
-            require(url.isHttps && url.host in setOf("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com")) {
-                tr("Неизвестный адрес загрузки")
-            }
-            chain.proceed(chain.request())
-        }.build()
-    private val mutableState = MutableStateFlow(UpdateState())
-    val state = mutableState.asStateFlow()
-    var automatic: Boolean
-        get() = preferences.getBoolean("automatic", true)
-        set(value) {
-            preferences.edit().putBoolean("automatic", value).apply()
-            schedule()
-        }
+enum class AppStore(val title: String, val appPackage: String, val uri: String, val webUrl: String) {
+    PLAY("Google Play", "com.android.vending", "market://details?id=net.muratov.assistant",
+        "https://play.google.com/store/apps/details?id=net.muratov.assistant"),
+    RUSTORE("RuStore", "ru.vk.store", "rustore://apps.rustore.ru/app/net.muratov.assistant",
+        "https://www.rustore.ru/catalog/app/net.muratov.assistant");
 
-    init {
-        runCatching { preferences.getString("manifest", null)?.let(::decode) }.getOrNull()
-            ?.takeIf { it.versionCode > BuildConfig.VERSION_CODE }
-            ?.let { mutableState.value = UpdateState(release = it, ready = apk(it).isFile) }
-    }
-
-    fun schedule() {
-        val work = WorkManager.getInstance(context)
-        if (!automatic) { work.cancelUniqueWork("android-updates"); return }
-        work.enqueueUniquePeriodicWork("android-updates", ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<UpdateWorker>(12, TimeUnit.HOURS)
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                .build())
-    }
-
-    private fun decode(text: String): UpdateManifest {
-        val json = JSONObject(text)
-        return UpdateManifest(json.getLong("versionCode"), json.getString("versionName"), json.getInt("minSdk"),
-            json.getString("applicationId"), json.getString("apkUrl"), json.getString("sha256"), json.getLong("size"))
-            .validate(context.packageName, Build.VERSION.SDK_INT)
-    }
-
-    suspend fun check(force: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        mutex.withLock {
-            if (!force && (!automatic || System.currentTimeMillis() - preferences.getLong("checked_at", 0) < TimeUnit.HOURS.toMillis(12))) {
-                // A previous check on a metered network may still be waiting for Wi-Fi.
-                try { downloadAutomatically(); return@withLock true
-                } catch (cancelled: CancellationException) { throw cancelled
-                } catch (failure: Exception) {
-                    mutableState.value = mutableState.value.copy(busy = false, message = failure.message)
-                    return@withLock false
-                }
-            }
-            mutableState.value = mutableState.value.copy(busy = true, message = tr("Проверяем обновления…"))
-            try {
-                client.newCall(Request.Builder().url(UPDATE_MANIFEST_URL).build()).execute().use { response ->
-                    if (response.code == 404) {
-                        mutableState.value = UpdateState(message = tr("Публичных Android-сборок пока нет"))
-                    } else {
-                        if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-                        val source = response.body.source()
-                        source.request(65_537)
-                        require(source.buffer.size <= 65_536) { tr("Слишком большой манифест обновления") }
-                        val text = source.buffer.readUtf8()
-                        val release = decode(text)
-                        if (release.versionCode <= BuildConfig.VERSION_CODE) {
-                            mutableState.value = UpdateState(message = tr("Установлена актуальная версия"))
-                            preferences.edit().remove("manifest").apply()
-                            directory.listFiles()?.forEach { it.delete() }
-                        } else {
-                            preferences.edit().putString("manifest", text).apply()
-                            mutableState.value = UpdateState(release = release, ready = apk(release).isFile,
-                                message = tr("Доступна версия {0}" , release.versionName))
-                        }
-                    }
-                }
-                preferences.edit().putLong("checked_at", System.currentTimeMillis()).apply()
-                downloadAutomatically()
-                true
-            } catch (cancelled: CancellationException) { throw cancelled
-            } catch (failure: Exception) {
-                mutableState.value = mutableState.value.copy(busy = false, message = tr("Не удалось проверить обновление: {0}" , failure.message.orEmpty().take(140)))
-                false
-            } finally { mutableState.value = mutableState.value.copy(busy = false) }
-        }
-    }
-
-    private suspend fun downloadAutomatically() {
-        if (!automatic || mutableState.value.release == null || mutableState.value.ready) return
-        val connectivity = context.getSystemService(android.net.ConnectivityManager::class.java)
-        if (!connectivity.isActiveNetworkMetered) downloadLocked()
-        else mutableState.value = mutableState.value.copy(message = tr("Обновление ждёт Wi-Fi. Можно скачать вручную."))
-    }
-
-    suspend fun download() = withContext(Dispatchers.IO) {
-        mutex.withLock {
-            try { downloadLocked()
-            } catch (cancelled: CancellationException) { throw cancelled
-            } catch (failure: Exception) {
-                mutableState.value = mutableState.value.copy(message = tr("Не удалось скачать обновление: {0}" , failure.message.orEmpty().take(140)))
-            } finally { mutableState.value = mutableState.value.copy(busy = false) }
-        }
-    }
-
-    private fun apk(release: UpdateManifest) = File(directory, "update-${release.versionCode}.apk")
-
-    private suspend fun downloadLocked() {
-        val release = mutableState.value.release ?: return
-        val target = apk(release)
-        if (target.isFile) {
-            verify(target, release)
-            mutableState.value = mutableState.value.copy(busy = false, ready = true)
-            return
-        }
-        val partial = File(directory, "download.part")
-        mutableState.value = mutableState.value.copy(busy = true, message = tr("Скачиваем {0}…" , release.versionName))
-        try {
-            client.newCall(Request.Builder().url(release.apkUrl).build()).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-                response.body.byteStream().use { input -> partial.outputStream().use { output ->
-                    val buffer = ByteArray(64 * 1024)
-                    var count = 0L
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val length = input.read(buffer)
-                        if (length < 0) break
-                        count += length
-                        require(count <= release.size) { tr("Размер APK не совпадает") }
-                        output.write(buffer, 0, length)
-                    }
-                } }
-            }
-            verify(partial, release)
-            check(partial.renameTo(target)) { tr("Не удалось сохранить APK") }
-            directory.listFiles()?.filter { it != target }?.forEach { it.delete() }
-            mutableState.value = mutableState.value.copy(busy = false, ready = true, message = tr("Обновление готово к установке"))
-            notifyReady(release)
-        } finally { partial.delete(); mutableState.value = mutableState.value.copy(busy = false) }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun verify(file: File, release: UpdateManifest) {
-        try {
-            require(file.length() == release.size) { tr("APK загружен не полностью") }
-            val digest = MessageDigest.getInstance("SHA-256")
-            file.inputStream().use { input ->
-                val buffer = ByteArray(64 * 1024)
-                while (true) { val size = input.read(buffer); if (size < 0) break; digest.update(buffer, 0, size) }
-            }
-            require(digest.digest().joinToString("") { "%02x".format(it) } == release.sha256) { tr("Контрольная сумма APK не совпадает") }
-            val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-            val installed = context.packageManager.getPackageInfo(context.packageName, flags)
-            val archive = context.packageManager.getPackageArchiveInfo(file.path, flags) ?: error(tr("Некорректный APK"))
-            require(archive.packageName == context.packageName && PackageInfoCompat.getLongVersionCode(archive) == release.versionCode &&
-                release.versionCode > PackageInfoCompat.getLongVersionCode(installed)) { tr("Пакет или версия APK не совпадают") }
-            fun signatures(info: android.content.pm.PackageInfo): Set<String> =
-                (if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures)
-                    .orEmpty().map { it.toCharsString() }.toSet()
-            val trusted = signatures(installed)
-            require(trusted.isNotEmpty() && signatures(archive) == trusted) {
-                tr("APK подписан другим ключом. Для перехода с debug нужна установка release-сборки.")
-            }
-        } catch (failure: Exception) {
-            file.delete()
-            mutableState.value = mutableState.value.copy(ready = false, message = failure.message)
-            throw failure
-        }
-    }
-
-    suspend fun installIntent(): Intent = withContext(Dispatchers.IO) {
-        mutex.withLock {
-            val release = state.value.release ?: error(tr("Нет обновления"))
-            val file = apk(release)
-            verify(file, release)
-            Intent(Intent.ACTION_VIEW).setDataAndType(
-                FileProvider.getUriForFile(context, "${context.packageName}.updates", file),
-                "application/vnd.android.package-archive",
-            ).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-    }
-
-    private fun notifyReady(release: UpdateManifest) {
-        val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel("app_updates", tr("Обновления приложения"), NotificationManager.IMPORTANCE_DEFAULT))
-        if (!manager.areNotificationsEnabled()) return
-        val intent = PendingIntent.getActivity(context, 4501, Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        manager.notify(4501, NotificationCompat.Builder(context, "app_updates")
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle(tr("AI Секретарь {0}" , release.versionName))
-            .setContentText(tr("Обновление скачано. Откройте приложение для установки."))
-            .setContentIntent(intent).setAutoCancel(true).build())
+    fun open(context: Context): Boolean {
+        val inStore = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).setPackage(appPackage)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { context.startActivity(inStore) }.isSuccess) return true
+        return runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webUrl))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.isSuccess
     }
 }
 
-data class UpdateState(val busy: Boolean = false, val message: String? = null,
-    val release: UpdateManifest? = null, val ready: Boolean = false)
+data class UpdateState(
+    val busy: Boolean = false,
+    val available: Boolean = false,
+    val versionName: String? = null,
+    val message: String? = null,
+)
 
-class UpdateWorker(context: Context, parameters: WorkerParameters) : CoroutineWorker(context, parameters) {
-    override suspend fun doWork(): Result {
-        val updates = (applicationContext as net.muratov.assistant.ImproverApplication).container.updates
-        return if (updates.check()) Result.success() else Result.retry()
+/** Checks only the assigned store. Downloads and installation remain in that store. */
+class AppUpdates(private val context: Context) {
+    val store = if (BuildConfig.PLAY_DISTRIBUTION) AppStore.PLAY else AppStore.RUSTORE
+    private val preferences = context.getSharedPreferences("app_updates", Context.MODE_PRIVATE)
+    private val mutex = Mutex()
+    private val mutableState = MutableStateFlow(UpdateState())
+    val state = mutableState.asStateFlow()
+
+    init {
+        // Remove APKs and metadata left by the old GitHub self-updater.
+        if (preferences.contains("manifest") || preferences.contains("automatic")) {
+            preferences.edit().clear().apply()
+        }
+        runCatching { File(context.cacheDir, "updates").deleteRecursively() }
+    }
+
+    suspend fun check(force: Boolean = false): Boolean = mutex.withLock {
+        if (!force && mutableState.value.message != null &&
+            System.currentTimeMillis() - preferences.getLong("checked_at", 0L) < TimeUnit.HOURS.toMillis(12)) {
+            return@withLock true
+        }
+        mutableState.value = mutableState.value.copy(busy = true, message = tr("Проверяем обновления…"))
+        try {
+            val latest = if (store == AppStore.PLAY) checkPlay() else checkRuStore()
+            val newVersion = latest?.takeIf { it.first > BuildConfig.VERSION_CODE }
+            mutableState.value = UpdateState(available = newVersion != null,
+                versionName = newVersion?.second,
+                message = newVersion?.let { tr("Доступна версия {0}", it.second ?: it.first) }
+                    ?: tr("Установлена актуальная версия"))
+            preferences.edit().putLong("checked_at", System.currentTimeMillis()).apply()
+            true
+        } catch (cancelled: CancellationException) { throw cancelled
+        } catch (_: Exception) {
+            mutableState.value = UpdateState(message = tr("Не удалось проверить обновление в магазине"))
+            false
+        }
+    }
+
+    private suspend fun checkPlay(): Pair<Long, String?>? = withContext(Dispatchers.IO) {
+        val info = AppUpdateManagerFactory.create(context).appUpdateInfo.await()
+        if (info.updateAvailability() == PlayUpdateAvailability.UPDATE_AVAILABLE)
+            info.availableVersionCode().toLong() to null else null
+    }
+
+    private suspend fun checkRuStore(): Pair<Long, String?>? = suspendCancellableCoroutine { continuation ->
+        RuStoreAppUpdateManagerFactory.create(context).getAppUpdateInfo()
+            .addOnSuccessListener { info ->
+                if (continuation.isActive) continuation.resume(
+                    if (info.updateAvailability == RuStoreUpdateAvailability.UPDATE_AVAILABLE)
+                        info.availableVersionCode to info.availableVersionName else null)
+            }
+            .addOnFailureListener { failure ->
+                if (continuation.isActive) continuation.resumeWithException(failure)
+            }
     }
 }

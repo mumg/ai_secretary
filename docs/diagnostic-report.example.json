@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "report_id": "7f8d2c31-0e54-4b09-a206-8317ec5c949a",
+  "origin": {
+    "kind": "conversation_event",
+    "ref": "E1"
+  },
+  "issue": {
+    "type": "missing_task",
+    "user_comment": "В письме есть прямое поручение мне, но задача не появилась.",
+    "expected": {
+      "kind": "task",
+      "title": "Подготовить отчёт для [ORG_1] в [SYSTEM_1]",
+      "assignee": "[USER]",
+      "evidence": "[USER], подготовьте отчёт к пятнице."
+    },
+    "observed": {
+      "tasks": [],
+      "delegations": []
+    }
+  },
+  "context": {
+    "anchor": "E1",
+    "truncated": false,
+    "events": [
+      {
+        "ref": "E1",
+        "kind": "email",
+        "direction": "INCOMING",
+        "author": "[PERSON_1]",
+        "relative_time_minutes": 0,
+        "subject": "Отчёт для [ORG_1] в [SYSTEM_1]",
+        "body": "[USER], подготовьте отчёт к пятнице в [SYSTEM_1]. Данные предоставит [PERSON_2]."
+      }
+    ]
+  },
+  "analysis": {
+    "model_tasks": [],
+    "model_delegations": [],
+    "source_evidence": "[USER], подготовьте отчёт к пятнице."
+  },
+  "diagnostics": {
+    "app_version": "0.7.39",
+    "model_id": "model-name",
+    "prompt_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "schema_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "redaction": {
+    "version": 1,
+    "replacements": {
+      "person": 2,
+      "organization": 1,
+      "system": 1,
+      "email": 0,
+      "url": 0,
+      "secret": 0
+    }
+  }
+}

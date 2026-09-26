@@ -46,8 +46,8 @@ android {
         applicationId = "net.muratov.assistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 43
-        versionName = "0.7.38"
+        versionCode = 47
+        versionName = "0.7.40"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -67,6 +67,7 @@ android {
 
     buildTypes {
         debug {
+            buildConfigField("boolean", "PLAY_DISTRIBUTION", "false")
             buildConfigField("String", "DEFAULT_SERVER_URL", "\"\"")
             buildConfigField(
                 "String",
@@ -81,6 +82,7 @@ android {
             manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
         release {
+            buildConfigField("boolean", "PLAY_DISTRIBUTION", "false")
             buildConfigField("String", "DEFAULT_SERVER_URL", "\"\"")
             buildConfigField("String", "CLIENT_CERT_RESOURCE", "\"\"")
             buildConfigField("String", "CLIENT_CERT_PASSWORD", "\"\"")
@@ -90,6 +92,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+        create("playRelease") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "PLAY_DISTRIBUTION", "true")
         }
     }
 
@@ -143,6 +150,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("ru.rustore.sdk:appupdate:10.5.1")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")

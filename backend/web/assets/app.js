@@ -600,17 +600,16 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
   }
   function taskHTML(data) {
     const t = data.task;
-    const rejectButton =
-      `<button class="icon-button task-reject" data-action="reject" title="${tr("Отказаться от задачи")}" aria-label="${tr("Отказаться от задачи")}"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></button>`;
+    const rejectButton = `<button data-action="reject" title="${tr("Отказаться от задачи")}">${tr("Отменить")}</button>`;
     return (
       head(tr("Задача")) +
-      `<h2>${e(t.title)}</h2><div class="tags">${badge(priorities[t.priority], t.priority.toLowerCase())}${badge(label(t.status))}</div><div class="actions"><button data-action="edit-task">${tr("Изменить приоритет и срок")}</button>${!closed(t) ? `${t.status === "NEEDS_CONFIRMATION" ? `<button class="primary" data-action="confirm">${tr("Подтвердить")}</button>` : `<button class="primary" data-action="complete">${tr("✓ Завершить")}</button>`}${rejectButton}<button data-action="remind">${tr("◷ Напомнить")}</button>` : ""}</div><div class="facts">${fact(tr("Срок"), e(t.due_at ? date(t.due_at) : tr("Без срока")))}${fact(tr("Статус"), e(label(t.status)))}${fact(tr("Приоритет"), e(priorities[t.priority]))}${fact(tr("Рейтинг"), e(t.ranking_score.toFixed(2)))}</div><h3>${tr("Что нужно сделать")}</h3>${t.description ? markdown(t.description) : `<p class="muted">${tr("Описание не указано.")}</p>`}${t.ranking_reasons.length ? `<h3>${tr("Почему задача в плане")}</h3><ul>${t.ranking_reasons.map((r) => `<li>${e(r)}</li>`).join("")}</ul>` : ""}${t.evidence ? `<h3>${tr("Основание назначения")}</h3><div class="callout text-body">${e(t.evidence)}</div>` : ""}<h3>${tr("Напоминания")}</h3>${t.reminders.length ? `<ul>${t.reminders.map((r) => `<li>${e(date(r.remind_at))} · ${r.sent_at ? tr("Отправлено") : r.enabled ? tr("Запланировано") : tr("Отключено")} ${!r.sent_at ? `<button class="link-button" data-remove-reminder="${e(r.id)}">${tr("Удалить")}</button>` : ""}</li>`).join("")}</ul>` : `<p class="muted">${tr("Напоминания не установлены.")}</p>`}<h3>${tr("Первоисточник")}</h3>${sourceHTML(data.source)}`
+      `<h2>${e(t.title)}</h2><div class="tags">${badge(priorities[t.priority], t.priority.toLowerCase())}${badge(label(t.status))}</div><div class="actions"><button data-action="edit-task">${tr("Изменить приоритет и срок")}</button>${!closed(t) ? `${t.status === "NEEDS_CONFIRMATION" ? `<button class="primary" data-action="confirm">${tr("Подтвердить")}</button>` : `<button class="primary" data-action="complete">${tr("✓ Завершить")}</button>`}${rejectButton}<button data-action="remind">${tr("◷ Напомнить")}</button>` : ""}${diagnosticAction("task", data)}</div><div class="facts">${fact(tr("Срок"), e(t.due_at ? date(t.due_at) : tr("Без срока")))}${fact(tr("Статус"), e(label(t.status)))}${fact(tr("Приоритет"), e(priorities[t.priority]))}${fact(tr("Рейтинг"), e(t.ranking_score.toFixed(2)))}</div><h3>${tr("Что нужно сделать")}</h3>${t.description ? markdown(t.description) : `<p class="muted">${tr("Описание не указано.")}</p>`}${t.ranking_reasons.length ? `<h3>${tr("Почему задача в плане")}</h3><ul>${t.ranking_reasons.map((r) => `<li>${e(r)}</li>`).join("")}</ul>` : ""}${t.evidence ? `<h3>${tr("Основание назначения")}</h3><div class="callout text-body">${e(t.evidence)}</div>` : ""}<h3>${tr("Напоминания")}</h3>${t.reminders.length ? `<ul>${t.reminders.map((r) => `<li>${e(date(r.remind_at))} · ${r.sent_at ? tr("Отправлено") : r.enabled ? tr("Запланировано") : tr("Отключено")} ${!r.sent_at ? `<button class="link-button" data-remove-reminder="${e(r.id)}">${tr("Удалить")}</button>` : ""}</li>`).join("")}</ul>` : `<p class="muted">${tr("Напоминания не установлены.")}</p>`}<h3>${tr("Первоисточник")}</h3>${sourceHTML(data.source)}`
     );
   }
   function delegationHTML(d) {
     return (
       head(tr("Поручение · выявлено ИИ")) +
-      `<h2>${e(d.title)}</h2><div class="tags">${badge(delegationLabel(d.status))}</div><div class="facts">${fact(tr("Исполнитель"), e(d.assignee_name || d.assignee_email || tr("Не определён")))}${fact("Email", e(d.assignee_email))}${fact(tr("Срок"), e(date(d.due_at)))}</div>${markdown(d.description || "")}<h3>${tr("Ожидаемый результат")}</h3>${markdown(d.expected_result || tr("Не указан"))}<h3>${tr("Основание")}</h3><div class="text-body">${e(d.evidence)}</div>${openButton("event", d.source_event_id, tr("Открыть исходное письмо"))}<h3>${tr("Изменить статус")}</h3><div class="actions">${["ASSIGNED", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"].map((s) => `<button data-delegation-status="${s}" ${s === d.status ? "disabled" : ""}>${s === "COMPLETED" ? tr("Принять результат") : e(delegationLabel(s))}</button>`).join("")}</div><h3>${tr("История изменений")}</h3>${(d.history || []).map((h) => `<article class="source"><strong>${e((h.old_status ? delegationLabel(h.old_status) + " → " : "") + delegationLabel(h.new_status))}</strong><p>${e(date(h.created_at))} · ${h.actor === "USER" ? tr("Пользователь") : tr("ИИ")}</p><div class="text-body">${e(h.explanation)}</div>${openButton("event", h.source_event_id, tr("Письмо-основание"))}</article>`).join("")}`
+      `<h2>${e(d.title)}</h2><div class="tags">${badge(delegationLabel(d.status))}</div><div class="facts">${fact(tr("Исполнитель"), e(d.assignee_name || d.assignee_email || tr("Не определён")))}${fact("Email", e(d.assignee_email))}${fact(tr("Срок"), e(date(d.due_at)))}</div>${markdown(d.description || "")}<h3>${tr("Ожидаемый результат")}</h3>${markdown(d.expected_result || tr("Не указан"))}<h3>${tr("Основание")}</h3><div class="text-body">${e(d.evidence)}</div>${openButton("event", d.source_event_id, tr("Открыть исходное письмо"))}<h3>${tr("Изменить статус")}</h3><div class="actions">${["ASSIGNED", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"].map((s) => `<button data-delegation-status="${s}" ${s === d.status ? "disabled" : ""}>${s === "COMPLETED" ? tr("Принять результат") : e(delegationLabel(s))}</button>`).join("")}${diagnosticAction("delegation", d)}</div><h3>${tr("История изменений")}</h3>${(d.history || []).map((h) => `<article class="source"><strong>${e((h.old_status ? delegationLabel(h.old_status) + " → " : "") + delegationLabel(h.new_status))}</strong><p>${e(date(h.created_at))} · ${h.actor === "USER" ? tr("Пользователь") : tr("ИИ")}</p><div class="text-body">${e(h.explanation)}</div>${openButton("event", h.source_event_id, tr("Письмо-основание"))}</article>`).join("")}`
     );
   }
   function meetingHTML(data) {
@@ -627,7 +626,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
   function resultHTML(x) {
     return (
       head(tr("Итоги встречи")) +
-      `<h2>${e(x.title)}</h2><p class="muted">${e(resultTime(x))} · ${e(x.source_label)}</p><div class="tags">${badge(label(x.analysis_state), x.analysis_state === "FAILED" ? "error" : "green")}</div><h3>${tr("Участники")}</h3>${x.participants.length ? people(x.participants) : `<p class="muted">${tr("Участники не указаны.")}</p>`}<h3>${tr("Резюме")}</h3>${x.summary ? markdown(x.summary) : `<p class="muted">${x.analysis_state === "COMPLETED" ? tr("Резюме отсутствует.") : x.analysis_state === "FAILED" ? tr("Анализ завершился ошибкой.") : tr("Анализ ещё не завершён.")}</p>`}<h3>${tr("Решения")}</h3>${x.decisions.length ? markdown(x.decisions.map((v) => `- ${v}`).join("\n")) : `<p class="muted">${tr("Решения не выделены.")}</p>`}<h3>${tr("Договорённости")}</h3>${x.agreements.length ? markdown(x.agreements.map((v) => `- ${v}`).join("\n")) : `<p class="muted">${tr("Договорённости не выделены.")}</p>`}<div class="actions">${openButton("event", x.source_event_id, tr("Открыть полный оригинал"))}${openButton("meeting", x.calendar_meeting_id, tr("Календарная встреча"))}</div>${x.participant_summaries.length ? `<h3>${tr("Дополнения участников")}</h3>` : ""}${x.participant_summaries.map((p) => `<article class="source"><strong>${e(p.author || tr("Автор не указан"))}</strong><p class="muted">${e(p.source_label)} · ${e(date(p.occurred_at))}</p>${markdown(p.summary)}${p.decisions.length ? `<h4>${tr("Решения")}</h4>${markdown(p.decisions.map((v) => `- ${v}`).join("\n"))}` : ""}${p.agreements.length ? `<h4>${tr("Договорённости")}</h4>${markdown(p.agreements.map((v) => `- ${v}`).join("\n"))}` : ""}${openButton("event", p.source_event_id, tr("Открыть оригинал дополнения"))}</article>`).join("")}`
+      `<h2>${e(x.title)}</h2><p class="muted">${e(resultTime(x))} · ${e(x.source_label)}</p><div class="tags">${badge(label(x.analysis_state), x.analysis_state === "FAILED" ? "error" : "green")}</div><h3>${tr("Участники")}</h3>${x.participants.length ? people(x.participants) : `<p class="muted">${tr("Участники не указаны.")}</p>`}<h3>${tr("Резюме")}</h3>${x.summary ? markdown(x.summary) : `<p class="muted">${x.analysis_state === "COMPLETED" ? tr("Резюме отсутствует.") : x.analysis_state === "FAILED" ? tr("Анализ завершился ошибкой.") : tr("Анализ ещё не завершён.")}</p>`}<h3>${tr("Решения")}</h3>${x.decisions.length ? markdown(x.decisions.map((v) => `- ${v}`).join("\n")) : `<p class="muted">${tr("Решения не выделены.")}</p>`}<h3>${tr("Договорённости")}</h3>${x.agreements.length ? markdown(x.agreements.map((v) => `- ${v}`).join("\n")) : `<p class="muted">${tr("Договорённости не выделены.")}</p>`}<div class="actions">${openButton("event", x.source_event_id, tr("Открыть полный оригинал"))}${openButton("meeting", x.calendar_meeting_id, tr("Календарная встреча"))}${diagnosticAction("result", x)}</div>${x.participant_summaries.length ? `<h3>${tr("Дополнения участников")}</h3>` : ""}${x.participant_summaries.map((p) => `<article class="source"><strong>${e(p.author || tr("Автор не указан"))}</strong><p class="muted">${e(p.source_label)} · ${e(date(p.occurred_at))}</p>${markdown(p.summary)}${p.decisions.length ? `<h4>${tr("Решения")}</h4>${markdown(p.decisions.map((v) => `- ${v}`).join("\n"))}` : ""}${p.agreements.length ? `<h4>${tr("Договорённости")}</h4>${markdown(p.agreements.map((v) => `- ${v}`).join("\n"))}` : ""}${openButton("event", p.source_event_id, tr("Открыть оригинал дополнения"))}</article>`).join("")}`
     );
   }
   function threadHTML(x) {
@@ -719,6 +718,16 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     enhance($("detail"), refs);
     $("detail").scrollTop = preserve ? scroll : 0;
   }
+  const diagnosticKinds = {
+    task: "task", delegation: "delegation", event: "conversation_event", result: "meeting_result",
+  };
+  function diagnosticAction(kind, data) {
+    if (kind === "task" && !data?.source) return "";
+    if (kind === "delegation" && !data?.source_event_id) return "";
+    return diagnosticKinds[kind]
+      ? `<button type="button" data-action="diagnostic">${tr("Сообщить об ошибке")}</button>`
+      : "";
+  }
   function renderSystem() {
     state.detailKey = "system";
     setDetail(systemHTML(null), [], true);
@@ -780,7 +789,7 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
       state.detailKey = key;
       if (changed)
         setDetail(
-          selected.kind === "delegation"
+          (selected.kind === "delegation"
             ? delegationHTML(data)
             : selected.kind === "task"
               ? taskHTML(data)
@@ -791,8 +800,8 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
                   : selected.kind === "thread"
                     ? threadHTML(data)
                     : selected.kind === "event"
-                      ? head(tr("Исходное сообщение")) + sourceHTML(data)
-                      : systemHTML(selected.id),
+                      ? head(tr("Исходное сообщение")) + `<div class="actions">${diagnosticAction("event", data)}</div>` + sourceHTML(data)
+                      : systemHTML(selected.id)),
           data.references,
           quiet,
         );
@@ -1003,6 +1012,11 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
       return;
     }
     const selected = state.selected;
+    if (b.dataset.action === "diagnostic" && selected) {
+      const back = `${location.pathname}${location.search}`;
+      window.location.assign(`/app/report/new?kind=${encodeURIComponent(diagnosticKinds[selected.kind])}&id=${encodeURIComponent(selected.id)}&return=${encodeURIComponent(back)}`);
+      return;
+    }
     if (b.dataset.removeReminder && selected?.kind === "task") {
       await mutate(
         b,
@@ -1377,6 +1391,16 @@ var tr = globalThis.SecretaryI18n?.t || ((s, ...a) => s.replace(/\{(\d+)\}/g, (m
     receiveStatus,
     statusConnection,
   );
+  async function refreshDiagnosticBadge() {
+    try {
+      const response = await api("/diagnostic-reports/drafts");
+      const ready = (response.items || []).filter((draft) => draft.state === "ready").length;
+      $("diagnostic-reports-badge").hidden = ready === 0;
+      $("diagnostic-reports-badge").textContent = String(ready);
+    } catch (_) { /* Connection errors are shown by other page requests. */ }
+  }
+  setInterval(() => { if (!document.hidden) refreshDiagnosticBadge(); }, 10000);
+  refreshDiagnosticBadge();
   window.addEventListener("online", refresh);
   window.addEventListener("offline", () => {
     paintHealth(true);

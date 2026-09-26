@@ -1,0 +1,31 @@
+{
+  "id": "direct-assignment",
+  "subject": "Отчёт о поставках",
+  "direction": "OUTGOING",
+  "author": "Максим Муратов <maxim@example.test>",
+  "participants": [
+    {
+      "role": "from",
+      "name": "Максим Муратов",
+      "address": "maxim@example.test"
+    },
+    {
+      "role": "to",
+      "name": "Иван Петров",
+      "address": "ivan@example.test"
+    }
+  ],
+  "user_identity": {
+    "names": [
+      "Максим Муратов"
+    ],
+    "addresses": [
+      "maxim@example.test"
+    ]
+  },
+  "body": "Иван, подготовь, пожалуйста, отчёт о поставках к пятнице. Результат пришли таблицей с задержками и причинами.",
+  "relationships": {
+    "managers": [],
+    "reports": []
+  }
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Gradle output and write the public Android updater manifest."""
+"""Validate the signed Android APK and prepare versioned release files."""
 import hashlib
 import json
 import os
@@ -26,19 +26,15 @@ def prepare(output: Path, destination: Path, ref: str) -> dict:
     apk = (output / element["outputFile"]).resolve()
     if apk.parent != output.resolve() or not apk.is_file() or not 0 < apk.stat().st_size <= 200_000_000:
         raise ValueError("Invalid APK output")
-    manifest = dict(versionCode=code, versionName=version, minSdk=26,
-                    applicationId="net.muratov.assistant", revision=os.environ.get("GITHUB_SHA", ""),
-                    apkUrl=f"https://github.com/mumg/ai_secretary/releases/download/{tag}/ai-secretary-{version}.apk",
-                    sha256=hashlib.sha256(apk.read_bytes()).hexdigest(), size=apk.stat().st_size)
+    digest = hashlib.sha256(apk.read_bytes()).hexdigest()
     destination.mkdir(parents=True, exist_ok=True)
     name = f"ai-secretary-{version}.apk"
     shutil.copyfile(apk, destination / name)
-    (destination / "android-update.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    (destination / "SHA256SUMS").write_text(f"{manifest['sha256']}  {name}\n")
+    (destination / "SHA256SUMS").write_text(f"{digest}  {name}\n")
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
             stream.write(f"tag={tag}\nversion={version}\ncode={code}\n")
-    return manifest
+    return dict(versionCode=code, versionName=version, tag=tag, sha256=digest, size=apk.stat().st_size)
 
 
 if __name__ == "__main__":

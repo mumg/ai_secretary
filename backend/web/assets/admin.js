@@ -170,6 +170,9 @@ function populateSettings(data) {
   setValue("autoConfidence", s.llm.auto_create_confidence);
   setValue("completionConfidence", s.llm.possible_completion_confidence);
   setValue("llmTimeout", s.llm.request_timeout_seconds);
+  document.querySelectorAll("[data-llm-correction]").forEach(field => {
+    field.value = s.llm_prompt_corrections?.[field.dataset.llmCorrection] || "";
+  });
   setValue("batchSize", s.worker.batch_size);
   setValue("attachmentMb", Math.round(s.document_parser.max_bytes / 1048576));
   setValue("attachmentCharacters", s.document_parser.max_characters);
@@ -192,7 +195,7 @@ function populateSettings(data) {
 async function saveSettings(event) {
   try {
     if (!settingsState) throw new Error(tr("Настройки ещё не загружены"));
-    const fields = document.querySelectorAll("#analysis input, #notifications input");
+    const fields = document.querySelectorAll("#analysis input, #analysis textarea, #notifications input");
     const setupIdentity = document.body.classList.contains("setup-identity");
     const setupModel = document.body.classList.contains("setup-model");
     if (![...fields].filter(field => !field.closest("#localOllama") && !field.closest("[hidden]")
@@ -223,6 +226,10 @@ async function saveSettings(event) {
     s.llm.auto_create_confidence = Number($("autoConfidence").value);
     s.llm.possible_completion_confidence = Number($("completionConfidence").value);
     s.llm.request_timeout_seconds = Number($("llmTimeout").value);
+    s.llm_prompt_corrections = s.llm_prompt_corrections || {};
+    document.querySelectorAll("[data-llm-correction]").forEach(field => {
+      s.llm_prompt_corrections[field.dataset.llmCorrection] = field.value.trim();
+    });
     s.worker.batch_size = Number($("batchSize").value);
     s.document_parser.max_bytes = Number($("attachmentMb").value) * 1048576;
     s.document_parser.max_characters = Number($("attachmentCharacters").value);
@@ -260,6 +267,7 @@ async function saveSettings(event) {
       : "";
     toast(tr("Настройки сохранены.{0}", scanMessage));
     loadStatus();
+    loadTemporaryCorrections();
     if (!setupIdentity && (llmChanged || setupModel)) {
       document.dispatchEvent(new CustomEvent("secretary:settings-saved", { detail: { llm: true } }));
     }
@@ -527,6 +535,59 @@ async function loadStatus() {
   } catch (_) { $("healthText").textContent = tr("Сервер недоступен"); }
 }
 
+async function loadTemporaryCorrections() {
+  const result = await request("/llm-temporary-corrections");
+  const items = result.items || [];
+  const section = $("temporaryCorrections");
+  section.hidden = items.length === 0;
+  const list = $("temporaryCorrectionsList");
+  list.replaceChildren();
+  const historyByID = new Map();
+  for (const event of result.history || []) {
+    if (!historyByID.has(event.correction_id)) historyByID.set(event.correction_id, []);
+    historyByID.get(event.correction_id).push(event);
+  }
+  const statusLabels = {active: "Активна", manual_disabled: "Отключена пользователем", disabled_by_fix: "Отключена исправлением", needs_review: "Требует проверки"};
+  for (const item of items) {
+    const article = document.createElement("article");
+    const heading = document.createElement("h4");
+    heading.textContent = `${item.request_type} · ${statusLabels[item.status] || item.status}`;
+    const text = document.createElement("p");
+    text.textContent = item.rule_text;
+    const details = document.createElement("p");
+    details.className = "hint";
+    details.textContent = [item.scope === "systemic" ? "Системная проблема" : "Индивидуальная коррекция", item.scope === "systemic" && !item.release_fix_eligible && "Исключена из бэклога", item.status_reason, item.fixed_version && `Версия ${item.fixed_version}`, item.scope === "systemic" && item.issue_id && `Проблема ${item.issue_id}`].filter(Boolean).join(" · ");
+    article.append(heading, text, details);
+    const history = historyByID.get(item.correction_id) || [];
+    if (history.length) {
+      const disclosure = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = tr("История");
+      disclosure.append(summary);
+      for (const event of history) {
+        const line = document.createElement("p");
+        line.textContent = `${new Date(event.changed_at).toLocaleString()} · ${statusLabels[event.new_status] || event.new_status} · ${event.reason}`;
+        disclosure.append(line);
+      }
+      article.append(disclosure);
+    }
+    if (item.status !== "manual_disabled") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = tr("Отключить");
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          await request(`/llm-temporary-corrections/${encodeURIComponent(item.correction_id)}/disable`, {method: "POST"});
+          await loadTemporaryCorrections();
+        } catch (error) { toast(error.message, true); button.disabled = false; }
+      });
+      article.append(button);
+    }
+    list.append(article);
+  }
+}
+
 function registerModelContextTools() {
   const context = document.modelContext;
   if (!context?.registerTool) return;
@@ -681,6 +742,7 @@ $("tagList").addEventListener("click", tagAction);
 registerModelContextTools();
 
 request("/settings").then(populateSettings).catch((error) => toast(error.message, true));
+loadTemporaryCorrections().catch((error) => toast(error.message, true));
 loadSources();
 loadTags();
 loadStatus();

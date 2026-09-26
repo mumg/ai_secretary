@@ -3,7 +3,7 @@ name: Windows installer
 on:
   push:
     branches: [main]
-    paths: ['windows/**', 'macos/**', 'backend/**', 'browser-extension/**', 'document-parser/**', 'version', '.gitattributes', '.github/workflows/windows.yml']
+    paths: ['windows/**', 'macos/**', 'backend/**', 'browser-extension/**', 'document-parser/**', 'version', 'llm_manifest.json', 'scripts/update_llm_manifest.py', '.gitattributes', '.github/workflows/windows.yml']
     tags: ['windows-v*']
   workflow_dispatch:
     inputs:
@@ -28,6 +28,8 @@ jobs:
       source_run: ${{ steps.reuse.outputs.run_id }}
     steps:
       - uses: actions/checkout@v5
+      - name: Validate LLM prompt manifest
+        run: python3 scripts/update_llm_manifest.py --check
       - name: Validate release version
         id: mode
         env:

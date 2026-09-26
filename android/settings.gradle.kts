@@ -11,9 +11,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://nexus-external.rustore.ru/repository/maven-rustore-exposed")
     }
 }
 
 rootProject.name = "Improver"
 include(":app")
-

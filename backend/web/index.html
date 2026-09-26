@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru">
 <head>
-    <script src="/admin/assets/translations.js" defer></script>
+    <script src="/admin/assets/translations.js?v=20260925-llm-corrections" defer></script>
     <script src="/admin/assets/i18n.js" defer></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,14 +9,14 @@
   <meta name="description" content="Настройки AI Секретаря">
   <title>AI Секретарь — Настройки</title>
   <link rel="icon" type="image/svg+xml" href="/admin/assets/secretary-robot.svg">
-  <link rel="stylesheet" href="/admin/assets/admin.css?v=8">
+  <link rel="stylesheet" href="/admin/assets/admin.css?v=20260926-release-corrections">
   <link rel="stylesheet" href="/admin/assets/version.css?v=1">
   <script src="/admin/assets/version.js?v=1" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/app/" aria-label="AI Секретарь — главная"><img class="brand-icon" src="/admin/assets/secretary-robot.svg" alt="" width="32" height="32"><span>AI Секретарь</span></a>
-    <div class="topbar-actions"><div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div><div data-language-settings></div><a class="app-link" href="/app/">К приложению</a></div>
+    <a class="brand" href="/app/" aria-label="AI Секретарь — главная"><span aria-hidden="true">←</span><img class="brand-icon" src="/admin/assets/secretary-robot.svg" alt="" width="32" height="32"><span>AI Секретарь</span></a>
+    <div class="topbar-actions"><div class="server-state"><span id="healthDot" class="state-dot"></span><span id="healthText">Проверяем сервер…</span></div><div data-language-settings></div></div>
   </header>
 
   <div id="version-notice" class="version-notice" role="status" aria-live="polite" hidden>
@@ -197,6 +197,26 @@
           </section>
           <div class="three-columns"><label>Температура<input id="temperature" type="number" min="0" max="2" step="0.05"></label><label>Автосоздание от<input id="autoConfidence" type="number" min="0" max="1" step="0.01"></label><label>Выполнение от<input id="completionConfidence" type="number" min="0" max="1" step="0.01"></label></div>
           <label>Таймаут запроса, секунд<input id="llmTimeout" type="number" min="10" max="1800"></label>
+          <details class="llm-corrections">
+            <summary>Персональные коррекции запросов к модели</summary>
+            <p class="hint">Добавьте дополнительные требования из разобранного обращения в нужное поле. Основные инструкции и формат ответа останутся неизменными. Пустое поле отключает коррекцию.</p>
+            <label>Анализ сообщения<textarea data-llm-correction="message_analysis" rows="3" maxlength="4000"></textarea></label>
+            <label>Выделение задач<textarea data-llm-correction="task_extraction" rows="3" maxlength="4000"></textarea></label>
+            <label>Поручения из переписки<textarea data-llm-correction="delegation_analysis" rows="3" maxlength="4000"></textarea></label>
+            <label>Поручения из результатов встреч<textarea data-llm-correction="meeting_delegations" rows="3" maxlength="4000"></textarea></label>
+            <label>Сопоставление писем в цепочке<textarea data-llm-correction="email_thread_match" rows="3" maxlength="4000"></textarea></label>
+            <label>Сопоставление результатов встречи<textarea data-llm-correction="meeting_topic_match" rows="3" maxlength="4000"></textarea></label>
+            <label>Выбор источников для ответа по архиву<textarea data-llm-correction="archive_reference_selection" rows="3" maxlength="4000"></textarea></label>
+            <label>Ответ по архиву<textarea data-llm-correction="archive_answer" rows="3" maxlength="4000"></textarea></label>
+            <label>Создание задачи из заметки<textarea data-llm-correction="task_formalization" rows="3" maxlength="4000"></textarea></label>
+            <label>Определение срока задачи<textarea data-llm-correction="due_date_resolution" rows="3" maxlength="4000"></textarea></label>
+            <label>Обезличивание обращения<textarea data-llm-correction="diagnostic_redaction" rows="3" maxlength="4000"></textarea></label>
+          </details>
+          <section id="temporaryCorrections" class="llm-corrections" hidden>
+            <h3>Временные коррекции поддержки</h3>
+            <p class="hint">Коррекция отключается, когда манифест установленного серверного релиза подтверждает исправление для этой модели и шаблона запроса.</p>
+            <div id="temporaryCorrectionsList"></div>
+          </section>
         </fieldset>
         <fieldset class="wide"><legend>Обработка и вложения</legend>
           <div class="four-columns"><label>Событий в пакете<input id="batchSize" type="number" min="1" max="100"></label><label>Макс. вложение, МБ<input id="attachmentMb" type="number" min="1" max="25"></label><label>Макс. текст, символов<input id="attachmentCharacters" type="number" min="1000" max="100000"></label><label>Таймаут парсера, секунд<input id="parserTimeout" type="number" min="5" max="300"></label></div>
@@ -295,7 +315,7 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="/admin/assets/admin.js?v=20260923-setup-save-retry" defer></script>
+  <script src="/admin/assets/admin.js?v=20260926-release-corrections" defer></script>
   <script src="/admin/assets/ollama-setup.js?v=7" defer></script>
   <script src="/admin/assets/mts-link-auth.js?v=20260923-setup-sso" defer></script>
   <script src="/admin/assets/configuration-widgets.js?v=2" defer></script>

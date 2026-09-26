@@ -94,7 +94,7 @@ jobs:
       - name: Prepare public files
         id: metadata
         run: python3 android/scripts/release_metadata.py
-      - name: Publish versioned release and update channel
+      - name: Publish versioned release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.metadata.outputs.tag }}
@@ -104,34 +104,13 @@ jobs:
           set -euo pipefail
           # Keep the original signed APK on a retry of the same commit.
           if gh release view "$TAG" >/dev/null 2>&1; then
-            mkdir -p "$RUNNER_TEMP/android-existing"
-            gh release download "$TAG" -p android-update.json -D "$RUNNER_TEMP/android-existing"
-            python3 - <<'PY'
-          import json, os, pathlib, shutil
-          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'android-existing/android-update.json'
-          data = json.loads(path.read_text())
-          assert data.get('revision') == os.environ['GITHUB_SHA'] and data['versionCode'] == int(os.environ['CODE']), 'Release belongs to another commit; increase the Android version'
-          shutil.copyfile(path, 'dist/android/android-update.json')
-          PY
+            test "$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA" || {
+              echo "Release tag belongs to another commit; increase the Android version" >&2
+              exit 1
+            }
           else
             gh release create "$TAG" dist/android/* --target "$GITHUB_SHA" --title "Android $VERSION ($CODE)" --notes "Подписанное приложение AI Секретарь для Android 8.0+. При первом запуске откроется мастер подключения к вашему серверу." --latest=false
           fi
-          if ! gh release view android-latest >/dev/null 2>&1; then
-            gh release create android-latest --target "$GITHUB_SHA" --title 'Android — актуальная версия' --notes 'Манифест для автоматического обновления Android-приложения. APK доступен в версионном Android-релизе.' --prerelease --latest=false
-          fi
-          # Refuse an accidental downgrade of the shared update channel.
-          mkdir -p "$RUNNER_TEMP/android-channel"
-          if gh release view android-latest --json assets --jq '.assets[].name' | grep -qx android-update.json; then
-            gh release download android-latest -p android-update.json -D "$RUNNER_TEMP/android-channel"
-          fi
-          python3 - <<'PY'
-          import json, os, pathlib
-          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'android-channel/android-update.json'
-          if path.exists() and json.loads(path.read_text())['versionCode'] > int(os.environ['CODE']):
-              raise SystemExit('The update channel already has this or a newer versionCode')
-          PY
-          gh release upload android-latest dist/android/android-update.json --clobber
-          gh release edit android-latest --notes "Последняя версия: Android $VERSION ($CODE). Скачать APK: https://github.com/mumg/ai_secretary/releases/download/$TAG/ai-secretary-$VERSION.apk"
       - name: Remove signing material
         if: always()
         run: rm -f "$RUNNER_TEMP/android-release.jks" android/app/google-services.json

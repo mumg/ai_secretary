@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -28,17 +27,11 @@
         <activity android:name=".SettingsActivity" android:exported="false" />
 
         <activity android:name=".DelegationDetailActivity" android:exported="false" />
+        <activity android:name=".DiagnosticReportActivity" android:exported="false" />
+        <activity android:name=".DiagnosticReportsActivity" android:exported="false" />
         <activity android:name=".setup.IdentityCaptureActivity" android:exported="false" />
 
         <activity android:name=".DetailPlaceholderActivity" android:exported="false" />
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.updates"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths" />
-        </provider>
 
         <activity
             android:name=".TaskDetailActivity"

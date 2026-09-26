@@ -398,5 +398,201 @@
   "Один из источников ещё не настроен.": {
     "en": "One source is not configured yet.",
     "zh": "仍有一个来源尚未配置。"
+  },
+  "В поддержку отправится только проверенная обезличенная версия, описание ошибки и ожидаемый результат.": {
+    "en": "Only the reviewed anonymized version, the error description, and the expected result will be sent to support.",
+    "zh": "仅将已审核的匿名版本、错误描述和预期结果发送给支持团队。"
+  },
+  "Длинное письмо сокращено для обращения.": {
+    "en": "The long email was shortened for this report.",
+    "zh": "此报告中的长邮件已截短。"
+  },
+  "Другие обезличенные поля": {
+    "en": "Other anonymized fields",
+    "zh": "其他匿名字段"
+  },
+  "Задачи и поручения не созданы": {
+    "en": "No tasks or delegations were created",
+    "zh": "未创建任务或委派"
+  },
+  "Исходный материал": {
+    "en": "Original material",
+    "zh": "原始内容"
+  },
+  "Обезличенная версия для поддержки": {
+    "en": "Anonymized version for support",
+    "zh": "供支持团队使用的匿名版本"
+  },
+  "Обращения — AI Секретарь": {
+    "en": "Reports — AI Secretary",
+    "zh": "反馈 — AI 秘书"
+  },
+  "Ожидаемое поведение": {
+    "en": "Expected behavior",
+    "zh": "预期行为"
+  },
+  "Опишите разницу между результатом системы и тем, что должно было произойти. Это поможет подобрать коррекцию запроса к LLM.": {
+    "en": "Describe how the system result differs from what should have happened. This helps adjust the LLM prompt.",
+    "zh": "请描述系统结果与预期之间的差异，以帮助调整 LLM 提示词。"
+  },
+  "Отправить обращение": {
+    "en": "Send report",
+    "zh": "发送反馈"
+  },
+  "Полученное некорректное поведение": {
+    "en": "Incorrect behavior observed",
+    "zh": "观察到的错误行为"
+  },
+  "Поручение": {
+    "en": "Delegation",
+    "zh": "委派"
+  },
+  "Проверка обращения": {
+    "en": "Review report",
+    "zh": "审核反馈"
+  },
+  "Проверьте имена людей, подписи, названия организаций и информационных систем. Можно исправить любой текст перед отправкой.": {
+    "en": "Check names, signatures, organizations, and information systems. You can edit any text before sending.",
+    "zh": "请检查姓名、签名、组织和信息系统名称。发送前可编辑任何文本。"
+  },
+  "Результат обработки": {
+    "en": "Processed result",
+    "zh": "处理结果"
+  },
+  "Сохранить и проверить правки": {
+    "en": "Save and check edits",
+    "zh": "保存并检查修改"
+  },
+  "Текст письма": {
+    "en": "Email body",
+    "zh": "邮件正文"
+  },
+  "Только для сравнения. Исходный текст не отправляется в поддержку.": {
+    "en": "For comparison only. The original text is not sent to support.",
+    "zh": "仅供对照。原始文本不会发送给支持团队。"
+  },
+  "Что нужно исправить в анализе": {
+    "en": "What needs correcting in the analysis",
+    "zh": "分析中需要更正的内容"
+  },
+  "Что создала система": {
+    "en": "What the system created",
+    "zh": "系统创建的内容"
+  },
+  "Я проверил обезличенную версию и согласен отправить обращение": {
+    "en": "I reviewed the anonymized version and agree to send the report",
+    "zh": "我已检查匿名版本并同意发送反馈"
+  },
+  "Загрузка исходного письма…": {
+    "en": "Loading original email…",
+    "zh": "正在加载原始邮件…"
+  },
+  "Исходное письмо недоступно": {
+    "en": "Original email is unavailable",
+    "zh": "原始邮件不可用"
+  },
+  "Текст письма отсутствует": {
+    "en": "Email body is unavailable",
+    "zh": "邮件正文不可用"
+  },
+  "Не удалось загрузить исходное письмо": {
+    "en": "Could not load the original email",
+    "zh": "无法加载原始邮件"
+  },
+  "Исходный текст показан для сравнения и не отправляется в поддержку.": {
+    "en": "The original text is shown for comparison and is not sent to support.",
+    "zh": "原始文本仅供对照，不会发送给支持团队。"
+  },
+  "Не выбран источник обращения": {
+    "en": "No source item was selected for the report",
+    "zh": "未选择反馈的来源条目"
+  },
+  "Неизвестный тип исходного элемента": {
+    "en": "Unknown source item type",
+    "zh": "未知的来源条目类型"
+  },
+  "Описание ошибки": {
+    "en": "Error description",
+    "zh": "错误描述"
+  },
+  "Сообщить об ошибке анализа — AI Секретарь": {
+    "en": "Report an analysis error — AI Secretary",
+    "zh": "报告分析错误 — AI 秘书"
+  },
+  "Сформировать обращение": {
+    "en": "Create report",
+    "zh": "创建反馈"
+  },
+  "Создаём черновик обращения…": {
+    "en": "Creating report draft…",
+    "zh": "正在创建反馈草稿…"
+  },
+  "ID обращения": {
+    "en": "Report ID",
+    "zh": "反馈编号"
+  },
+  "Выберите обращение или черновик.": {
+    "en": "Select a report or draft.",
+    "zh": "请选择反馈或草稿。"
+  },
+  "Детали обращения": {
+    "en": "Report details",
+    "zh": "反馈详情"
+  },
+  "Ответ по обращению": {
+    "en": "Response to the report",
+    "zh": "反馈回复"
+  },
+  "Открыть": {
+    "en": "Open",
+    "zh": "打开"
+  },
+  "Отменить черновик": {
+    "en": "Cancel draft",
+    "zh": "取消草稿"
+  },
+  "Отправленные данные": {
+    "en": "Submitted information",
+    "zh": "已提交的信息"
+  },
+  "Создано": {
+    "en": "Created",
+    "zh": "已创建"
+  },
+  "Проверяем правки…": {
+    "en": "Checking edits…",
+    "zh": "正在检查修改…"
+  },
+  "Правки проверены. Проверьте обезличенную версию и снова подтвердите отправку.": {
+    "en": "Edits checked. Review the anonymized version and confirm sending again.",
+    "zh": "修改已检查。请核对匿名版本并再次确认发送。"
+  },
+  "Заполните описание ошибки и ожидаемое поведение.": {
+    "en": "Describe the error and expected behavior.",
+    "zh": "请填写错误描述和预期行为。"
+  },
+  "Отправляем обращение…": {
+    "en": "Sending report…",
+    "zh": "正在发送反馈…"
+  },
+  "Получатели": {
+    "en": "Recipients",
+    "zh": "收件人"
+  },
+  "Требуется уточнение перед отправкой": {
+    "en": "Clarification needed before sending",
+    "zh": "发送前需要补充信息"
+  },
+  "Проверяем и отправляем обращение в фоне": {
+    "en": "Checking and sending the report in the background",
+    "zh": "正在后台检查并发送反馈"
+  },
+  "Проверяем и отправляем обращение в фоне. Можно закрыть страницу.": {
+    "en": "Checking and sending the report in the background. You can close this page.",
+    "zh": "正在后台检查并发送反馈。您可以关闭此页面。"
+  },
+  "Ставим обращение в очередь…": {
+    "en": "Queueing the report…",
+    "zh": "正在将反馈加入队列…"
   }
 }

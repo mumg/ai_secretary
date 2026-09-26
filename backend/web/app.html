@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru">
   <head>
-    <script src="/app/assets/translations.js" defer></script>
+    <script src="/app/assets/translations.js?v=0.7.53" defer></script>
     <script src="/app/assets/i18n.js" defer></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -13,14 +13,14 @@
       type="image/svg+xml"
       href="/app/assets/secretary-robot.svg"
     />
-    <link rel="stylesheet" href="/app/assets/app.css?v=0.7.34" />
+    <link rel="stylesheet" href="/app/assets/app.css?v=0.7.53" />
     <link rel="stylesheet" href="/app/assets/version.css?v=1" />
     <script src="/app/assets/version.js?v=1" defer></script>
     <script src="/app/assets/markdown-it.min.js" defer></script>
     <script src="/app/assets/app-core.js" defer></script>
     <script src="/app/assets/realtime.js" defer></script>
     <script src="/app/assets/setup-wizard-redirect.js?v=1" defer></script>
-    <script src="/app/assets/app.js?v=0.7.34" defer></script>
+    <script src="/app/assets/app.js?v=0.7.53" defer></script>
   </head>
   <body>
     <header class="app-header">
@@ -44,6 +44,7 @@
           ><span id="health-label">Проверка состояния</span>
         </button>
         <button id="chat-toggle" aria-pressed="false">Чат с Qwen</button>
+        <a id="diagnostic-reports-open" class="icon-button" href="/app/reports">Обращения <span id="diagnostic-reports-badge" class="diagnostic-badge" hidden></span></a>
         <a class="icon-button" href="/admin" title="Настройки"
           ><span aria-hidden="true">⚙</span> Настройки</a
         >

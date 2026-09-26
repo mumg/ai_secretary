@@ -119,6 +119,11 @@ label small { color: var(--muted); font-weight: 450; }
 input, select, textarea { width: 100%; margin-top: 6px; padding: 10px 11px; color: var(--ink); background: var(--paper); border: 1px solid #41515d; border-radius: 8px; outline: none; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.llm-corrections { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.llm-corrections summary { cursor: pointer; font-weight: 680; }
+.llm-corrections textarea { min-height: 75px; }
+.llm-corrections article { padding: 12px 0; border-top: 1px solid var(--line); }
+.llm-corrections article p { margin: 5px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .inline, .two-columns, .three-columns, .four-columns { display: grid; gap: 12px; }
 .inline, .two-columns { grid-template-columns: 1fr 1fr; }
 .three-columns { grid-template-columns: repeat(3, 1fr); }
@@ -213,8 +218,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .topbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
 .topbar-actions [data-language-settings] label { display: inline-flex; align-items: center; gap: 10px; margin: 0; white-space: nowrap; }
 .topbar-actions [data-language-settings] select { width: auto; margin: 0; padding: 8px 11px; }
-.app-link { padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); text-decoration: none; white-space: nowrap; }
-.app-link:hover { background: #25343c; }
 .metrics article, .intro > div, .source-card-header > div { min-width: 0; }
 .source-card-header { flex-wrap: wrap; }
 .source-card h3, .tag-name, .server-state { overflow-wrap: anywhere; }

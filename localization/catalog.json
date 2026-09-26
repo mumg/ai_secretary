@@ -27,6 +27,14 @@
     "en": " Previously loaded data has been preserved.",
     "zh": " 已保留先前加载的数据。"
   },
+  "%s: код %d; %s": {
+    "en": "%s: code %d; %s",
+    "zh": "%s：代码 %d；%s"
+  },
+  "%s: превышено время ожидания": {
+    "en": "%s: timed out",
+    "zh": "%s：超时"
+  },
   "+ Подключить источник": {
     "en": "+ Connect source",
     "zh": "+ 连接来源"
@@ -34,6 +42,10 @@
   ". Занятость Qwen не означает сбой.": {
     "en": ". Qwen being busy does not indicate a failure.",
     "zh": "。Qwen 忙碌并不表示发生故障。"
+  },
+  ". Новая версия не установлена. Данные и резервная копия сохранены.": {
+    "en": ". The new version was not installed. Data and backup are preserved.",
+    "zh": "。未安装新版本。数据和备份已保留。"
   },
   ". Распакуйте архив, откройте chrome://extensions или edge://extensions, включите режим разработчика и выберите «Загрузить распакованное расширение». Затем нажмите значок «AI Секретарь» на этой странице.": {
     "en": ". Extract the archive, open chrome://extensions or edge://extensions, enable Developer mode and choose “Load unpacked”. Then click the AI Secretary icon on this page.",
@@ -59,6 +71,10 @@
     "en": "AI Secretary — Home",
     "zh": "AI 秘书 — 首页"
   },
+  "API модели доступен": {
+    "en": "Model API is available",
+    "zh": "模型 API 可用"
+  },
   "APK загружен не полностью": {
     "en": "APK download is incomplete",
     "zh": "APK 下载不完整"
@@ -71,13 +87,33 @@
     "en": "A manually entered access token is valid for only 84 hours after issuance, not after saving it here. It must then be replaced. Manual replacement disables automatic token renewal.",
     "zh": "手动输入的访问令牌自签发起仅有效 84 小时，而非从保存时起计算。到期后需要更换。手动更换会停用令牌自动续期。"
   },
+  "Email": {
+    "en": "Email",
+    "zh": "电子邮箱"
+  },
+  "Email исполнителя": {
+    "en": "Assignee email",
+    "zh": "执行人邮箱"
+  },
+  "Email через запятую": {
+    "en": "Email addresses separated by commas",
+    "zh": "用逗号分隔电子邮箱地址"
+  },
   "Enter — отправить · Shift+Enter — новая строка. Ответ готовится\n                на сервере.": {
     "en": "Enter — send · Shift+Enter — new line. The server prepares the answer.",
     "zh": "Enter — 发送 · Shift+Enter — 换行。回答由服务器生成。"
   },
+  "HTTPS для браузера и мобильного приложения": {
+    "en": "HTTPS for browser and mobile app",
+    "zh": "浏览器和移动应用通过 HTTPS 访问"
+  },
   "HTTPS, без пути, логина и параметров. Допускается порт.": {
     "en": "HTTPS, without path, login or parameters. A port is allowed.",
     "zh": "使用 HTTPS，不含路径、登录信息或参数。可以指定端口。"
+  },
+  "Heartbeat не обновлён вовремя": {
+    "en": "Heartbeat was not updated in time",
+    "zh": "心跳未及时更新"
   },
   "IMAP, локальный Exchange и интеграции встреч работают независимо.": {
     "en": "IMAP, on-premises Exchange and meeting integrations work independently.",
@@ -91,6 +127,10 @@
     "en": "LLM temporarily unavailable; the request will retry automatically…",
     "zh": "语言模型暂时不可用，将自动重试请求…"
   },
+  "LLM недоступен": {
+    "en": "LLM unavailable",
+    "zh": "语言模型不可用"
+  },
   "OpenAI-совместимый (LLMOps / vLLM)": {
     "en": "OpenAI compatible (LLMOps / vLLM)",
     "zh": "兼容 OpenAI（LLMOps / vLLM）"
@@ -98,6 +138,10 @@
   "PostgreSQL не запустился. Подробности в logs/database.log": {
     "en": "PostgreSQL failed to start. See logs/database.log for details",
     "zh": "PostgreSQL 启动失败。详情请查看 logs/database.log"
+  },
+  "PostgreSQL не запустился; проверьте журнал AISecretaryDatabase": {
+    "en": "PostgreSQL failed to start; check the AISecretaryDatabase log",
+    "zh": "PostgreSQL 启动失败；请检查 AISecretaryDatabase 日志"
   },
   "Push настроен. В активном приложении изменения приходят через защищённое соединение.": {
     "en": "Push is configured. While the app is active, updates arrive over a secure connection.",
@@ -271,6 +315,10 @@
     "en": "Gateway address",
     "zh": "网关地址"
   },
+  "Активные": {
+    "en": "Active",
+    "zh": "进行中"
+  },
   "Актуально до": {
     "en": "Valid until",
     "zh": "有效期至"
@@ -295,17 +343,37 @@
     "en": "Meeting material analysis failed",
     "zh": "会议资料分析失败"
   },
+  "Анализ сообщения": {
+    "en": "Message analysis",
+    "zh": "消息分析"
+  },
   "Анализируем предыдущие встречи и переписки…": {
     "en": "Analyzing previous meetings and conversations…",
     "zh": "正在分析以往会议和对话…"
+  },
+  "Архив": {
+    "en": "Archive",
+    "zh": "归档"
+  },
+  "Архив задач": {
+    "en": "Task archive",
+    "zh": "任务归档"
   },
   "Архив переписок": {
     "en": "Conversation archive",
     "zh": "对话归档"
   },
+  "Архив поручений": {
+    "en": "Delegation archive",
+    "zh": "委派归档"
+  },
   "Аутентификация": {
     "en": "Authentication",
     "zh": "身份验证"
+  },
+  "База, вложения, настройки и ключи сохраняются в ": {
+    "en": "Database, attachments, settings and keys will be preserved in ",
+    "zh": "数据库、附件、设置和密钥将保留在 "
   },
   "Без клиентского сертификата": {
     "en": "Without a client certificate",
@@ -330,6 +398,14 @@
   "В connection.json нужны пять разных портов от 1024 до 65535": {
     "en": "connection.json requires five distinct ports between 1024 and 65535",
     "zh": "connection.json 需要五个不同的端口，范围为 1024–65535"
+  },
+  "В архиве пока нет задач": {
+    "en": "No archived tasks yet",
+    "zh": "归档中暂无任务"
+  },
+  "В каталоге программы остались данные прежнего деинсталлятора. Завершите удаление прежней версии и повторите установку.": {
+    "en": "Previous uninstaller data remains in the program directory. Finish uninstalling the previous version and retry installation.",
+    "zh": "程序目录中仍有旧卸载程序的数据。请完成旧版本卸载后重试安装。"
   },
   "В локальной установке мобильные push-уведомления доступны через шлюз. Настройте его в разделе «Удалённое подключение».": {
     "en": "In a local installation, mobile push notifications are available through the gateway. Configure it under “Remote connection”.",
@@ -374,6 +450,10 @@
   "Введите название задачи.": {
     "en": "Enter a task title.",
     "zh": "请输入任务名称。"
+  },
+  "Введите публичный DNS-домен.": {
+    "en": "Enter a public DNS domain.",
+    "zh": "请输入公共 DNS 域名。"
   },
   "Введите рабочий email для входа в МТС Линк.": {
     "en": "Enter your work email to sign in to MTS Link.",
@@ -599,13 +679,37 @@
     "en": "Select your organization. Sign-in will open in a separate window.",
     "zh": "选择您的组织。登录将在单独的窗口中打开。"
   },
+  "Выберите ошибку анализа": {
+    "en": "Select an analysis error",
+    "zh": "选择分析错误"
+  },
+  "Выберите свободные порты. Подключение к AI-провайдеру и модель настраиваются в админке после установки.": {
+    "en": "Choose available ports. Configure the AI provider and model in the admin panel after installation.",
+    "zh": "选择可用端口。安装后在管理面板中配置 AI 提供商和模型。"
+  },
   "Выберите способ подключения. Приложение распознает его после сканирования QR-кода.": {
     "en": "Choose a connection method. The app will detect it after scanning the QR code.",
     "zh": "选择连接方式。扫描二维码后，应用将自动识别。"
   },
+  "Выберите черновик обращения.": {
+    "en": "Select a report draft.",
+    "zh": "请选择报告草稿。"
+  },
+  "Выбор источников для ответа по архиву": {
+    "en": "Source selection for archive answers",
+    "zh": "为档案回答选择来源"
+  },
+  "Выбранная модель отсутствует в списке доступных моделей": {
+    "en": "Selected model is not in the list of available models",
+    "zh": "所选模型不在可用模型列表中"
+  },
   "Выбрать": {
     "en": "Select",
     "zh": "选择"
+  },
+  "Выделение задач": {
+    "en": "Task extraction",
+    "zh": "任务提取"
   },
   "Выполнение от": {
     "en": "Completion threshold",
@@ -655,6 +759,10 @@
     "en": "Data and backups will be preserved. The next app launch will restore the services.",
     "zh": "数据和备份将保留。下次启动应用时将恢复服务。"
   },
+  "Данные сохранены в": {
+    "en": "Data preserved in",
+    "zh": "数据保留在"
+  },
   "Данные устарели": {
     "en": "Data is outdated",
     "zh": "数据已过期"
@@ -671,13 +779,29 @@
     "en": "Reminder date and time",
     "zh": "提醒日期和时间"
   },
+  "Деинсталлятор прежней версии отсутствует или повреждён. Установка поверх неё запрещена.": {
+    "en": "The previous uninstaller is missing or corrupted. Installation over it is not allowed.",
+    "zh": "旧卸载程序缺失或损坏。不允许覆盖安装。"
+  },
+  "Действия": {
+    "en": "Actions",
+    "zh": "操作"
+  },
   "Демонстрационный сервер": {
     "en": "Demo server",
     "zh": "演示服务器"
   },
+  "Детали поручения": {
+    "en": "Delegation details",
+    "zh": "委派任务详情"
+  },
   "Для LLMOps укажите базовый URL, например https://llm.example.com/v1": {
     "en": "For LLMOps, enter the base URL, for example https://llm.example.com/v1",
     "zh": "使用 LLMOps 时请输入基础 URL，例如 https://llm.example.com/v1"
+  },
+  "Для завершения удаления нужна перезагрузка. Данные сохранены; после перезагрузки запустите установщик снова.": {
+    "en": "A restart is required to finish uninstalling. Data is preserved; run the installer again after restarting.",
+    "zh": "需要重启以完成卸载。数据已保留；重启后请重新运行安装程序。"
   },
   "Для изменений подключитесь к серверу": {
     "en": "Connect to the server to make changes",
@@ -695,6 +819,10 @@
     "en": "Until {0}",
     "zh": "截至 {0}"
   },
+  "До срока меньше суток": {
+    "en": "Less than a day until due",
+    "zh": "距离截止时间不足一天"
+  },
   "Добавить": {
     "en": "Add",
     "zh": "添加"
@@ -711,9 +839,17 @@
     "en": "Add reminder",
     "zh": "添加提醒"
   },
+  "Добавить сотрудника": {
+    "en": "Add employee",
+    "zh": "添加员工"
+  },
   "Добавить тег": {
     "en": "Add tag",
     "zh": "添加标签"
+  },
+  "Добавьте дополнительные требования из разобранного обращения в нужное поле. Основные инструкции и формат ответа останутся неизменными. Пустое поле отключает коррекцию.": {
+    "en": "Add requirements from a reviewed report to the relevant field. Core instructions and response format remain unchanged. Leave a field empty to disable its correction.",
+    "zh": "将已审查报告中的补充要求填入对应字段。核心指令和响应格式保持不变。留空可禁用该修正规则。"
   },
   "Договорённости": {
     "en": "Agreements",
@@ -734,6 +870,14 @@
   "Доля разобранных событий": {
     "en": "Parsed event ratio",
     "zh": "已解析事件比例"
+  },
+  "Домен вашей установки": {
+    "en": "Your installation domain",
+    "zh": "您的安装域名"
+  },
+  "Домен:": {
+    "en": "Domain:",
+    "zh": "域名："
   },
   "Доменное имя / HTTPS-адрес": {
     "en": "Domain name / HTTPS address",
@@ -767,6 +911,10 @@
     "en": "Gateway connection limit reached (HTTP 429)",
     "zh": "已达到网关连接数限制（HTTP 429）"
   },
+  "Доступ к приложению": {
+    "en": "App access",
+    "zh": "应用访问"
+  },
   "Доступ приостановлен": {
     "en": "Access suspended",
     "zh": "访问已暂停"
@@ -779,9 +927,17 @@
     "en": "New version {0} available. Installed: {1}.",
     "zh": "新版本 {0} 可用。已安装：{1}。"
   },
+  "Доступно обновление приложения": {
+    "en": "An app update is available",
+    "zh": "有可用的应用更新"
+  },
   "Другая настройка служб уже выполняется": {
     "en": "Another service setup is already in progress",
     "zh": "另一个服务配置正在进行中"
+  },
+  "Другая ошибка": {
+    "en": "Other error",
+    "zh": "其他错误"
   },
   "Если расширение уже установлено, нажмите его значок в панели браузера, чтобы подключить к странице.": {
     "en": "If the extension is already installed, click its icon in the browser toolbar to connect it to this page.",
@@ -791,9 +947,17 @@
     "en": "Some components need attention",
     "zh": "部分组件需要关注"
   },
+  "Есть обработчики без прогресса более 15 минут": {
+    "en": "Some workers have made no progress for over 15 minutes",
+    "zh": "部分处理程序已超过 15 分钟无进展"
+  },
   "Есть проблемы": {
     "en": "Issues detected",
     "zh": "存在问题"
+  },
+  "Журнал: ": {
+    "en": "Log: ",
+    "zh": "日志："
   },
   "За это время завершений не было; текущий анализ ещё может выполняться.": {
     "en": "Nothing finished during this period; analysis may still be running.",
@@ -851,6 +1015,10 @@
     "en": "Task added manually",
     "zh": "已手动添加任务"
   },
+  "Задача не создана": {
+    "en": "Task was not created",
+    "zh": "未创建任务"
+  },
   "Задача отменена": {
     "en": "Task cancelled",
     "zh": "任务已取消"
@@ -862,6 +1030,10 @@
   "Задача создана": {
     "en": "Task created",
     "zh": "任务已创建"
+  },
+  "Задача создана ошибочно": {
+    "en": "Task was created incorrectly",
+    "zh": "任务创建错误"
   },
   "Задача, встреча или переписка откроется здесь": {
     "en": "A task, meeting or conversation will open here",
@@ -890,6 +1062,14 @@
   "Закрыть, сохранив черновик": {
     "en": "Close and save draft",
     "zh": "关闭并保存草稿"
+  },
+  "Заменить во всех полях": {
+    "en": "Replace in all fields",
+    "zh": "在所有字段中替换"
+  },
+  "Заменить на": {
+    "en": "Replace with",
+    "zh": "替换为"
   },
   "Заметка": {
     "en": "Note",
@@ -951,6 +1131,10 @@
     "en": "Edit",
     "zh": "编辑"
   },
+  "Изменить задачу": {
+    "en": "Edit task",
+    "zh": "编辑任务"
+  },
   "Изменить источник": {
     "en": "Edit source",
     "zh": "编辑来源"
@@ -958,6 +1142,14 @@
   "Изменить подключение": {
     "en": "Change connection",
     "zh": "更改连接"
+  },
+  "Изменить приоритет и срок": {
+    "en": "Edit priority and due date",
+    "zh": "修改优先级和截止时间"
+  },
+  "Изменить сотрудника": {
+    "en": "Edit employee",
+    "zh": "编辑员工"
   },
   "Изменить статус": {
     "en": "Change status",
@@ -974,6 +1166,10 @@
   "Или прямое подключение без mTLS": {
     "en": "Or connect directly without mTLS",
     "zh": "或不使用 mTLS 直接连接"
+  },
+  "Имя": {
+    "en": "Name",
+    "zh": "姓名"
   },
   "Имя и фамилия пользователя": {
     "en": "User's full name",
@@ -1083,6 +1279,10 @@
     "en": "Open app",
     "zh": "打开应用"
   },
+  "Как в системе": {
+    "en": "System default",
+    "zh": "跟随系统"
+  },
   "Календарная встреча": {
     "en": "Calendar meeting",
     "zh": "日历会议"
@@ -1090,6 +1290,14 @@
   "Камера недоступна. На симуляторе используйте изображение QR": {
     "en": "Camera unavailable. Use a QR image in the simulator",
     "zh": "相机不可用。在模拟器中请使用二维码图片"
+  },
+  "Каталоги программы и сохраняемых данных не должны пересекаться.": {
+    "en": "Program and persistent data directories must not overlap.",
+    "zh": "程序目录和持久数据目录不得重叠。"
+  },
+  "Каталоги программы и сохраняемых данных пересекаются. Удаление остановлено.": {
+    "en": "Program and persistent data directories overlap. Uninstall stopped.",
+    "zh": "程序目录和持久数据目录重叠。已停止卸载。"
   },
   "Ключ выдан для другого гейтвея": {
     "en": "The key was issued for a different gateway",
@@ -1134,6 +1342,10 @@
   "Код этой версии отличается от установленного. Требуется новый номер выпуска": {
     "en": "This version's code differs from the installed version. A new release number is required",
     "zh": "此版本的代码与已安装版本不同。需要新的版本号"
+  },
+  "Комментарий": {
+    "en": "Comment",
+    "zh": "备注"
   },
   "Компонент": {
     "en": "Component",
@@ -1219,6 +1431,10 @@
     "en": "Critical",
     "zh": "紧急"
   },
+  "Локальная база PostgreSQL и фоновые службы": {
+    "en": "Local PostgreSQL database and background services",
+    "zh": "本地 PostgreSQL 数据库和后台服务"
+  },
   "Локальная установка. Мобильный доступ через шлюз настраивается в разделе «Удалённое подключение».": {
     "en": "Local installation. Mobile gateway access is configured under “Remote connection”.",
     "zh": "本地安装。请在“远程连接”中配置移动网关访问。"
@@ -1263,6 +1479,10 @@
     "en": "Model",
     "zh": "模型"
   },
+  "Модель вернула пустой ответ": {
+    "en": "Model returned an empty response",
+    "zh": "模型返回空响应"
+  },
   "Можно ввести access token вручную. Он действует только 84 часа с момента выдачи, затем потребуется замена.": {
     "en": "You can enter an access token manually. It is valid for only 84 hours after issuance and must then be replaced.",
     "zh": "可以手动输入访问令牌。令牌自签发起仅有效 84 小时，到期后需要更换。"
@@ -1295,6 +1515,10 @@
     "en": "In review",
     "zh": "审核中"
   },
+  "На рассмотрении": {
+    "en": "Under review",
+    "zh": "审核中"
+  },
   "На сегодня": {
     "en": "Today",
     "zh": "今天"
@@ -1302,6 +1526,10 @@
   "На сегодня ничего не запланировано": {
     "en": "Nothing scheduled for today",
     "zh": "今天没有安排"
+  },
+  "На этом компьютере или по HTTPS": {
+    "en": "On this computer or over HTTPS",
+    "zh": "在此计算机上或通过 HTTPS"
   },
   "Наведите камеру на QR-код в настройках AI Секретаря": {
     "en": "Point the camera at the QR code in AI Secretary settings",
@@ -1350,6 +1578,18 @@
   "Назовите задачу, приоритет и срок выполнения": {
     "en": "Say the task, priority and due date",
     "zh": "请说出任务、优先级和截止日期"
+  },
+  "Найденный элемент": {
+    "en": "Detected item",
+    "zh": "检测到的条目"
+  },
+  "Найденный элемент {0}: {1}": {
+    "en": "Detected item {0}: {1}",
+    "zh": "识别项目 {0}：{1}"
+  },
+  "Найти во всех полях": {
+    "en": "Find in all fields",
+    "zh": "在所有字段中查找"
   },
   "Найти организацию": {
     "en": "Find organization",
@@ -1423,9 +1663,17 @@
     "en": "Start",
     "zh": "开始"
   },
+  "Не более 200 сотрудников в списке": {
+    "en": "At most 200 employees per list",
+    "zh": "每个列表最多200名员工"
+  },
   "Не найден адрес установленного сервера": {
     "en": "Installed server address not found",
     "zh": "未找到已安装服务器的地址"
+  },
+  "Не найдена команда удаления прежней версии. Восстановите деинсталлятор и повторите установку.": {
+    "en": "Previous version uninstall command not found. Restore the uninstaller and retry installation.",
+    "zh": "未找到旧版本卸载命令。请恢复卸载程序并重试安装。"
   },
   "Не настроен": {
     "en": "Not configured",
@@ -1467,6 +1715,10 @@
     "en": "Could not load meeting context",
     "zh": "无法加载会议上下文"
   },
+  "Не удалось загрузить обращения": {
+    "en": "Could not load reports",
+    "zh": "无法加载报告"
+  },
   "Не удалось загрузить переписки": {
     "en": "Could not load conversations",
     "zh": "无法加载对话列表"
@@ -1495,9 +1747,17 @@
     "en": "Could not load chat",
     "zh": "无法加载聊天"
   },
+  "Не удалось загрузить черновик": {
+    "en": "Could not load the draft",
+    "zh": "无法加载草稿"
+  },
   "Не удалось запустить камеру": {
     "en": "Could not start camera",
     "zh": "无法启动相机"
+  },
+  "Не удалось запустить помощник: ": {
+    "en": "Could not start helper: ",
+    "zh": "无法启动辅助程序："
   },
   "Не удалось запустить сервер. Откройте журналы или перезапустите приложение.": {
     "en": "Could not start the server. Open the logs or restart the app.",
@@ -1507,13 +1767,33 @@
     "en": "Could not start services",
     "zh": "无法启动服务"
   },
+  "Не удалось запустить удаление прежней версии: ": {
+    "en": "Could not start uninstalling the previous version: ",
+    "zh": "无法开始卸载旧版本："
+  },
+  "Не удалось запустить установку Microsoft Visual C++ Runtime.": {
+    "en": "Could not start Microsoft Visual C++ Runtime installation.",
+    "zh": "无法启动 Microsoft Visual C++ Runtime 安装。"
+  },
   "Не удалось зарегистрировать уведомления. Остальные функции доступны.": {
     "en": "Could not register notifications. Other features remain available.",
     "zh": "无法注册通知。其他功能仍可使用。"
   },
+  "Не удалось зарегистрировать уведомления: {0}": {
+    "en": "Could not register notifications: {0}",
+    "zh": "无法注册通知：{0}"
+  },
+  "Не удалось настроить службы. Данные сохранены.": {
+    "en": "Could not configure services. Data is preserved.",
+    "zh": "无法配置服务。数据已保留。"
+  },
   "Не удалось обновить": {
     "en": "Could not update",
     "zh": "无法更新"
+  },
+  "Не удалось остановить и удалить службы. Файлы программы сохраняются.": {
+    "en": "Could not stop and remove services. Program files are preserved.",
+    "zh": "无法停止和移除服务。程序文件已保留。"
   },
   "Не удалось остановить службы": {
     "en": "Could not stop services",
@@ -1551,13 +1831,29 @@
     "en": "Could not send question",
     "zh": "无法发送问题"
   },
+  "Не удалось отправить отчёт": {
+    "en": "Could not send the report",
+    "zh": "无法发送报告"
+  },
   "Не удалось оформить голосовую задачу": {
     "en": "Could not create task from dictation",
     "zh": "无法根据语音创建任务"
   },
+  "Не удалось повторить отправку": {
+    "en": "Could not retry delivery",
+    "zh": "无法重试发送"
+  },
+  "Не удалось повторить попытку": {
+    "en": "Could not retry",
+    "zh": "无法重试"
+  },
   "Не удалось подготовить контекст": {
     "en": "Could not prepare context",
     "zh": "无法准备上下文"
+  },
+  "Не удалось подготовить обезличивание": {
+    "en": "Could not prepare anonymization",
+    "zh": "无法完成匿名化"
   },
   "Не удалось подключиться. Проверьте адрес, сеть и сертификат. {0}": {
     "en": "Could not connect. Check the address, network and certificate. {0}",
@@ -1583,13 +1879,29 @@
     "en": "Could not get system status",
     "zh": "无法获取系统状态"
   },
+  "Не удалось проверить обновление в магазине": {
+    "en": "Could not check for an update in the store",
+    "zh": "无法在应用商店检查更新"
+  },
   "Не удалось проверить обновление: {0}": {
     "en": "Could not check for updates: {0}",
     "zh": "无法检查更新：{0}"
   },
+  "Не удалось проверить правки": {
+    "en": "Could not check the edits",
+    "zh": "无法检查修改"
+  },
+  "Не удалось проверить статус": {
+    "en": "Could not check the status",
+    "zh": "无法查询状态"
+  },
   "Не удалось прочитать ключ. Используйте действующий QR-код прямого подключения или гейтвея из настроек AI Секретаря.": {
     "en": "Could not read the key. Use a valid direct connection or gateway QR code from AI Secretary settings.",
     "zh": "无法读取密钥。请使用 AI 秘书设置中有效的直连或网关二维码。"
+  },
+  "Не удалось связаться с GitHub. Проверка будет повторена.": {
+    "en": "Could not reach GitHub. The check will be retried.",
+    "zh": "无法连接 GitHub。将重试检查。"
   },
   "Не удалось скачать обновление: {0}": {
     "en": "Could not download update: {0}",
@@ -1611,6 +1923,10 @@
     "en": "Could not save APK",
     "zh": "无法保存 APK"
   },
+  "Не удалось сохранить изменения": {
+    "en": "Could not save changes",
+    "zh": "无法保存更改"
+  },
   "Не удалось сохранить ключ в Keychain ({0})": {
     "en": "Could not save key in Keychain ({0})",
     "zh": "无法将密钥保存到钥匙串（{0}）"
@@ -1618,6 +1934,14 @@
   "Не удалось сохранить настройки подключения": {
     "en": "Could not save connection settings",
     "zh": "无法保存连接设置"
+  },
+  "Не удалось сформировать отчёт": {
+    "en": "Could not prepare the report",
+    "zh": "无法生成报告"
+  },
+  "Не удалось установить Microsoft Visual C++ Runtime: ": {
+    "en": "Could not install Microsoft Visual C++ Runtime: ",
+    "zh": "无法安装 Microsoft Visual C++ Runtime："
   },
   "Не указан": {
     "en": "Not specified",
@@ -1627,9 +1951,17 @@
     "en": "Not specified",
     "zh": "未指定"
   },
+  "Неверное содержание": {
+    "en": "Incorrect content",
+    "zh": "内容不正确"
+  },
   "Неверные параметры источника": {
     "en": "Invalid source settings",
     "zh": "来源设置无效"
+  },
+  "Неверный исполнитель": {
+    "en": "Wrong assignee",
+    "zh": "执行人错误"
   },
   "Недопустимый адрес входа МТС Линк.": {
     "en": "Invalid MTS Link sign-in address.",
@@ -1678,6 +2010,10 @@
   "Некорректный идентификатор ключа": {
     "en": "Invalid key identifier",
     "zh": "密钥标识符无效"
+  },
+  "Некорректный ответ модели": {
+    "en": "Invalid model response",
+    "zh": "模型响应无效"
   },
   "Некорректный ответ сервера": {
     "en": "Invalid server response",
@@ -1743,6 +2079,10 @@
     "en": "No connection. Showing last received data.",
     "zh": "无连接。正在显示上次收到的数据。"
   },
+  "Нет сотрудников": {
+    "en": "No employees",
+    "zh": "暂无员工"
+  },
   "Неудачные попытки и исключённые события в скорость не входят.": {
     "en": "Failed attempts and excluded events are not included in the processing rate.",
     "zh": "处理速率不包含失败的尝试和被排除的事件。"
@@ -1763,6 +2103,10 @@
     "en": "New task",
     "zh": "新建任务"
   },
+  "Новые версии": {
+    "en": "New releases",
+    "zh": "新版本"
+  },
   "Новый JSON-ключ": {
     "en": "New JSON key",
     "zh": "新建 JSON 密钥"
@@ -1779,6 +2123,14 @@
     "en": "No new versions.",
     "zh": "没有新版本。"
   },
+  "Номер обращения": {
+    "en": "Report ID",
+    "zh": "报告编号"
+  },
+  "Номер обращения: {0}": {
+    "en": "Report ID: {0}",
+    "zh": "报告编号：{0}"
+  },
   "Норма": {
     "en": "Healthy",
     "zh": "正常"
@@ -1790,6 +2142,26 @@
   "Нужно подтвердить задачу": {
     "en": "Task needs confirmation",
     "zh": "任务待确认"
+  },
+  "Обезличивание выполняется в фоне": {
+    "en": "Anonymization in progress",
+    "zh": "匿名化正在进行"
+  },
+  "Обезличивание выполняется в фоне. Можно вернуться позже.": {
+    "en": "Anonymization is running in the background. You can return later.",
+    "zh": "匿名化正在后台进行。您可以稍后返回。"
+  },
+  "Обезличивание готово к проверке": {
+    "en": "Anonymization ready for review",
+    "zh": "匿名化已完成，可供审核"
+  },
+  "Обезличивание обращения": {
+    "en": "Report anonymization",
+    "zh": "报告匿名化"
+  },
+  "Обезличивание продолжается в фоне. Вернитесь в «Обращения», когда черновик будет готов.": {
+    "en": "Anonymization continues in the background. Return to Reports when the draft is ready.",
+    "zh": "匿名化将在后台继续。草稿准备好后，请返回“报告”。"
   },
   "Область чтения": {
     "en": "Read scope",
@@ -1810,6 +2182,10 @@
   "Обновить контекст": {
     "en": "Refresh context",
     "zh": "刷新上下文"
+  },
+  "Обновить статусы": {
+    "en": "Refresh statuses",
+    "zh": "刷新状态"
   },
   "Обновление major-версии PostgreSQL требует отдельной миграции": {
     "en": "A PostgreSQL major version upgrade requires a separate migration",
@@ -1851,6 +2227,10 @@
     "en": "Updates are installed through TestFlight or the App Store. The app does not download executable files itself.",
     "zh": "通过 TestFlight 或 App Store 安装更新。应用不会自行下载可执行文件。"
   },
+  "Обновления устанавливаются через {0}.": {
+    "en": "Updates are installed through {0}.",
+    "zh": "更新通过{0}安装。"
+  },
   "Обновлено": {
     "en": "Updated",
     "zh": "已更新"
@@ -1875,6 +2255,30 @@
     "en": "Processing and attachments",
     "zh": "处理与附件"
   },
+  "Обращение": {
+    "en": "Report",
+    "zh": "报告"
+  },
+  "Обращение {0}: {1}": {
+    "en": "Report {0}: {1}",
+    "zh": "报告 {0}：{1}"
+  },
+  "Обращение отправлено": {
+    "en": "Report sent",
+    "zh": "报告已发送"
+  },
+  "Обращений пока нет": {
+    "en": "No reports yet",
+    "zh": "暂无报告"
+  },
+  "Обращения": {
+    "en": "Reports",
+    "zh": "报告"
+  },
+  "Обращения: {0} готовы к проверке": {
+    "en": "Reports: {0} ready for review",
+    "zh": "报告：{0} 份待审核"
+  },
   "Обычный": {
     "en": "Normal",
     "zh": "普通"
@@ -1886,6 +2290,10 @@
   "Ожидает": {
     "en": "Waiting",
     "zh": "等待中"
+  },
+  "Ожидает отправки": {
+    "en": "Waiting to send",
+    "zh": "等待发送"
   },
   "Ожидание данных": {
     "en": "Waiting for data",
@@ -1910,6 +2318,10 @@
   "Описание не указано.": {
     "en": "No description provided.",
     "zh": "未提供描述。"
+  },
+  "Определение срока задачи": {
+    "en": "Task due date resolution",
+    "zh": "确定任务截止日期"
   },
   "Организатор": {
     "en": "Organizer",
@@ -1971,6 +2383,14 @@
     "en": "The server is preparing the answer…",
     "zh": "服务器正在生成回答…"
   },
+  "Ответ модели обрезан по лимиту токенов": {
+    "en": "Model response truncated at the token limit",
+    "zh": "模型响应因令牌上限而被截断"
+  },
+  "Ответ по архиву": {
+    "en": "Archive answer",
+    "zh": "档案回答"
+  },
   "Ответ: {0}": {
     "en": "Answer: {0}",
     "zh": "回答：{0}"
@@ -2027,6 +2447,10 @@
     "en": "Opening corporate sign-in…",
     "zh": "正在打开企业登录…"
   },
+  "Открыть {0}": {
+    "en": "Open {0}",
+    "zh": "打开{0}"
+  },
   "Открыть в источнике": {
     "en": "Open in source",
     "zh": "在来源中打开"
@@ -2055,6 +2479,10 @@
     "en": "Open original email",
     "zh": "打开原始邮件"
   },
+  "Открыть настройку источников и модели": {
+    "en": "Open source and model settings",
+    "zh": "打开来源和模型设置"
+  },
   "Открыть новую версию на GitHub": {
     "en": "Open new version on GitHub",
     "zh": "在 GitHub 查看新版本"
@@ -2078,6 +2506,10 @@
   "Открыть расшифровку": {
     "en": "Open transcript",
     "zh": "打开转录"
+  },
+  "Открыть ссылку": {
+    "en": "Open link",
+    "zh": "打开链接"
   },
   "Отмена": {
     "en": "Cancel",
@@ -2103,6 +2535,10 @@
     "en": "Send",
     "zh": "发送"
   },
+  "Отправить отчёт": {
+    "en": "Send report",
+    "zh": "发送报告"
+  },
   "Отправить ↑": {
     "en": "Send ↑",
     "zh": "发送 ↑"
@@ -2115,6 +2551,10 @@
     "en": "Sent",
     "zh": "已发送"
   },
+  "Отправятся только показанные выше обезличенные поля.": {
+    "en": "Only the redacted fields shown above will be sent.",
+    "zh": "仅发送上方显示的脱敏字段。"
+  },
   "Отсканируйте QR-код из раздела «Мобильное приложение» в настройках сервера. Ключ останется в закрытом каталоге приложения и не будет установлен в систему. Для сервера без mTLS этот шаг можно пропустить.": {
     "en": "Scan the QR code from “Mobile app” in server settings. The key stays in the app's private directory and is not installed system-wide. You can skip this step for a server without mTLS.",
     "zh": "扫描服务器设置中“移动应用”的二维码。密钥将保留在应用私有目录中，不会安装到系统。对于不使用 mTLS 的服务器，可跳过此步骤。"
@@ -2123,9 +2563,17 @@
     "en": "Missing secrets/{0}; restore a backup",
     "zh": "缺少 secrets/{0}；请恢复备份"
   },
+  "Офлайн-распознавание выбранного языка недоступно на этом устройстве. Введите заметку текстом": {
+    "en": "Offline recognition for the selected language is unavailable on this device. Type your note instead",
+    "zh": "此设备不支持所选语言的离线识别。请改为输入笔记"
+  },
   "Очереди": {
     "en": "Queues",
     "zh": "队列"
+  },
+  "Очереди обрабатываются": {
+    "en": "Queues are being processed",
+    "zh": "正在处理队列"
   },
   "Очередь обработки": {
     "en": "Processing queue",
@@ -2151,9 +2599,21 @@
     "en": "Error {0}",
     "zh": "错误 {0}"
   },
+  "Ошибка анализа": {
+    "en": "Analysis error",
+    "zh": "分析错误"
+  },
   "Ошибка соединения": {
     "en": "Connection error",
     "zh": "连接错误"
+  },
+  "Ошибка соединения с моделью": {
+    "en": "Model connection error",
+    "zh": "模型连接错误"
+  },
+  "Ошибка установки:": {
+    "en": "Installation error:",
+    "zh": "安装错误："
   },
   "Пакет или версия APK не совпадают": {
     "en": "APK package or version does not match",
@@ -2166,6 +2626,10 @@
   "Первоисточник": {
     "en": "Original source",
     "zh": "原始来源"
+  },
+  "Переместите новый установщик из каталога программы, например в Загрузки, и запустите снова.": {
+    "en": "Move the new installer outside the program directory, for example to Downloads, then run it again.",
+    "zh": "请将新安装程序移出程序目录，例如移至“下载”，然后重新运行。"
   },
   "Переписка": {
     "en": "Conversation",
@@ -2202,6 +2666,14 @@
   "Период": {
     "en": "Period",
     "zh": "时间段"
+  },
+  "Период задач": {
+    "en": "Task period",
+    "zh": "任务范围"
+  },
+  "Персональные коррекции запросов к модели": {
+    "en": "Personal corrections for model requests",
+    "zh": "模型请求的个性化修正规则"
   },
   "Письма и события встреч · всего": {
     "en": "Emails and meeting events · total",
@@ -2301,6 +2773,14 @@
   },
   "Повторить": {
     "en": "Retry",
+    "zh": "重试"
+  },
+  "Повторить отправку": {
+    "en": "Retry delivery",
+    "zh": "重试发送"
+  },
+  "Повторить попытку": {
+    "en": "Try again",
     "zh": "重试"
   },
   "Повторное ранжирование, секунд": {
@@ -2447,25 +2927,73 @@
     "en": "Show QR code",
     "zh": "显示二维码"
   },
+  "Политика конфиденциальности": {
+    "en": "Privacy policy",
+    "zh": "隐私政策"
+  },
   "Получаем версию исходников…": {
     "en": "Fetching source version…",
     "zh": "正在获取源码版本…"
+  },
+  "Получатель: connect.ai-secretary.co. Отправятся только показанные выше обезличенные поля.": {
+    "en": "Recipient: connect.ai-secretary.co. Only the redacted fields shown above will be sent.",
+    "zh": "接收方：connect.ai-secretary.co。仅发送上方显示的脱敏字段。"
+  },
+  "Получатель: connect.ai-secretary.co. Отправятся только показанные обезличенные поля.": {
+    "en": "Recipient: connect.ai-secretary.co. Only the redacted fields shown above will be sent.",
+    "zh": "接收方：connect.ai-secretary.co。仅发送上方显示的脱敏字段。"
+  },
+  "Получено": {
+    "en": "Received",
+    "zh": "已收到"
   },
   "Пользователь": {
     "en": "User",
     "zh": "用户"
   },
+  "Помощник завершился с кодом ": {
+    "en": "Helper exited with code ",
+    "zh": "辅助程序退出，代码为 "
+  },
   "Порт": {
     "en": "Port",
     "zh": "端口"
+  },
+  "Порт PostgreSQL:": {
+    "en": "PostgreSQL port:",
+    "zh": "PostgreSQL 端口："
+  },
+  "Порт интерфейса:": {
+    "en": "Interface port:",
+    "zh": "界面端口："
+  },
+  "Порт парсера документов:": {
+    "en": "Document parser port:",
+    "zh": "文档解析器端口："
   },
   "Поручение · выявлено ИИ": {
     "en": "Delegation · detected by AI",
     "zh": "委派任务 · AI 识别"
   },
+  "Поручение не создано": {
+    "en": "Delegation was not created",
+    "zh": "未创建委派事项"
+  },
+  "Поручение создано ошибочно": {
+    "en": "Delegation was created incorrectly",
+    "zh": "委派事项创建错误"
+  },
   "Поручения": {
     "en": "Delegations",
     "zh": "委派任务"
+  },
+  "Поручения из переписки": {
+    "en": "Delegations from correspondence",
+    "zh": "从通信中提取委派事项"
+  },
+  "Поручения из результатов встреч": {
+    "en": "Delegations from meeting results",
+    "zh": "从会议结果中提取委派事项"
   },
   "Поручения не найдены": {
     "en": "No delegations found",
@@ -2474,6 +3002,14 @@
   "Поручения сотрудникам из исходящих писем": {
     "en": "Employee delegations from outgoing emails",
     "zh": "从已发送邮件中识别的员工委派任务"
+  },
+  "После исправления ошибки запустите установщик повторно.": {
+    "en": "After fixing the error, run the installer again.",
+    "zh": "修复错误后，请重新运行安装程序。"
+  },
+  "После удаления не найдены сохранённые настройки. Восстановите ProgramData из резервной копии перед установкой.": {
+    "en": "Preserved settings not found after uninstall. Restore ProgramData from a backup before installing.",
+    "zh": "卸载后未找到保留的设置。安装前请从备份恢复 ProgramData。"
   },
   "Последнее наблюдение": {
     "en": "Last observation",
@@ -2490,6 +3026,10 @@
   "Последняя успешная проверка: {0}.": {
     "en": "Last successful check: {0}.",
     "zh": "上次检查成功：{0}。"
+  },
+  "Посмотреть обращения": {
+    "en": "View reports",
+    "zh": "查看报告"
   },
   "Поток закрыт": {
     "en": "Stream closed",
@@ -2526,6 +3066,14 @@
   "Предупреждать за, минут": {
     "en": "Notify in advance, minutes",
     "zh": "提前通知（分钟）"
+  },
+  "Предупреждения": {
+    "en": "Warnings",
+    "zh": "警告"
+  },
+  "Прежняя версия будет удалена, затем программа будет установлена заново.": {
+    "en": "The previous version will be removed, then the app will be installed again.",
+    "zh": "将先移除旧版本，然后重新安装应用。"
   },
   "При первом запуске подготовка может занять несколько минут.": {
     "en": "Preparation may take a few minutes on the first launch.",
@@ -2583,9 +3131,21 @@
     "en": "Check for updates",
     "zh": "检查更新"
   },
+  "Проверить подготовку": {
+    "en": "Check progress",
+    "zh": "查看进度"
+  },
+  "Проверить правки": {
+    "en": "Check edits",
+    "zh": "检查修改"
+  },
   "Проверить разбор ссылки": {
     "en": "Test link parsing",
     "zh": "测试链接解析"
+  },
+  "Проверить статус": {
+    "en": "Check status",
+    "zh": "查询状态"
   },
   "Проверка выполнения": {
     "en": "Completion check",
@@ -2599,6 +3159,10 @@
     "en": "Source check interval, seconds",
     "zh": "来源检查间隔（秒）"
   },
+  "Проверка обезличивания": {
+    "en": "Anonymization review",
+    "zh": "匿名化审核"
+  },
   "Проверка подключения": {
     "en": "Connection check",
     "zh": "连接检查"
@@ -2610,6 +3174,18 @@
   "Проверка состояния": {
     "en": "Status check",
     "zh": "状态检查"
+  },
+  "Проверьте обезличивание каждого поля": {
+    "en": "Review the redaction in every field",
+    "zh": "检查每个字段的脱敏结果"
+  },
+  "Проверьте обезличивание каждого поля перед отправкой.": {
+    "en": "Review redaction in every field before sending.",
+    "zh": "发送前请检查每个字段的脱敏结果。"
+  },
+  "Проверьте обезличивание каждого поля перед экспортом.": {
+    "en": "Review redaction in every field before exporting.",
+    "zh": "导出前请检查每个字段的脱敏结果。"
   },
   "Проверяем APK…": {
     "en": "Verifying APK…",
@@ -2635,9 +3211,17 @@
     "en": "Checking…",
     "zh": "正在检查…"
   },
+  "Проверяются правки и обезличивание…": {
+    "en": "Checking edits and anonymization…",
+    "zh": "正在检查修改和匿名化…"
+  },
   "Продиктовать заметку": {
     "en": "Dictate note",
     "zh": "语音输入笔记"
+  },
+  "Продолжить проверку": {
+    "en": "Continue review",
+    "zh": "继续审核"
   },
   "Просрочена": {
     "en": "Overdue",
@@ -2662,6 +3246,14 @@
   "Прямое подключение недоступно в локальном режиме. Используйте шлюз или настройте публичный HTTPS при установке сервера.": {
     "en": "Direct connection is unavailable in local mode. Use a gateway or configure public HTTPS when installing the server.",
     "zh": "本地模式下无法直连。请使用网关，或在安装服务器时配置公共 HTTPS。"
+  },
+  "Публичный HTTPS-адрес": {
+    "en": "Public HTTPS address",
+    "zh": "公共 HTTPS 地址"
+  },
+  "Публичный доступ требует домена и перенаправления портов 80 и 443 на этот компьютер. Для доступа с телефона будет создан клиентский сертификат.": {
+    "en": "Public access requires a domain and forwarding ports 80 and 443 to this computer. A client certificate will be created for phone access.",
+    "zh": "公共访问需要域名，并将端口 80 和 443 转发到此计算机。将创建用于手机访问的客户端证书。"
   },
   "Публичных Android-сборок пока нет": {
     "en": "No public Android builds yet",
@@ -2775,6 +3367,14 @@
     "en": "Backing up before update…",
     "zh": "正在更新前备份…"
   },
+  "Резервная копия создана:": {
+    "en": "Backup created:",
+    "zh": "已创建备份："
+  },
+  "Резервное копирование не завершено. Установка остановлена до замены файлов.": {
+    "en": "Backup did not finish. Installation stopped before replacing files.",
+    "zh": "备份未完成。已在替换文件前停止安装。"
+  },
   "Результат встречи": {
     "en": "Meeting result",
     "zh": "会议纪要"
@@ -2847,6 +3447,10 @@
     "en": "No decisions identified.",
     "zh": "未提取到决定。"
   },
+  "Решено": {
+    "en": "Resolved",
+    "zh": "已解决"
+  },
   "СЕРВЕР": {
     "en": "SERVER",
     "zh": "服务器"
@@ -2854,6 +3458,10 @@
   "СПРАВОЧНИК": {
     "en": "DIRECTORY",
     "zh": "目录"
+  },
+  "Сборка": {
+    "en": "Build",
+    "zh": "构建号"
   },
   "Сбросить": {
     "en": "Reset",
@@ -2863,9 +3471,25 @@
     "en": "Linked to calendar",
     "zh": "已关联日历"
   },
+  "Секретарь": {
+    "en": "Secretary",
+    "zh": "秘书"
+  },
   "Семафор": {
     "en": "Status indicator",
     "zh": "状态指示器"
+  },
+  "Семафор LLM": {
+    "en": "LLM semaphore",
+    "zh": "语言模型信号量"
+  },
+  "Сервер": {
+    "en": "Server",
+    "zh": "服务器"
+  },
+  "Сервер AI Секретаря": {
+    "en": "AI Secretary server",
+    "zh": "AI 秘书服务器"
   },
   "Сервер автоматически восстанавливает соединение со шлюзом после обрыва связи. Для подключения не нужны публичный IP-адрес и открытые входящие порты.": {
     "en": "The server automatically reconnects to the gateway after connection loss. No public IP or open inbound ports are needed.",
@@ -2919,6 +3543,10 @@
     "en": "The server connects to the gateway itself. No domain name or open inbound ports are required.",
     "zh": "服务器会主动连接网关。无需域名或开放入站端口。"
   },
+  "Сертификат и пароль сохранены в": {
+    "en": "Certificate and password saved in",
+    "zh": "证书和密码已保存到"
+  },
   "Сертификат не соответствует роли или UID": {
     "en": "Certificate does not match role or UID",
     "zh": "证书与角色或 UID 不匹配"
@@ -2950,6 +3578,10 @@
   "Скачать обновление": {
     "en": "Download update",
     "zh": "下载更新"
+  },
+  "Скачать отчёт": {
+    "en": "Download report",
+    "zh": "下载报告"
   },
   "Скачать расширение": {
     "en": "Download extension",
@@ -2995,6 +3627,14 @@
     "en": "AISecretary services failed to start. Check Windows Services or reinstall.",
     "zh": "AISecretary 服务启动失败。请检查 Windows 服务或重新安装。"
   },
+  "Службы удалены. База, настройки и резервные копии сохранены в": {
+    "en": "Services removed. Database, settings and backups preserved in",
+    "zh": "服务已移除。数据库、设置和备份保留在"
+  },
+  "Службы установлены. Настройте источники и модель в панели администратора.": {
+    "en": "Services installed. Configure sources and model in the admin panel.",
+    "zh": "服务已安装。请在管理面板中配置来源和模型。"
+  },
   "Сначала новые": {
     "en": "Newest first",
     "zh": "最新优先"
@@ -3006,6 +3646,10 @@
   "Снижен": {
     "en": "Degraded",
     "zh": "性能下降"
+  },
+  "Собрание": {
+    "en": "Meeting",
+    "zh": "会议"
   },
   "Событий в пакете": {
     "en": "Events per batch",
@@ -3022,6 +3666,10 @@
   "Создана вручную. Исходное сообщение отсутствует.": {
     "en": "Created manually. No source message available.",
     "zh": "手动创建。无原始消息。"
+  },
+  "Создание задачи из заметки": {
+    "en": "Create task from note",
+    "zh": "从便笺创建任务"
   },
   "Создание локальной базы данных…": {
     "en": "Creating local database…",
@@ -3055,6 +3703,10 @@
     "en": "Message",
     "zh": "消息"
   },
+  "Сообщение {0}: {1}": {
+    "en": "Message {0}: {1}",
+    "zh": "消息 {0}：{1}"
+  },
   "Сообщение · МТС Линк": {
     "en": "Message · MTS Link",
     "zh": "消息 · MTS Link"
@@ -3078,6 +3730,22 @@
   "Сообщения сохраняются в архиве и остаются доступны поиску, но не передаются Qwen и не создают задачи. Ответы о принятии/отклонении встреч и автоответы об отсутствии исключаются автоматически.": {
     "en": "Messages are archived and searchable, but are not sent to Qwen and do not create tasks. Meeting acceptance/decline responses and out-of-office replies are excluded automatically.",
     "zh": "消息将归档且可搜索，但不会发送给 Qwen 或创建任务。会议接受/拒绝回复和外出自动回复会自动排除。"
+  },
+  "Сообщить об ошибке": {
+    "en": "Report an error",
+    "zh": "报告错误"
+  },
+  "Сообщить об ошибке анализа": {
+    "en": "Report an analysis error",
+    "zh": "报告分析错误"
+  },
+  "Сопоставление писем в цепочке": {
+    "en": "Email thread matching",
+    "zh": "邮件会话匹配"
+  },
+  "Сопоставление результатов встречи": {
+    "en": "Meeting result matching",
+    "zh": "会议结果匹配"
   },
   "Сортировать по приоритету и сроку": {
     "en": "Sort by priority and due date",
@@ -3183,6 +3851,10 @@
     "en": "Record list",
     "zh": "记录列表"
   },
+  "Список поручений": {
+    "en": "Delegation list",
+    "zh": "委派列表"
+  },
   "Способ подключения": {
     "en": "Connection method",
     "zh": "连接方式"
@@ -3235,9 +3907,17 @@
     "en": "Status",
     "zh": "状态"
   },
+  "Статусы обращений": {
+    "en": "Report statuses",
+    "zh": "报告状态"
+  },
   "Стоп-слова и фразы": {
     "en": "Stop words and phrases",
     "zh": "排除词语和短语"
+  },
+  "Сформировать отчёт": {
+    "en": "Prepare report",
+    "zh": "生成报告"
   },
   "Сформулировать задачу с Qwen": {
     "en": "Create task with Qwen",
@@ -3275,6 +3955,10 @@
     "en": "Source tags",
     "zh": "来源标签"
   },
+  "Текст": {
+    "en": "Text",
+    "zh": "正文"
+  },
   "Текст отсутствует": {
     "en": "No text",
     "zh": "无文本"
@@ -3307,6 +3991,10 @@
     "en": "Tokens are stored encrypted on the server. If sign-in is cancelled, the new source remains disabled.",
     "zh": "令牌以加密形式存储在服务器上。取消登录后，新来源将保持停用状态。"
   },
+  "Только на этом компьютере": {
+    "en": "Only on this computer",
+    "zh": "仅在此计算机上"
+  },
   "Трафик между устройством и вашим сервером защищён сквозным шифрованием. Шлюз передаёт зашифрованные данные и не имеет доступа к содержимому запросов и ответов. Ключи шифрования остаются на устройстве и вашем сервере.": {
     "en": "Traffic between your device and server is end-to-end encrypted. The gateway relays encrypted data and cannot access request or response content. Encryption keys stay on your device and server.",
     "zh": "设备与服务器之间的流量采用端到端加密。网关仅转发加密数据，无法访问请求或响应内容。加密密钥保留在您的设备和服务器上。"
@@ -3335,9 +4023,25 @@
     "en": "Notifications and schedule",
     "zh": "通知与时间安排"
   },
+  "Удаление прежней версии завершилось с ошибкой ": {
+    "en": "Previous version uninstall failed with error ",
+    "zh": "旧版本卸载失败，错误为 "
+  },
+  "Удаление прежней версии не завершено. Установка новых файлов остановлена; повторите запуск после завершения удаления.": {
+    "en": "Previous version uninstall is incomplete. New file installation stopped; retry when uninstall finishes.",
+    "zh": "旧版本尚未完成卸载。已停止安装新文件；卸载完成后请重试。"
+  },
+  "Удаление прежних файлов ожидает перезагрузки. Перезагрузите Windows и запустите установку снова.": {
+    "en": "Removal of old files requires a restart. Restart Windows and run the installer again.",
+    "zh": "删除旧文件需要重启。请重启 Windows 后重新运行安装程序。"
+  },
   "Удалить": {
     "en": "Delete",
     "zh": "删除"
+  },
+  "Удалить AI Секретарь": {
+    "en": "Uninstall AI Secretary",
+    "zh": "卸载 AI 秘书"
   },
   "Удалить источник «{0}» вместе со всеми его переписками, задачами и вложениями? Ручные задачи сохранятся.": {
     "en": "Delete source “{0}” along with all its conversations, tasks and attachments? Manual tasks will be preserved.",
@@ -3346,6 +4050,14 @@
   "Удалить ключ и локальные данные": {
     "en": "Delete key and local data",
     "zh": "删除密钥和本地数据"
+  },
+  "Удалить обращение": {
+    "en": "Delete report",
+    "zh": "删除报告"
+  },
+  "Удалить обращение из приложения и поддержки? Это действие нельзя отменить.": {
+    "en": "Delete this report from the app and support? This cannot be undone.",
+    "zh": "从应用和支持系统中删除此报告？此操作无法撤销。"
   },
   "Удалить подключение и сохранённые данные?": {
     "en": "Delete connection and saved data?",
@@ -3391,9 +4103,25 @@
     "en": "Enter a date and time.",
     "zh": "请输入日期和时间。"
   },
+  "Укажите домен без https://. Поддерживается DynDNS. Let's Encrypt подтвердит домен через HTTP и будет продлевать серверный сертификат автоматически.": {
+    "en": "Enter the domain without https://. DynDNS is supported. Let's Encrypt will verify the domain over HTTP and renew the server certificate automatically.",
+    "zh": "输入域名，不含 https://。支持 DynDNS。Let's Encrypt 将通过 HTTP 验证域名并自动续期服务器证书。"
+  },
+  "Укажите имя сотрудника": {
+    "en": "Enter the employee’s name",
+    "zh": "请输入员工姓名"
+  },
+  "Укажите корректные email без повторов": {
+    "en": "Enter valid email addresses without duplicates",
+    "zh": "请输入有效且不重复的电子邮箱地址"
+  },
   "Укажите сотрудника в формате: Имя | email, второй email": {
     "en": "Enter employee as: Name | email, second email",
     "zh": "请输入员工，格式：姓名 | 邮箱, 第二邮箱"
+  },
+  "Укажите три разных порта 1024–65535.": {
+    "en": "Enter three distinct ports between 1024 and 65535.",
+    "zh": "请输入三个不同的端口，范围为 1024–65535。"
   },
   "Указать срок": {
     "en": "Set due date",
@@ -3447,6 +4175,10 @@
     "en": "Delegation filters",
     "zh": "委派任务筛选"
   },
+  "Фоновая обработка": {
+    "en": "Background processing",
+    "zh": "后台处理"
+  },
   "Фоновые уведомления недоступны в этой сборке. Пока приложение открыто, данные обновляются автоматически.": {
     "en": "Background notifications are unavailable in this build. Data updates automatically while the app is open.",
     "zh": "此版本不支持后台通知。应用打开时数据会自动更新。"
@@ -3462,6 +4194,14 @@
   "Формировать план в": {
     "en": "Generate plan at",
     "zh": "生成计划时间"
+  },
+  "Формируется отчёт и проверяется обезличивание…": {
+    "en": "Preparing the report and checking anonymization…",
+    "zh": "正在生成报告并检查匿名化…"
+  },
+  "Холодная резервная копия создана:": {
+    "en": "Cold backup created:",
+    "zh": "已创建冷备份："
   },
   "Часовой пояс": {
     "en": "Time zone",
@@ -3483,6 +4223,10 @@
     "en": "Via gateway · key saved in app",
     "zh": "通过网关 · 密钥已保存在应用中"
   },
+  "Черновик обращения": {
+    "en": "Report draft",
+    "zh": "报告草稿"
+  },
   "Читать полное сообщение": {
     "en": "Read full message",
     "zh": "阅读完整消息"
@@ -3495,6 +4239,10 @@
     "en": "What needs to be done",
     "zh": "需要做什么"
   },
+  "Что произошло": {
+    "en": "What happened",
+    "zh": "发生了什么"
+  },
   "Шаг {0} из 3": {
     "en": "Step {0} of 3",
     "zh": "第 {0} 步，共 3 步"
@@ -3506,6 +4254,10 @@
   "Шлюз отклонил подключение (HTTP {0})": {
     "en": "Gateway rejected connection (HTTP {0})",
     "zh": "网关拒绝连接（HTTP {0}）"
+  },
+  "Экспорт отчёта": {
+    "en": "Export report",
+    "zh": "导出报告"
   },
   "Это время отсутствует в выбранном часовом поясе. Укажите другое время.": {
     "en": "This time does not exist in the selected time zone. Choose another time.",
@@ -3523,6 +4275,14 @@
     "en": "This key was issued for a different server. Scan its QR code.",
     "zh": "此密钥属于其他服务器。请扫描对应的二维码。"
   },
+  "Я проверил содержимое и согласен отправить отчёт": {
+    "en": "I reviewed the content and agree to send this report",
+    "zh": "我已检查内容并同意发送此报告。"
+  },
+  "Язык": {
+    "en": "Language",
+    "zh": "语言"
+  },
   "Языковая модель": {
     "en": "Language model",
     "zh": "语言模型"
@@ -3535,6 +4295,14 @@
     "en": "comma-separated alternatives; email addresses are detected from connected sources",
     "zh": "替代名称以逗号分隔；邮箱地址从已连接来源中识别"
   },
+  "версия PostgreSQL требует отдельной миграции; каталог базы не изменён": {
+    "en": "PostgreSQL version requires a separate migration; database directory was not changed",
+    "zh": "PostgreSQL 版本需要单独迁移；数据库目录未更改"
+  },
+  "внутренняя ошибка установщика": {
+    "en": "internal installer error",
+    "zh": "安装程序内部错误"
+  },
   "встречам": {
     "en": "meetings",
     "zh": "会议"
@@ -3542,6 +4310,10 @@
   "длительность, с": {
     "en": "duration, s",
     "zh": "持续时间（秒）"
+  },
+  "для HTTPS нужен публичный DNS-домен без протокола и пути": {
+    "en": "HTTPS requires a public DNS domain without protocol or path",
+    "zh": "HTTPS 需要不含协议或路径的公共 DNS 域名"
   },
   "до следующей загрузки, с": {
     "en": "next import in, s",
@@ -3579,6 +4351,10 @@
     "en": "records",
     "zh": "记录"
   },
+  "запустите установку с правами администратора Windows": {
+    "en": "run setup as a Windows administrator",
+    "zh": "请以 Windows 管理员身份运行安装程序"
+  },
   "и распакуйте архив. На странице chrome://extensions (или edge://extensions) включите режим разработчика и выберите «Загрузить распакованное расширение».": {
     "en": "and extract the archive. On chrome://extensions (or edge://extensions), enable Developer mode and choose “Load unpacked”.",
     "zh": "并解压文件。在 chrome://extensions（或 edge://extensions）中启用开发者模式，选择“加载已解压的扩展程序”。"
@@ -3595,9 +4371,21 @@
     "en": "sources",
     "zh": "来源"
   },
+  "исходный файл совпадает с целевым": {
+    "en": "source and destination files are the same",
+    "zh": "源文件与目标文件相同"
+  },
   "итогам": {
     "en": "results",
     "zh": "纪要"
+  },
+  "каталоги программы и данных не должны пересекаться": {
+    "en": "program and data directories must not overlap",
+    "zh": "程序目录和数据目录不得重叠"
+  },
+  "компонент не готов: %s; проверьте папку logs": {
+    "en": "component not ready: %s; check the logs folder",
+    "zh": "组件未就绪：%s；请检查 logs 文件夹"
   },
   "контекстов в очереди": {
     "en": "contexts queued",
@@ -3618,378 +4406,6 @@
   "найдено": {
     "en": "found",
     "zh": "已找到"
-  },
-  "обязателен при первом подключении": {
-    "en": "required on first connection",
-    "zh": "首次连接时必填"
-  },
-  "ожидает": {
-    "en": "waiting",
-    "zh": "等待中"
-  },
-  "операция не выполнена": {
-    "en": "operation failed",
-    "zh": "操作失败"
-  },
-  "оставьте пустым, чтобы сохранить текущий": {
-    "en": "leave empty to keep the current value",
-    "zh": "留空以保留当前值"
-  },
-  "отправлено задач": {
-    "en": "tasks sent",
-    "zh": "已发送任务"
-  },
-  "ошибок контекста": {
-    "en": "context errors",
-    "zh": "上下文错误"
-  },
-  "ошибок подряд": {
-    "en": "consecutive errors",
-    "zh": "连续错误"
-  },
-  "ошибок событий": {
-    "en": "event errors",
-    "zh": "事件错误"
-  },
-  "ошибок чата": {
-    "en": "chat errors",
-    "zh": "聊天错误"
-  },
-  "перепискам": {
-    "en": "conversations",
-    "zh": "对话"
-  },
-  "по одному в строке или через запятую; ищутся в теме и тексте без учёта регистра": {
-    "en": "one per line or comma-separated; case-insensitive matching in subject and body",
-    "zh": "每行一个或以逗号分隔；在主题和正文中匹配，不区分大小写"
-  },
-  "по одному в строке или через запятую; проверяются отправитель и все участники": {
-    "en": "one per line or comma-separated; checked against sender and all participants",
-    "zh": "每行一个或以逗号分隔；检查发件人和所有参与者"
-  },
-  "повторных попыток": {
-    "en": "retries",
-    "zh": "重试次数"
-  },
-  "поручениям": {
-    "en": "delegations",
-    "zh": "委派任务"
-  },
-  "приоритет:": {
-    "en": "priority:",
-    "zh": "优先级："
-  },
-  "с последней загрузки, с": {
-    "en": "since last import, s",
-    "zh": "距上次导入（秒）"
-  },
-  "событий в очереди": {
-    "en": "events queued",
-    "zh": "排队中的事件"
-  },
-  "событий в работе": {
-    "en": "events in progress",
-    "zh": "处理中的事件"
-  },
-  "событий за цикл": {
-    "en": "events per cycle",
-    "zh": "每轮事件数"
-  },
-  "событий.": {
-    "en": "events.",
-    "zh": "个事件。"
-  },
-  "сообщений ·": {
-    "en": "messages ·",
-    "zh": "条消息 ·"
-  },
-  "сохраняется зашифрованно": {
-    "en": "stored encrypted",
-    "zh": "加密存储"
-  },
-  "устройств": {
-    "en": "devices",
-    "zh": "设备"
-  },
-  "чатов в очереди": {
-    "en": "chats queued",
-    "zh": "排队中的聊天"
-  },
-  "чатов в работе": {
-    "en": "chats in progress",
-    "zh": "处理中的聊天"
-  },
-  "чатов готово": {
-    "en": "chats ready",
-    "zh": "已完成聊天"
-  },
-  "◷ Напомнить": {
-    "en": "◷ Remind",
-    "zh": "◷ 提醒"
-  },
-  "✓ Завершить": {
-    "en": "✓ Complete",
-    "zh": "✓ 完成"
-  },
-  "＋ Новая задача": {
-    "en": "＋ New task",
-    "zh": "＋ 新建任务"
-  },
-  "Язык": {
-    "en": "Language",
-    "zh": "语言"
-  },
-  "Как в системе": {
-    "en": "System default",
-    "zh": "跟随系统"
-  },
-  "%s: код %d; %s": {
-    "en": "%s: code %d; %s",
-    "zh": "%s：代码 %d；%s"
-  },
-  "%s: превышено время ожидания": {
-    "en": "%s: timed out",
-    "zh": "%s：超时"
-  },
-  ". Новая версия не установлена. Данные и резервная копия сохранены.": {
-    "en": ". The new version was not installed. Data and backup are preserved.",
-    "zh": "。未安装新版本。数据和备份已保留。"
-  },
-  "HTTPS для браузера и мобильного приложения": {
-    "en": "HTTPS for browser and mobile app",
-    "zh": "浏览器和移动应用通过 HTTPS 访问"
-  },
-  "PostgreSQL не запустился; проверьте журнал AISecretaryDatabase": {
-    "en": "PostgreSQL failed to start; check the AISecretaryDatabase log",
-    "zh": "PostgreSQL 启动失败；请检查 AISecretaryDatabase 日志"
-  },
-  "База, вложения, настройки и ключи сохраняются в ": {
-    "en": "Database, attachments, settings and keys will be preserved in ",
-    "zh": "数据库、附件、设置和密钥将保留在 "
-  },
-  "В каталоге программы остались данные прежнего деинсталлятора. Завершите удаление прежней версии и повторите установку.": {
-    "en": "Previous uninstaller data remains in the program directory. Finish uninstalling the previous version and retry installation.",
-    "zh": "程序目录中仍有旧卸载程序的数据。请完成旧版本卸载后重试安装。"
-  },
-  "Введите публичный DNS-домен.": {
-    "en": "Enter a public DNS domain.",
-    "zh": "请输入公共 DNS 域名。"
-  },
-  "Выберите свободные порты. Подключение к AI-провайдеру и модель настраиваются в админке после установки.": {
-    "en": "Choose available ports. Configure the AI provider and model in the admin panel after installation.",
-    "zh": "选择可用端口。安装后在管理面板中配置 AI 提供商和模型。"
-  },
-  "Данные сохранены в": {
-    "en": "Data preserved in",
-    "zh": "数据保留在"
-  },
-  "Деинсталлятор прежней версии отсутствует или повреждён. Установка поверх неё запрещена.": {
-    "en": "The previous uninstaller is missing or corrupted. Installation over it is not allowed.",
-    "zh": "旧卸载程序缺失或损坏。不允许覆盖安装。"
-  },
-  "Для завершения удаления нужна перезагрузка. Данные сохранены; после перезагрузки запустите установщик снова.": {
-    "en": "A restart is required to finish uninstalling. Data is preserved; run the installer again after restarting.",
-    "zh": "需要重启以完成卸载。数据已保留；重启后请重新运行安装程序。"
-  },
-  "Домен вашей установки": {
-    "en": "Your installation domain",
-    "zh": "您的安装域名"
-  },
-  "Домен:": {
-    "en": "Domain:",
-    "zh": "域名："
-  },
-  "Доступ к приложению": {
-    "en": "App access",
-    "zh": "应用访问"
-  },
-  "Журнал: ": {
-    "en": "Log: ",
-    "zh": "日志："
-  },
-  "Каталоги программы и сохраняемых данных не должны пересекаться.": {
-    "en": "Program and persistent data directories must not overlap.",
-    "zh": "程序目录和持久数据目录不得重叠。"
-  },
-  "Каталоги программы и сохраняемых данных пересекаются. Удаление остановлено.": {
-    "en": "Program and persistent data directories overlap. Uninstall stopped.",
-    "zh": "程序目录和持久数据目录重叠。已停止卸载。"
-  },
-  "Локальная база PostgreSQL и фоновые службы": {
-    "en": "Local PostgreSQL database and background services",
-    "zh": "本地 PostgreSQL 数据库和后台服务"
-  },
-  "На этом компьютере или по HTTPS": {
-    "en": "On this computer or over HTTPS",
-    "zh": "在此计算机上或通过 HTTPS"
-  },
-  "Не найдена команда удаления прежней версии. Восстановите деинсталлятор и повторите установку.": {
-    "en": "Previous version uninstall command not found. Restore the uninstaller and retry installation.",
-    "zh": "未找到旧版本卸载命令。请恢复卸载程序并重试安装。"
-  },
-  "Не удалось запустить помощник: ": {
-    "en": "Could not start helper: ",
-    "zh": "无法启动辅助程序："
-  },
-  "Не удалось запустить удаление прежней версии: ": {
-    "en": "Could not start uninstalling the previous version: ",
-    "zh": "无法开始卸载旧版本："
-  },
-  "Не удалось запустить установку Microsoft Visual C++ Runtime.": {
-    "en": "Could not start Microsoft Visual C++ Runtime installation.",
-    "zh": "无法启动 Microsoft Visual C++ Runtime 安装。"
-  },
-  "Не удалось настроить службы. Данные сохранены.": {
-    "en": "Could not configure services. Data is preserved.",
-    "zh": "无法配置服务。数据已保留。"
-  },
-  "Не удалось остановить и удалить службы. Файлы программы сохраняются.": {
-    "en": "Could not stop and remove services. Program files are preserved.",
-    "zh": "无法停止和移除服务。程序文件已保留。"
-  },
-  "Не удалось установить Microsoft Visual C++ Runtime: ": {
-    "en": "Could not install Microsoft Visual C++ Runtime: ",
-    "zh": "无法安装 Microsoft Visual C++ Runtime："
-  },
-  "Новые версии": {
-    "en": "New releases",
-    "zh": "新版本"
-  },
-  "Открыть настройку источников и модели": {
-    "en": "Open source and model settings",
-    "zh": "打开来源和模型设置"
-  },
-  "Ошибка установки:": {
-    "en": "Installation error:",
-    "zh": "安装错误："
-  },
-  "Переместите новый установщик из каталога программы, например в Загрузки, и запустите снова.": {
-    "en": "Move the new installer outside the program directory, for example to Downloads, then run it again.",
-    "zh": "请将新安装程序移出程序目录，例如移至“下载”，然后重新运行。"
-  },
-  "Помощник завершился с кодом ": {
-    "en": "Helper exited with code ",
-    "zh": "辅助程序退出，代码为 "
-  },
-  "Порт PostgreSQL:": {
-    "en": "PostgreSQL port:",
-    "zh": "PostgreSQL 端口："
-  },
-  "Порт интерфейса:": {
-    "en": "Interface port:",
-    "zh": "界面端口："
-  },
-  "Порт парсера документов:": {
-    "en": "Document parser port:",
-    "zh": "文档解析器端口："
-  },
-  "После исправления ошибки запустите установщик повторно.": {
-    "en": "After fixing the error, run the installer again.",
-    "zh": "修复错误后，请重新运行安装程序。"
-  },
-  "После удаления не найдены сохранённые настройки. Восстановите ProgramData из резервной копии перед установкой.": {
-    "en": "Preserved settings not found after uninstall. Restore ProgramData from a backup before installing.",
-    "zh": "卸载后未找到保留的设置。安装前请从备份恢复 ProgramData。"
-  },
-  "Прежняя версия будет удалена, затем программа будет установлена заново.": {
-    "en": "The previous version will be removed, then the app will be installed again.",
-    "zh": "将先移除旧版本，然后重新安装应用。"
-  },
-  "Публичный HTTPS-адрес": {
-    "en": "Public HTTPS address",
-    "zh": "公共 HTTPS 地址"
-  },
-  "Публичный доступ требует домена и перенаправления портов 80 и 443 на этот компьютер. Для доступа с телефона будет создан клиентский сертификат.": {
-    "en": "Public access requires a domain and forwarding ports 80 and 443 to this computer. A client certificate will be created for phone access.",
-    "zh": "公共访问需要域名，并将端口 80 和 443 转发到此计算机。将创建用于手机访问的客户端证书。"
-  },
-  "Резервная копия создана:": {
-    "en": "Backup created:",
-    "zh": "已创建备份："
-  },
-  "Резервное копирование не завершено. Установка остановлена до замены файлов.": {
-    "en": "Backup did not finish. Installation stopped before replacing files.",
-    "zh": "备份未完成。已在替换文件前停止安装。"
-  },
-  "Секретарь": {
-    "en": "Secretary",
-    "zh": "秘书"
-  },
-  "Сервер AI Секретаря": {
-    "en": "AI Secretary server",
-    "zh": "AI 秘书服务器"
-  },
-  "Сертификат и пароль сохранены в": {
-    "en": "Certificate and password saved in",
-    "zh": "证书和密码已保存到"
-  },
-  "Службы удалены. База, настройки и резервные копии сохранены в": {
-    "en": "Services removed. Database, settings and backups preserved in",
-    "zh": "服务已移除。数据库、设置和备份保留在"
-  },
-  "Службы установлены. Настройте источники и модель в панели администратора.": {
-    "en": "Services installed. Configure sources and model in the admin panel.",
-    "zh": "服务已安装。请在管理面板中配置来源和模型。"
-  },
-  "Только на этом компьютере": {
-    "en": "Only on this computer",
-    "zh": "仅在此计算机上"
-  },
-  "Удаление прежней версии завершилось с ошибкой ": {
-    "en": "Previous version uninstall failed with error ",
-    "zh": "旧版本卸载失败，错误为 "
-  },
-  "Удаление прежней версии не завершено. Установка новых файлов остановлена; повторите запуск после завершения удаления.": {
-    "en": "Previous version uninstall is incomplete. New file installation stopped; retry when uninstall finishes.",
-    "zh": "旧版本尚未完成卸载。已停止安装新文件；卸载完成后请重试。"
-  },
-  "Удаление прежних файлов ожидает перезагрузки. Перезагрузите Windows и запустите установку снова.": {
-    "en": "Removal of old files requires a restart. Restart Windows and run the installer again.",
-    "zh": "删除旧文件需要重启。请重启 Windows 后重新运行安装程序。"
-  },
-  "Удалить AI Секретарь": {
-    "en": "Uninstall AI Secretary",
-    "zh": "卸载 AI 秘书"
-  },
-  "Укажите домен без https://. Поддерживается DynDNS. Let's Encrypt подтвердит домен через HTTP и будет продлевать серверный сертификат автоматически.": {
-    "en": "Enter the domain without https://. DynDNS is supported. Let's Encrypt will verify the domain over HTTP and renew the server certificate automatically.",
-    "zh": "输入域名，不含 https://。支持 DynDNS。Let's Encrypt 将通过 HTTP 验证域名并自动续期服务器证书。"
-  },
-  "Укажите три разных порта 1024–65535.": {
-    "en": "Enter three distinct ports between 1024 and 65535.",
-    "zh": "请输入三个不同的端口，范围为 1024–65535。"
-  },
-  "Холодная резервная копия создана:": {
-    "en": "Cold backup created:",
-    "zh": "已创建冷备份："
-  },
-  "версия PostgreSQL требует отдельной миграции; каталог базы не изменён": {
-    "en": "PostgreSQL version requires a separate migration; database directory was not changed",
-    "zh": "PostgreSQL 版本需要单独迁移；数据库目录未更改"
-  },
-  "внутренняя ошибка установщика": {
-    "en": "internal installer error",
-    "zh": "安装程序内部错误"
-  },
-  "для HTTPS нужен публичный DNS-домен без протокола и пути": {
-    "en": "HTTPS requires a public DNS domain without protocol or path",
-    "zh": "HTTPS 需要不含协议或路径的公共 DNS 域名"
-  },
-  "запустите установку с правами администратора Windows": {
-    "en": "run setup as a Windows administrator",
-    "zh": "请以 Windows 管理员身份运行安装程序"
-  },
-  "исходный файл совпадает с целевым": {
-    "en": "source and destination files are the same",
-    "zh": "源文件与目标文件相同"
-  },
-  "каталоги программы и данных не должны пересекаться": {
-    "en": "program and data directories must not overlap",
-    "zh": "程序目录和数据目录不得重叠"
-  },
-  "компонент не готов: %s; проверьте папку logs": {
-    "en": "component not ready: %s; check the logs folder",
-    "zh": "组件未就绪：%s；请检查 logs 文件夹"
   },
   "не удалось запустить %s: %w": {
     "en": "could not start %s: %w",
@@ -4031,6 +4447,14 @@
     "en": "a public DNS domain is required",
     "zh": "需要公共 DNS 域名"
   },
+  "обязателен при первом подключении": {
+    "en": "required on first connection",
+    "zh": "首次连接时必填"
+  },
+  "ожидает": {
+    "en": "waiting",
+    "zh": "等待中"
+  },
   "ожидается configure, prepare, remove, export-client, check-runtime или version": {
     "en": "expected configure, prepare, remove, export-client, check-runtime or version",
     "zh": "需要 configure、prepare、remove、export-client、check-runtime 或 version"
@@ -4038,6 +4462,18 @@
   "ожидался обычный файл: %s": {
     "en": "expected a regular file: %s",
     "zh": "需要普通文件：%s"
+  },
+  "операция не выполнена": {
+    "en": "operation failed",
+    "zh": "操作失败"
+  },
+  "оставьте пустым, чтобы сохранить текущий": {
+    "en": "leave empty to keep the current value",
+    "zh": "留空以保留当前值"
+  },
+  "отправлено задач": {
+    "en": "tasks sent",
+    "zh": "已发送任务"
   },
   "отсутствует ключ или пароль существующей установки; восстановите secrets из копии": {
     "en": "existing installation key or password is missing; restore secrets from a backup",
@@ -4047,9 +4483,49 @@
     "en": "existing service programs are missing; restore the program directory",
     "zh": "现有服务程序缺失；请恢复程序目录"
   },
+  "ошибок контекста": {
+    "en": "context errors",
+    "zh": "上下文错误"
+  },
+  "ошибок подряд": {
+    "en": "consecutive errors",
+    "zh": "连续错误"
+  },
+  "ошибок событий": {
+    "en": "event errors",
+    "zh": "事件错误"
+  },
+  "ошибок чата": {
+    "en": "chat errors",
+    "zh": "聊天错误"
+  },
+  "перепискам": {
+    "en": "conversations",
+    "zh": "对话"
+  },
+  "по одному в строке или через запятую; ищутся в теме и тексте без учёта регистра": {
+    "en": "one per line or comma-separated; case-insensitive matching in subject and body",
+    "zh": "每行一个或以逗号分隔；在主题和正文中匹配，不区分大小写"
+  },
+  "по одному в строке или через запятую; проверяются отправитель и все участники": {
+    "en": "one per line or comma-separated; checked against sender and all participants",
+    "zh": "每行一个或以逗号分隔；检查发件人和所有参与者"
+  },
+  "повторных попыток": {
+    "en": "retries",
+    "zh": "重试次数"
+  },
   "порт %d занят": {
     "en": "port %d is in use",
     "zh": "端口 %d 已被占用"
+  },
+  "поручениям": {
+    "en": "delegations",
+    "zh": "委派任务"
+  },
+  "приоритет:": {
+    "en": "priority:",
+    "zh": "优先级："
   },
   "пустая резервная копия базы": {
     "en": "empty database backup",
@@ -4058,6 +4534,34 @@
   "пустой ключ или пароль; восстановите secrets из резервной копии": {
     "en": "empty key or password; restore secrets from a backup",
     "zh": "密钥或密码为空；请从备份恢复 secrets"
+  },
+  "с последней загрузки, с": {
+    "en": "since last import, s",
+    "zh": "距上次导入（秒）"
+  },
+  "событий в очереди": {
+    "en": "events queued",
+    "zh": "排队中的事件"
+  },
+  "событий в работе": {
+    "en": "events in progress",
+    "zh": "处理中的事件"
+  },
+  "событий за цикл": {
+    "en": "events per cycle",
+    "zh": "每轮事件数"
+  },
+  "событий.": {
+    "en": "events.",
+    "zh": "个事件。"
+  },
+  "сообщений ·": {
+    "en": "messages ·",
+    "zh": "条消息 ·"
+  },
+  "сохраняется зашифрованно": {
+    "en": "stored encrypted",
+    "zh": "加密存储"
   },
   "ссылка в каталоге программы; резервная копия остановлена": {
     "en": "symlink in program directory; backup stopped",
@@ -4079,164 +4583,32 @@
     "en": "setup helper can only run on Windows",
     "zh": "安装辅助程序只能在 Windows 上运行"
   },
-  "Открыть ссылку": {
-    "en": "Open link",
-    "zh": "打开链接"
+  "устройств": {
+    "en": "devices",
+    "zh": "设备"
   },
-  "Офлайн-распознавание выбранного языка недоступно на этом устройстве. Введите заметку текстом": {
-    "en": "Offline recognition for the selected language is unavailable on this device. Type your note instead",
-    "zh": "此设备不支持所选语言的离线识别。请改为输入笔记"
+  "чатов в очереди": {
+    "en": "chats queued",
+    "zh": "排队中的聊天"
   },
-  "Heartbeat не обновлён вовремя": {
-    "en": "Heartbeat was not updated in time",
-    "zh": "心跳未及时更新"
+  "чатов в работе": {
+    "en": "chats in progress",
+    "zh": "处理中的聊天"
   },
-  "Есть обработчики без прогресса более 15 минут": {
-    "en": "Some workers have made no progress for over 15 minutes",
-    "zh": "部分处理程序已超过 15 分钟无进展"
+  "чатов готово": {
+    "en": "chats ready",
+    "zh": "已完成聊天"
   },
-  "Очереди обрабатываются": {
-    "en": "Queues are being processed",
-    "zh": "正在处理队列"
+  "◷ Напомнить": {
+    "en": "◷ Remind",
+    "zh": "◷ 提醒"
   },
-  "Семафор LLM": {
-    "en": "LLM semaphore",
-    "zh": "语言模型信号量"
+  "✓ Завершить": {
+    "en": "✓ Complete",
+    "zh": "✓ 完成"
   },
-  "Фоновая обработка": {
-    "en": "Background processing",
-    "zh": "后台处理"
-  },
-  "LLM недоступен": {
-    "en": "LLM unavailable",
-    "zh": "语言模型不可用"
-  },
-  "API модели доступен": {
-    "en": "Model API is available",
-    "zh": "模型 API 可用"
-  },
-  "Выбранная модель отсутствует в списке доступных моделей": {
-    "en": "Selected model is not in the list of available models",
-    "zh": "所选模型不在可用模型列表中"
-  },
-  "Ошибка соединения с моделью": {
-    "en": "Model connection error",
-    "zh": "模型连接错误"
-  },
-  "Ответ модели обрезан по лимиту токенов": {
-    "en": "Model response truncated at the token limit",
-    "zh": "模型响应因令牌上限而被截断"
-  },
-  "Некорректный ответ модели": {
-    "en": "Invalid model response",
-    "zh": "模型响应无效"
-  },
-  "Модель вернула пустой ответ": {
-    "en": "Model returned an empty response",
-    "zh": "模型返回空响应"
-  },
-  "Не удалось связаться с GitHub. Проверка будет повторена.": {
-    "en": "Could not reach GitHub. The check will be retried.",
-    "zh": "无法连接 GitHub。将重试检查。"
-  },
-  "Сервер": {
-    "en": "Server",
-    "zh": "服务器"
-  },
-  "Детали поручения": {
-    "en": "Delegation details",
-    "zh": "委派任务详情"
-  },
-  "Добавить сотрудника": {
-    "en": "Add employee",
-    "zh": "添加员工"
-  },
-  "Изменить сотрудника": {
-    "en": "Edit employee",
-    "zh": "编辑员工"
-  },
-  "Нет сотрудников": {
-    "en": "No employees",
-    "zh": "暂无员工"
-  },
-  "Email через запятую": {
-    "en": "Email addresses separated by commas",
-    "zh": "用逗号分隔电子邮箱地址"
-  },
-  "Укажите имя сотрудника": {
-    "en": "Enter the employee’s name",
-    "zh": "请输入员工姓名"
-  },
-  "Укажите корректные email без повторов": {
-    "en": "Enter valid email addresses without duplicates",
-    "zh": "请输入有效且不重复的电子邮箱地址"
-  },
-  "Не более 200 сотрудников в списке": {
-    "en": "At most 200 employees per list",
-    "zh": "每个列表最多200名员工"
-  },
-  "Имя": {
-    "en": "Name",
-    "zh": "姓名"
-  },
-  "Email": {
-    "en": "Email",
-    "zh": "电子邮箱"
-  },
-  "Действия": {
-    "en": "Actions",
-    "zh": "操作"
-  },
-  "До срока меньше суток": {
-    "en": "Less than a day until due",
-    "zh": "距离截止时间不足一天"
-  },
-  "Собрание": {
-    "en": "Meeting",
-    "zh": "会议"
-  },
-  "Сборка": {
-    "en": "Build",
-    "zh": "构建号"
-  },
-  "Изменить задачу": {
-    "en": "Edit task",
-    "zh": "编辑任务"
-  },
-  "Изменить приоритет и срок": {
-    "en": "Edit priority and due date",
-    "zh": "修改优先级和截止时间"
-  },
-  "Не удалось сохранить изменения": {
-    "en": "Could not save changes",
-    "zh": "无法保存更改"
-  },
-  "Архив задач": {
-    "en": "Task archive",
-    "zh": "任务归档"
-  },
-  "Архив поручений": {
-    "en": "Delegation archive",
-    "zh": "委派归档"
-  },
-  "Активные": {
-    "en": "Active",
-    "zh": "进行中"
-  },
-  "Архив": {
-    "en": "Archive",
-    "zh": "归档"
-  },
-  "В архиве пока нет задач": {
-    "en": "No archived tasks yet",
-    "zh": "归档中暂无任务"
-  },
-  "Период задач": {
-    "en": "Task period",
-    "zh": "任务范围"
-  },
-  "Список поручений": {
-    "en": "Delegation list",
-    "zh": "委派列表"
+  "＋ Новая задача": {
+    "en": "＋ New task",
+    "zh": "＋ 新建任务"
   }
 }

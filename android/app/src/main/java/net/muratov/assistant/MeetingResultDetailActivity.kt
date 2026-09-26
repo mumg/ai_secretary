@@ -70,6 +70,7 @@ class MeetingResultDetailActivity : net.muratov.assistant.i18n.LocalizedActivity
                     state = state,
                     onBack = ::finish,
                     onRetry = detailViewModel::load,
+                    onReport = { startActivity(DiagnosticReportActivity.intent(this, "meeting_result", resultId)) },
                     onOpenSource = { eventId, sourceLabel ->
                         startActivity(EventDetailActivity.intent(this, eventId, sourceLabel))
                     },
@@ -93,6 +94,7 @@ private fun MeetingResultDetailScreen(
     state: MeetingResultDetailUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onReport: () -> Unit,
     onOpenSource: (String, String) -> Unit,
 ) {
     Scaffold(
@@ -130,6 +132,7 @@ private fun MeetingResultDetailScreen(
             state.detail != null -> MeetingResultDetailContent(
                 detail = state.detail,
                 onOpenSource = onOpenSource,
+                onReport = onReport,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -140,6 +143,7 @@ private fun MeetingResultDetailScreen(
 private fun MeetingResultDetailContent(
     detail: MeetingResultDetailDto,
     onOpenSource: (String, String) -> Unit,
+    onReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -157,6 +161,7 @@ private fun MeetingResultDetailContent(
             ),
         )
         ResultField(tr("Тема"), detail.title)
+        TextButton(onClick = onReport) { Text(tr("Сообщить об ошибке")) }
         participantNames(detail.participants).takeIf(String::isNotBlank)?.let {
             ResultField(tr("Участники"), it)
         }

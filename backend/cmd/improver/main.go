@@ -120,10 +120,10 @@ func run() error {
 	for {
 		var schema int
 		e = pool.QueryRow(ctx, "SELECT version FROM database_schema_version WHERE id=1").Scan(&schema)
-		if e == nil && schema >= 28 {
+		if e == nil && schema >= store.LatestRevision {
 			break
 		}
-		slog.Info("waiting for database schema", "minimum_version", 28)
+		slog.Info("waiting for database schema", "minimum_version", store.LatestRevision)
 		select {
 		case <-ctx.Done():
 			return nil
@@ -132,6 +132,9 @@ func run() error {
 	}
 	app := server.New(pool, cfg, version)
 	if e := app.PreparePreconfiguration(ctx); e != nil {
+		return e
+	}
+	if e := app.ReconcileTemporaryCorrections(ctx); e != nil {
 		return e
 	}
 	if command == "worker" {

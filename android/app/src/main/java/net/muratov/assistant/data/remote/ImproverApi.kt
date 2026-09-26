@@ -11,6 +11,35 @@ import retrofit2.http.Query
 import retrofit2.http.Streaming
 
 interface ImproverApi {
+    @POST("api/v1/diagnostic-reports/drafts")
+    suspend fun createDiagnosticDraft(@Body request: DiagnosticDraftRequest): DiagnosticDraftDto
+
+    @GET("api/v1/diagnostic-reports/drafts/{id}")
+    suspend fun diagnosticDraft(@Path("id") id: String): DiagnosticDraftDto
+
+    @GET("api/v1/diagnostic-reports/drafts")
+    suspend fun diagnosticDrafts(): DiagnosticDraftPageDto
+
+    @POST("api/v1/diagnostic-reports/drafts/{id}/retry")
+    suspend fun retryDiagnosticDraft(@Path("id") id: String, @Body request: Map<String, String> = emptyMap()): DiagnosticDraftDto
+
+    @retrofit2.http.PATCH("api/v1/diagnostic-reports/drafts/{id}")
+    suspend fun editDiagnosticDraft(@Path("id") id: String, @Body request: DiagnosticEditRequest): DiagnosticDraftDto
+
+    @retrofit2.http.DELETE("api/v1/diagnostic-reports/drafts/{id}")
+    suspend fun deleteDiagnosticDraft(@Path("id") id: String)
+
+    @POST("api/v1/diagnostic-reports/drafts/{id}/send")
+    suspend fun sendDiagnosticDraft(@Path("id") id: String, @Body request: Map<String, String>): DiagnosticReportStatusDto
+
+    @GET("api/v1/diagnostic-reports")
+    suspend fun diagnosticReports(): DiagnosticReportPageDto
+
+    @GET("api/v1/diagnostic-reports/{id}")
+    suspend fun diagnosticReport(@Path("id") id: String): DiagnosticReportStatusDto
+
+    @POST("api/v1/diagnostic-reports/{id}/retry")
+    suspend fun retryDiagnosticReport(@Path("id") id: String, @Body request: Map<String, String> = emptyMap()): DiagnosticReportStatusDto
     @GET("api/v1/delegations")
     suspend fun delegations(@Query("q") query: String, @Query("assignee") assignee: String, @Query("status") status: String, @Query("due") due: String, @Query("offset") offset: Int, @Query("limit") limit: Int = 30, @Query("archive") archive: String? = null): DelegationPage
     @GET("api/v1/delegations/{id}")

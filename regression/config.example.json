@@ -1,0 +1,10 @@
+{
+  "llm": {
+    "provider": "ollama",
+    "base_url": "http://127.0.0.1:11434",
+    "model": "qwen3:8b",
+    "context_length": 16384,
+    "temperature": 0.1,
+    "request_timeout_seconds": 300
+  }
+}

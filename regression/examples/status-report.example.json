@@ -1,0 +1,31 @@
+{
+  "id": "status-report",
+  "subject": "FW: Методика расчета доступности продаж",
+  "direction": "OUTGOING",
+  "author": "Максим Муратов <maxim@example.test>",
+  "participants": [
+    {
+      "role": "from",
+      "name": "Максим Муратов",
+      "address": "maxim@example.test"
+    },
+    {
+      "role": "to",
+      "name": "Артем Елизаров",
+      "address": "artem@example.test"
+    }
+  ],
+  "user_identity": {
+    "names": [
+      "Максим Муратов"
+    ],
+    "addresses": [
+      "maxim@example.test"
+    ]
+  },
+  "body": "На данный момент задачи следующие:\n\n* Собрать перечень методов, используемых в ЕО\n* Реализовать сквозное логирование для методов из списка\n* Собрать метрики на платформе наблюдаемости\n\nЦель — получить общий мониторинг процессов продаж.\n\nС уважением,\nМаксим Муратов",
+  "relationships": {
+    "managers": [],
+    "reports": []
+  }
+}

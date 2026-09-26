@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Регрессия LLM · письма</title>
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <header>
+    <div><span class="eyebrow">AI Secretary / regression</span><h1>Разбор писем</h1></div>
+    <p>Проверка выделения задач и поручений. Результаты и отзывы сохраняются локально.</p>
+  </header>
+  <main>
+    <aside>
+      <div class="aside-head"><h2>Исходные письма</h2><button id="refresh" class="subtle">Обновить</button></div>
+      <div class="filters">
+        <label for="kind-filter">Показать</label>
+        <select id="kind-filter">
+          <option value="all">Все письма</option>
+          <option value="tasks">С задачами</option>
+          <option value="delegations">С поручениями</option>
+          <option value="any">С задачами или поручениями</option>
+          <option value="none">Без задач и поручений</option>
+          <option value="unreviewed_tasks">Задачи без моей оценки</option>
+          <option value="unanalyzed">Письма без анализа текущей моделью</option>
+        </select>
+        <label class="filter-check"><input id="hide-matched" type="checkbox"> Скрыть совпавшие с моей проверкой</label>
+      </div>
+      <div id="cases" class="case-list"></div>
+      <div class="aside-head history-head"><h2>Запуски</h2></div>
+      <div id="runs" class="run-list"></div>
+    </aside>
+    <section class="workspace">
+      <div id="empty" class="empty">Выберите письмо слева и запустите анализ.</div>
+      <div id="content" hidden>
+        <div class="topline"><div><span id="direction" class="pill"></span><span id="run-meta" class="muted"></span></div><button id="run" class="primary">Запустить анализ</button></div>
+        <h2 id="subject"></h2>
+        <div id="status" role="status"></div>
+        <div id="comparison" class="comparison" hidden></div>
+        <details class="letter"><summary>Исходное письмо и контекст</summary><pre id="letter"></pre></details>
+        <div class="result-grid">
+          <section><div class="section-title"><h3>Задачи по мнению модели</h3><span id="task-count" class="count"></span></div><div id="tasks" class="cards"></div></section>
+          <section><div class="section-title"><h3>Поручения по мнению модели</h3><span id="delegation-count" class="count"></span></div><div id="delegations" class="cards"></div></section>
+        </div>
+        <details class="raw"><summary>Сырой ответ LLM</summary><pre id="raw"></pre></details>
+        <section id="review-panel" class="review" hidden>
+          <div class="section-title"><h3>Ваша оценка</h3><span id="review-state" class="muted"></span></div>
+          <p>Сохранится в том же JSON-файле, что письмо и результат этого запуска.</p>
+          <div class="verdicts"><label><input type="radio" name="verdict" value="agree"> Согласен с результатом</label><label><input type="radio" name="verdict" value="disagree"> Не согласен</label></div>
+          <label for="reason">Причина несогласия или комментарий</label><textarea id="reason" rows="3" placeholder="Какая задача назначена неверно, кому она должна принадлежать и почему?"></textarea>
+          <p>При несогласии укажите ожидаемые названия по одному на строку. Если задач или поручений быть не должно, оставьте соответствующее поле пустым.</p>
+          <div class="corrections"><label>Ожидаемые задачи<textarea id="expected-tasks" rows="3" placeholder="Одно название задачи на строку"></textarea></label><label>Ожидаемые поручения<textarea id="expected-delegations" rows="3" placeholder="Одно название поручения на строку"></textarea></label></div>
+          <button id="save-review" class="primary">Сохранить оценку</button>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

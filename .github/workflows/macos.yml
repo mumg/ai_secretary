@@ -3,10 +3,10 @@ name: macOS universal DMG
 on:
   push:
     branches: [main]
-    paths: ['macos/**', 'backend/**', 'document-parser/**', 'browser-extension/**', 'version', 'windows/installer.iss', '.github/workflows/macos.yml']
+    paths: ['macos/**', 'backend/**', 'document-parser/**', 'browser-extension/**', 'version', 'llm_manifest.json', 'scripts/update_llm_manifest.py', 'windows/installer.iss', '.github/workflows/macos.yml']
     tags: ['macos-v*']
   pull_request:
-    paths: ['macos/**', 'backend/**', 'document-parser/**', 'browser-extension/**', 'version', '.github/workflows/macos.yml']
+    paths: ['macos/**', 'backend/**', 'document-parser/**', 'browser-extension/**', 'version', 'llm_manifest.json', 'scripts/update_llm_manifest.py', '.github/workflows/macos.yml']
   workflow_dispatch:
     inputs:
       sign:
@@ -35,6 +35,8 @@ jobs:
       source_run: ${{ steps.reuse.outputs.run_id }}
     steps:
       - uses: actions/checkout@v5
+      - name: Validate LLM prompt manifest
+        run: python3 scripts/update_llm_manifest.py --check
       - name: Validate release tag
         env:
           PUBLISH: ${{ inputs.publish }}

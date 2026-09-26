@@ -310,7 +310,7 @@ func (q *request) analyzeEvent(event M) {
 		payload["body"] = bounded(cleanEmail(str(event, "body")), budget/2)
 	}
 	payload["relationships"] = settings["relationships"]
-	analysis := must(q.llm(str(obj(llmDefinitions, "prompts"), "analyze"), payload, "AnalysisResult", nil))
+	analysis := must(q.llm(str(obj(llmDefinitions, "prompts"), "analyze"), payload, "AnalysisResult", nil, "message_analysis"))
 	if str(analysis, "summary") == "" || str(analysis, "thread_summary") == "" {
 		panic(fmt.Errorf("invalid semantic analysis"))
 	}
@@ -318,7 +318,7 @@ func (q *request) analyzeEvent(event M) {
 	isMailing := event["event_type"] == "email" && boolean(mailing, "detected") && num(mailing, "confidence") >= 0.8
 	candidates, _ := analysis["tasks"].([]any)
 	if !isMailing && event["event_type"] == "email" && boolean(assignment, "eligible") && len(candidates) == 0 && q.initialAssignmentAllowed(event) {
-		focused := must(q.llm(str(obj(llmDefinitions, "prompts"), "extract_tasks"), payload, "TaskExtractionResult", nil))
+		focused := must(q.llm(str(obj(llmDefinitions, "prompts"), "extract_tasks"), payload, "TaskExtractionResult", nil, "task_extraction"))
 		candidates, _ = focused["tasks"].([]any)
 	}
 	if !isMailing && boolean(assignment, "eligible") {

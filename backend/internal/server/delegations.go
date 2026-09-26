@@ -199,7 +199,11 @@ func (q *request) analyzeDelegations(event, payload M) {
 	if meeting {
 		schema = "MeetingDelegationAnalysis"
 	}
-	result := must(q.llm(str(obj(llmDefinitions, "prompts"), "delegations"), input, schema, nil))
+	purpose := "delegation_analysis"
+	if meeting {
+		purpose = "meeting_delegations"
+	}
+	result := must(q.llm(str(obj(llmDefinitions, "prompts"), "delegations"), input, schema, nil, purpose))
 	q.applyDelegationAnalysis(event, result, existing, str(payload, "body"))
 }
 func (q *request) applyDelegationAnalysis(event, result M, existing []M, body string) {
@@ -248,7 +252,8 @@ func (q *request) applyDelegationAnalysis(event, result M, existing []M, body st
 				}
 				continue
 			}
-			if !q.initialAssignmentAllowed(event) || promiseToAskWithoutAddressee(event, evidence) {
+			if !q.initialAssignmentAllowed(event) || promiseToAskWithoutAddressee(event, evidence) ||
+				(event["event_type"] == "email" && statusOnlyOutgoingMail(body)) {
 				continue
 			}
 			if str(c, "delegation_id") != "" || c["is_new"] != true || clean(str(c, "title")) == "" {

@@ -2,6 +2,8 @@ package net.muratov.assistant
 
 import android.app.Activity
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +37,7 @@ import net.muratov.assistant.ui.ImproverTheme
 import net.muratov.assistant.ui.RelationshipSettings
 import net.muratov.assistant.updates.UpdatePanel
 import net.muratov.assistant.updates.UpdatePrompt
+import kotlinx.coroutines.delay
 
 class SettingsActivity : LocalizedActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +48,13 @@ class SettingsActivity : LocalizedActivity() {
             ImproverTheme {
                 var showSetup by rememberSaveable { mutableStateOf(false) }
                 var connectionChanged by rememberSaveable { mutableStateOf(false) }
+                var readyReports by androidx.compose.runtime.remember { mutableStateOf(0) }
+                LaunchedEffect(showSetup) {
+                    if (!showSetup) while (true) {
+                        readyReports = runCatching { container.repository.diagnosticDrafts().items.count { it.state == "ready" } }.getOrDefault(0)
+                        delay(10000)
+                    }
+                }
                 SideEffect { if (connectionChanged) setResult(Activity.RESULT_OK) }
                 UpdatePrompt(container.updates)
                 if (showSetup) {
@@ -78,8 +89,15 @@ class SettingsActivity : LocalizedActivity() {
                             LanguageSetting()
                             Text(container.settings.serverUrl)
                             Button(onClick = { showSetup = true }) { Text(tr("Мастер подключения")) }
+                            Button(onClick = { startActivity(Intent(this@SettingsActivity, DiagnosticReportsActivity::class.java)) }) {
+                                Text(if (readyReports > 0) tr("Обращения: {0} готовы к проверке", readyReports) else tr("Обращения"))
+                            }
                             RelationshipSettings(container.repository)
                             UpdatePanel(container.updates)
+                            Button(onClick = {
+                                val channel = if (BuildConfig.PLAY_DISTRIBUTION) "google" else "rustore"
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://privacy.ai-secretary.co/$channel/")))
+                            }) { Text(tr("Политика конфиденциальности")) }
                         }
                     }
                 }
