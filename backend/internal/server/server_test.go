@@ -54,7 +54,11 @@ func testServer(t *testing.T) *Server {
 	if e = os.WriteFile(secret, []byte(strings.Repeat("test-secret-", 4)), 0600); e != nil {
 		t.Fatal(e)
 	}
-	return New(pool, config.Config{MasterKeyFile: secret, PublicURL: "https://localhost", LLMURL: "http://127.0.0.1:11434", WebDir: "../../web"}, "0.1.11")
+	version, err := os.ReadFile("../../../version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return New(pool, config.Config{MasterKeyFile: secret, PublicURL: "https://localhost", LLMURL: "http://127.0.0.1:11434", WebDir: "../../web"}, strings.TrimSpace(string(version)))
 }
 func call(t *testing.T, s *Server, method, path string, body any, status int) any {
 	t.Helper()
