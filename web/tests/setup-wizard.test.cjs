@@ -50,14 +50,15 @@ test('wizard displays only its shared admin widget', () => {
     el('sourceDialog').removeAttribute('open');
     w.document.body.classList.add('setup-model');
     el('setupWizardModel').hidden = false;
-    el('setupWizardModel').append(el('analysis'));
-    assert.equal(w.getComputedStyle(el('analysis')).display, 'block');
+    el('setupWizardModel').append(el('analysisConfig'));
+    assert.equal(w.getComputedStyle(el('analysisConfig')).display, 'block');
     assert.equal(w.getComputedStyle(el('llmSettings')).display, 'block');
-    assert.equal(w.getComputedStyle(el('identityNames').closest('fieldset')).display, 'none');
+    assert.equal(w.getComputedStyle(el('analysis')).display, 'none');
     w.document.body.classList.remove('setup-model');
     w.document.body.classList.add('setup-identity');
+    el('setupWizardModel').append(el('analysis'));
     assert.equal(w.getComputedStyle(el('identitySettings')).display, 'block');
-    assert.equal(w.getComputedStyle(el('llmSettings')).display, 'none');
+    assert.equal(w.getComputedStyle(el('analysisConfig')).display, 'none');
   } finally { dom.window.close(); }
 });
 
@@ -175,7 +176,7 @@ test('two source widgets on one step save, verify and advance in order', async t
   await settle();
   assert.ok(calls.includes('POST /sources/meetings/test'));
   assert.equal(el('setupWizardTitle').textContent, 'Модель');
-  assert.equal(el('analysis').parentElement, el('setupWizardModel'));
+  assert.equal(el('analysisConfig').parentElement, el('setupWizardModel'));
 });
 
 test('an existing source is checked in place before opening the next editor', async t => {
@@ -253,7 +254,7 @@ test('configured and verified sources resume directly at the same LLM widget', a
   boot();
   await settle();
   assert.equal(el('setupWizardTitle').textContent, 'Модель');
-  assert.equal(el('analysis').parentElement, el('setupWizardModel'));
+  assert.equal(el('analysisConfig').parentElement, el('setupWizardModel'));
 });
 
 test('MTS widget opens native SSO with source enabled', async t => {

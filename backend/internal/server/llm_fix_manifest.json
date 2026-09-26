@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "component": "backend",
-  "release_version": "0.7.61",
+  "release_version": "0.7.62",
   "fixes": [
     {
       "fix_id": "fix-interest-question-not-task-0.7.58",

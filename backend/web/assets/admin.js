@@ -32,9 +32,10 @@ function readEmployees(id) {
   if (rows.length > 200) throw Error(tr("Не более 200 сотрудников в списке"));
   return rows.map(row => {
     const name = row.querySelector('[data-employee-field="name"]').value.trim();
-    const emails = row.querySelector('[data-employee-field="emails"]').value.split(",").map(v => v.trim().toLowerCase());
+    const emailInput = row.querySelector('[data-employee-field="emails"]');
+    const emails = emailInput.value.split(",").map(v => v.trim().toLowerCase());
     if (!name) throw Error(tr("Укажите имя сотрудника"));
-    if (emails.length > 20 || new Set(emails).size !== emails.length || emails.some(email => !email || seen.has(email))) throw Error(tr("Укажите корректные email без повторов"));
+    if (!emailInput.checkValidity() || emails.length > 20 || new Set(emails).size !== emails.length || emails.some(email => !email || seen.has(email))) throw Error(tr("Укажите корректные email без повторов"));
     emails.forEach(email => seen.add(email));
     return {name, emails};
   });
