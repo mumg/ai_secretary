@@ -27,8 +27,6 @@
         <activity android:name=".SettingsActivity" android:exported="false" />
 
         <activity android:name=".DelegationDetailActivity" android:exported="false" />
-        <activity android:name=".DiagnosticReportActivity" android:exported="false" />
-        <activity android:name=".DiagnosticReportsActivity" android:exported="false" />
         <activity android:name=".setup.IdentityCaptureActivity" android:exported="false" />
 
         <activity android:name=".DetailPlaceholderActivity" android:exported="false" />

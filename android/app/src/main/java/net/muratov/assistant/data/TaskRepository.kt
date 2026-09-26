@@ -54,17 +54,6 @@ class TaskRepository(
     suspend fun saveRelationships(body: net.muratov.assistant.data.remote.RelationshipsDto) = api().saveRelationships(body)
     private fun api() = apiSession.get(settings.serverUrl, settings.certificateAlias)
 
-    suspend fun createDiagnosticDraft(request: net.muratov.assistant.data.remote.DiagnosticDraftRequest) = api().createDiagnosticDraft(request)
-    suspend fun diagnosticDraft(id: String) = api().diagnosticDraft(id)
-    suspend fun diagnosticDrafts() = api().diagnosticDrafts()
-    suspend fun retryDiagnosticDraft(id: String) = api().retryDiagnosticDraft(id)
-    suspend fun editDiagnosticDraft(id: String, edits: List<net.muratov.assistant.data.remote.DiagnosticEditDto>, replaceAll: net.muratov.assistant.data.remote.DiagnosticReplaceAllDto? = null) = api().editDiagnosticDraft(id, net.muratov.assistant.data.remote.DiagnosticEditRequest(edits, replaceAll))
-    suspend fun deleteDiagnosticDraft(id: String) = api().deleteDiagnosticDraft(id)
-    suspend fun sendDiagnosticDraft(id: String, hash: String) = api().sendDiagnosticDraft(id, mapOf("payload_sha256" to hash))
-    suspend fun diagnosticReports() = api().diagnosticReports()
-    suspend fun diagnosticReport(id: String) = api().diagnosticReport(id)
-    suspend fun retryDiagnosticReport(id: String) = api().retryDiagnosticReport(id)
-
     private fun TaskDto.toEntity() = TaskEntity(
         id = id,
         title = title,

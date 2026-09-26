@@ -2,44 +2,6 @@ package net.muratov.assistant.data.remote
 
 import com.google.gson.annotations.SerializedName
 
-data class DiagnosticDraftRequest(
-    @SerializedName("origin_kind") val originKind: String,
-    @SerializedName("origin_id") val originId: String,
-    @SerializedName("issue_type") val issueType: String,
-    @SerializedName("user_comment") val userComment: String,
-    val expected: String,
-)
-
-data class DiagnosticDraftDto(
-    @SerializedName("draft_id") val draftId: String,
-    val state: String = "ready",
-    @SerializedName("payload_sha256") val payloadSha256: String = "",
-    val warnings: List<String> = emptyList(),
-    val fields: List<DiagnosticFieldDto> = emptyList(),
-)
-
-data class DiagnosticFieldDto(val path: String, val label: String, val value: String)
-data class DiagnosticEditDto(val path: String, val value: String)
-data class DiagnosticReplaceAllDto(val find: String, val replacement: String)
-data class DiagnosticEditRequest(
-    val edits: List<DiagnosticEditDto>,
-    @SerializedName("replace_all") val replaceAll: DiagnosticReplaceAllDto? = null,
-)
-data class DiagnosticReportStatusDto(
-    @SerializedName("report_id") val reportId: String,
-    val state: String,
-    @SerializedName("last_error") val lastError: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null,
-)
-data class DiagnosticReportPageDto(val items: List<DiagnosticReportStatusDto>, val drafts: List<DiagnosticDraftStatusDto> = emptyList())
-data class DiagnosticDraftStatusDto(
-    @SerializedName("draft_id") val draftId: String,
-    val state: String,
-    @SerializedName("last_error") val lastError: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null,
-)
-data class DiagnosticDraftPageDto(val items: List<DiagnosticDraftStatusDto>)
-
 data class ReminderDto(
     val id: String,
     @SerializedName("remind_at") val remindAt: String,

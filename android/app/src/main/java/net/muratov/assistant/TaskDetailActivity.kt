@@ -83,7 +83,6 @@ class TaskDetailActivity : net.muratov.assistant.i18n.LocalizedActivity() {
                     onRetry = detailViewModel::load,
                     onReject = detailViewModel::reject,
                     onUpdate = detailViewModel::update,
-                    onReport = { startActivity(DiagnosticReportActivity.intent(this, "task", taskId)) },
                 )
             }
         }
@@ -105,7 +104,6 @@ private fun TaskDetailScreen(
     onRetry: () -> Unit,
     onReject: () -> Unit,
     onUpdate: (String, String?) -> Unit,
-    onReport: () -> Unit,
 ) {
     var editing by remember { mutableStateOf(false) }
     if (editing && state.detail != null) {
@@ -152,7 +150,6 @@ private fun TaskDetailScreen(
                 modifier = Modifier.padding(padding),
                 onReject = onReject,
                 onEdit = { editing = true },
-                onReport = onReport,
             )
         }
     }
@@ -164,7 +161,6 @@ private fun TaskDetailContent(
     modifier: Modifier = Modifier,
     onReject: () -> Unit,
     onEdit: () -> Unit,
-    onReport: () -> Unit,
 ) {
     val source = detail.source
     val uriHandler = LocalUriHandler.current
@@ -177,7 +173,6 @@ private fun TaskDetailContent(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         DetailField(tr("Приоритет"), taskPriorityLabel(detail.task.priority))
-        if (source != null) TextButton(onClick = onReport) { Text(tr("Сообщить об ошибке")) }
         DetailField(tr("Срок"), detail.task.dueAt?.let { eventDateTime(it).let { (date, time) -> "$date $time" } } ?: tr("Без срока"))
         Row(
             modifier = Modifier.fillMaxWidth(),
